@@ -26,8 +26,3 @@ Este é o backend de um projeto Micro SaaS para gerenciar o conteúdo de criador
 - **MongoDB** (instalado localmente ou usando uma instância na nuvem)
 - **Git** (para clonar o repositório)
 
-### Passos
-
-1. Clone este repositório:
-   ```bash
-   git clone https://github.com/SEU_USUARIO/micro-saas-backend.git
