@@ -4,6 +4,35 @@ namespace MicroSaaS.Application.Interfaces.Services;
 
 public interface IRevenueService
 {
-    Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    // Conexão com AdSense
+    Task<string> GetAdSenseAuthUrlAsync(Guid creatorId, string callbackUrl);
+    Task<bool> ConnectAdSenseAsync(Guid creatorId, string authorizationCode);
     Task<bool> IntegrateGoogleAdSenseAsync(ContentCreator creator, string accessToken);
+    
+    // Relatórios de Receita
+    Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<List<PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<List<DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+}
+
+public class RevenueSummary
+{
+    public decimal TotalRevenue { get; set; }
+    public decimal EstimatedMonthlyRevenue { get; set; }
+    public decimal AverageRevenuePerView { get; set; }
+}
+
+public class PlatformRevenue
+{
+    public string Platform { get; set; }
+    public decimal Revenue { get; set; }
+    public long Views { get; set; }
+}
+
+public class DailyRevenue
+{
+    public DateTime Date { get; set; }
+    public decimal Revenue { get; set; }
+    public long Views { get; set; }
 }

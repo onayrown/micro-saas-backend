@@ -2,6 +2,7 @@
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Domain.Interfaces;
+using MicroSaaS.Application.Services;
 
 namespace MicroSaaS.Application.Services;
 

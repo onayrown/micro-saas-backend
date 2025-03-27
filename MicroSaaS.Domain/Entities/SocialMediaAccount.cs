@@ -8,6 +8,7 @@ namespace MicroSaaS.Domain.Entities
         public SocialMediaPlatform Platform { get; set; }
         public string AccountUsername { get; set; }
         public string AccessToken { get; set; }
+        public DateTime CreatedAt { get; set; }
         public DateTime LastSynchronized { get; set; }
     }
 }

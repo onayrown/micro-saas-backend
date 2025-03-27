@@ -13,13 +13,13 @@ namespace MicroSaaS.Infrastructure.Entities
     {
         [BsonId]
         [BsonRepresentation(BsonType.String)]
-        public string Id { get; set; }
+        public string? Id { get; set; }
         
         [BsonRepresentation(BsonType.String)]
-        public string CreatorId { get; set; }
+        public string? CreatorId { get; set; }
         
         public SocialMediaPlatform Platform { get; set; }
-        public string Content { get; set; }
+        public string? Content { get; set; }
         public DateTime ScheduledTime { get; set; }
         public DateTime? PostedTime { get; set; }
         public PostStatus Status { get; set; }

@@ -60,6 +60,8 @@ public class Program
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+        builder.Services.AddScoped<ISocialMediaIntegrationService, SocialMediaIntegrationService>();
+        builder.Services.AddScoped<IRevenueService, RevenueService>();
 
         // Adicionar controllers
         builder.Services.AddControllers();
