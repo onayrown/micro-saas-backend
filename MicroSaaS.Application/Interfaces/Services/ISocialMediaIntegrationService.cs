@@ -1,21 +1,33 @@
 ﻿using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Shared.Models;
+using MicroSaaS.Application.DTOs;
 
 namespace MicroSaaS.Application.Interfaces.Services;
 
 public interface ISocialMediaIntegrationService
 {
     // Autenticação
-    Task<bool> AuthenticateAccountAsync(SocialMediaAccount account);
-    string GetAuthorizationUrl(SocialMediaPlatform platform, string callbackUrl);
-    Task<string> ExchangeCodeForToken(SocialMediaPlatform platform, string code);
-    
-    // Programação de Posts
-    Task<bool> SchedulePostAsync(ContentPost post, string accessToken);
-    
-    // Análise de Desempenho
-    Task<List<ContentPerformance>> GetPostPerformanceAsync(SocialMediaPlatform platform, string accessToken);
-    Task<List<ContentPerformance>> GetContentInsightsAsync(Guid creatorId, SocialMediaPlatform platform, DateTime startDate, DateTime endDate);
-    Task<List<PostTimeRecommendation>> GetBestPostTimesAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<string> GetAuthUrlAsync(SocialMediaPlatform platform);
+    Task<SocialMediaAccount> HandleAuthCallbackAsync(SocialMediaPlatform platform, string code);
+    Task<bool> ValidateTokenAsync(SocialMediaAccount account);
+    Task RefreshTokenAsync(SocialMediaAccount account);
+
+    // Gerenciamento de Contas
+    Task ConnectAccountAsync(SocialMediaAccount account);
+    Task DisconnectAccountAsync(SocialMediaAccount account);
+    Task<Dictionary<string, int>> GetAccountStatsAsync(SocialMediaAccount account);
+
+    // Gerenciamento de Posts
+    Task PostContentAsync(ContentPost post);
+    Task SchedulePostAsync(ContentPost post, DateTime scheduledTime);
+    Task CancelScheduledPostAsync(string postId);
+    Task<IEnumerable<ContentPost>> GetScheduledPostsAsync(Guid creatorId);
+    Task<IEnumerable<ContentPost>> GetPublishedPostsAsync(Guid creatorId);
+
+    // Análise de Performance
+    Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(string postId);
+    Task<IEnumerable<ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate);
+    Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate);
+    Task<IEnumerable<PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId);
 }

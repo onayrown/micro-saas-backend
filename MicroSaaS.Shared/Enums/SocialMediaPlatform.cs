@@ -4,5 +4,8 @@ public enum SocialMediaPlatform
 {
     Instagram,
     YouTube,
-    TikTok
+    TikTok,
+    Facebook,
+    Twitter,
+    LinkedIn
 }

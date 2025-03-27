@@ -1,90 +1,82 @@
 ﻿using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Infrastructure.Data;
-using MicroSaaS.Infrastructure.Entities;
-using MicroSaaS.Infrastructure.Mappers;
 using MicroSaaS.Shared.Enums;
 using MongoDB.Driver;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace MicroSaaS.Infrastructure.Repositories;
 
 public class ContentPostRepository : IContentPostRepository
 {
-    private readonly IMongoCollection<ContentPostEntity> _contentPosts;
-    private readonly IContentCreatorRepository _creatorRepository;
+    private readonly MongoDbContext _context;
 
-    public ContentPostRepository(MongoDbContext context, IContentCreatorRepository creatorRepository)
+    public ContentPostRepository(MongoDbContext context)
     {
-        _contentPosts = context.ContentPosts;
-        _creatorRepository = creatorRepository;
+        _context = context;
     }
 
     public async Task<ContentPost> GetByIdAsync(Guid id)
     {
-        var idString = id.ToString();
-        var entity = await _contentPosts
-            .Find(p => p.Id == idString)
-            .FirstOrDefaultAsync();
-
-        if (entity == null)
-            return null;
-
-        // Converter para domínio
-        var post = entity.ToDomain();
-        
-        // Buscar o Creator se tivermos um CreatorId
-        if (!string.IsNullOrEmpty(entity.CreatorId) && Guid.TryParse(entity.CreatorId, out var creatorId))
-        {
-            post.Creator = await _creatorRepository.GetByIdAsync(creatorId);
-        }
-        
-        return post;
+        return await _context.ContentPosts.Find(p => p.Id == id).FirstOrDefaultAsync();
     }
 
-    public async Task<List<ContentPost>> GetScheduledPostsAsync(Guid creatorId)
+    public async Task<IEnumerable<ContentPost>> GetAllAsync()
     {
-        var creatorIdString = creatorId.ToString();
-        var entities = await _contentPosts
-            .Find(p => p.CreatorId == creatorIdString && p.Status == PostStatus.Scheduled)
-            .ToListAsync();
-
-        var posts = new List<ContentPost>();
-        foreach (var entity in entities)
-        {
-            var post = entity.ToDomain();
-            post.Creator = await _creatorRepository.GetByIdAsync(creatorId);
-            posts.Add(post);
-        }
-
-        return posts;
+        return await _context.ContentPosts.Find(_ => true).ToListAsync();
     }
 
     public async Task<ContentPost> AddAsync(ContentPost post)
     {
-        var entity = post.ToEntity();
-        await _contentPosts.InsertOneAsync(entity);
-        
-        // Retornar o post com o mesmo Creator
-        var savedPost = entity.ToDomain();
-        savedPost.Creator = post.Creator;
-        return savedPost;
+        await _context.ContentPosts.InsertOneAsync(post);
+        return post;
     }
 
-    public async Task UpdateAsync(ContentPost post)
+    public async Task<ContentPost> UpdateAsync(ContentPost post)
     {
-        var entity = post.ToEntity();
-        await _contentPosts
-            .ReplaceOneAsync(p => p.Id == entity.Id, entity);
+        var filter = Builders<ContentPost>.Filter.Eq(p => p.Id, post.Id);
+        await _context.ContentPosts.ReplaceOneAsync(filter, post);
+        return post;
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var idString = id.ToString();
-        await _contentPosts
-            .DeleteOneAsync(p => p.Id == idString);
+        var filter = Builders<ContentPost>.Filter.Eq(p => p.Id, id);
+        await _context.ContentPosts.DeleteOneAsync(filter);
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetByCreatorIdAsync(Guid creatorId)
+    {
+        return await _context.ContentPosts.Find(p => p.CreatorId == creatorId).ToListAsync();
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetByStatusAsync(PostStatus status)
+    {
+        return await _context.ContentPosts.Find(p => p.Status == status).ToListAsync();
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetByScheduledTimeRangeAsync(DateTime start, DateTime end)
+    {
+        return await _context.ContentPosts.Find(p => p.ScheduledTime >= start && p.ScheduledTime <= end).ToListAsync();
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetScheduledPostsAsync(Guid creatorId)
+    {
+        var filter = Builders<ContentPost>.Filter.And(
+            Builders<ContentPost>.Filter.Eq(p => p.CreatorId, creatorId),
+            Builders<ContentPost>.Filter.Eq(p => p.Status, PostStatus.Scheduled),
+            Builders<ContentPost>.Filter.Gt(p => p.ScheduledTime, DateTime.UtcNow)
+        );
+        
+        return await _context.ContentPosts.Find(filter).ToListAsync();
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetScheduledByCreatorIdAsync(Guid creatorId)
+    {
+        var filter = Builders<ContentPost>.Filter.And(
+            Builders<ContentPost>.Filter.Eq(p => p.CreatorId, creatorId),
+            Builders<ContentPost>.Filter.Eq(p => p.Status, PostStatus.Scheduled)
+        );
+        
+        return await _context.ContentPosts.Find(filter).ToListAsync();
     }
 }

@@ -1,8 +1,7 @@
-﻿using MicroSaaS.Application.Interfaces.Repositories;
+﻿using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Domain.Interfaces;
-using MicroSaaS.Application.Services;
+using MicroSaaS.Domain.Interfaces.Repositories;
 
 namespace MicroSaaS.Application.Services;
 
@@ -22,66 +21,107 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
     }
 
-    public async Task<AuthenticationResult> RegisterAsync(string username, string email, string password)
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        // Verificar se usuário já existe
-        if (await _userRepository.CheckUsernameExistsAsync(username))
-            return AuthenticationResult.Failure("Username already exists");
+        var existingUser = await _userRepository.GetByEmailAsync(request.Email);
+        if (existingUser != null)
+        {
+            return new AuthResponse { Success = false, Message = "Email already exists" };
+        }
 
-        if (await _userRepository.CheckEmailExistsAsync(email))
-            return AuthenticationResult.Failure("Email already exists");
-
-        // Criar novo usuário
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Username = username,
-            Email = email,
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = _passwordHasher.HashPassword(request.Password),
+            IsActive = true,
             CreatedAt = DateTime.UtcNow,
-            IsActive = true
+            UpdatedAt = DateTime.UtcNow
         };
 
-        user.PasswordHash = _passwordHasher.HashPassword(password);
-
-        await _userRepository.CreateAsync(user);
-
-        // Gerar token
+        await _userRepository.AddAsync(user);
         var token = _tokenService.GenerateToken(user);
 
-        return AuthenticationResult.Success(user, token);
+        return new AuthResponse 
+        { 
+            Success = true, 
+            Token = token,
+            User = new UserDto 
+            { 
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                IsActive = user.IsActive
+            }
+        };
     }
 
-    public async Task<AuthenticationResult> LoginAsync(string username, string password)
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.GetByUsernameAsync(username);
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user == null || !ValidatePassword(user, request.Password))
+        {
+            return new AuthResponse { Success = false, Message = "Invalid email or password" };
+        }
 
-        if (user == null)
-            return AuthenticationResult.Failure("User not found");
-
-        if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
-            return AuthenticationResult.Failure("Invalid password");
-
-        // Atualizar último login
-        user.LastLoginAt = DateTime.UtcNow;
-        await _userRepository.UpdateAsync(user);
-
-        // Gerar token
         var token = _tokenService.GenerateToken(user);
 
-        return AuthenticationResult.Success(user, token);
+        return new AuthResponse 
+        { 
+            Success = true, 
+            Token = token,
+            User = new UserDto 
+            { 
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                IsActive = user.IsActive
+            }
+        };
     }
 
-    public async Task<string> GenerateJwtTokenAsync(User user)
+    public async Task<AuthResponse> RefreshTokenAsync(string token)
     {
-        return await Task.FromResult(_tokenService.GenerateToken(user));
-    }
-
-    public async Task<bool> ValidateUserCredentialsAsync(string username, string password)
-    {
-        var user = await _userRepository.GetByUsernameAsync(username);
+        var userId = _tokenService.GetUserIdFromToken(token);
+        var user = await _userRepository.GetByIdAsync(userId);
+        
         if (user == null)
-            return false;
+        {
+            return new AuthResponse { Success = false, Message = "Invalid token" };
+        }
 
+        var newToken = _tokenService.GenerateToken(user);
+
+        return new AuthResponse 
+        { 
+            Success = true, 
+            Token = newToken,
+            User = new UserDto 
+            { 
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                IsActive = user.IsActive
+            }
+        };
+    }
+
+    public async Task RevokeTokenAsync(string token)
+    {
+        // Implementação do revoke token
+        // Por enquanto, apenas valida o token
+        _tokenService.ValidateToken(token);
+    }
+
+    public async Task<bool> ValidateUserCredentialsAsync(string email, string password)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        return user != null && ValidatePassword(user, password);
+    }
+
+    private bool ValidatePassword(User user, string password)
+    {
         return _passwordHasher.VerifyPassword(password, user.PasswordHash);
     }
 }

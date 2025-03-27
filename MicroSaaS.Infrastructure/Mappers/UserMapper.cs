@@ -13,7 +13,7 @@ public static class UserMapper
         return new UserEntity
         {
             Id = user.Id.ToString(),
-            Username = user.Username,
+            Name = user.Name,
             Email = user.Email,
             PasswordHash = user.PasswordHash,
             CreatedAt = user.CreatedAt,
@@ -28,8 +28,8 @@ public static class UserMapper
 
         return new User
         {
-            Id = string.IsNullOrEmpty(entity.Id) ? Guid.Empty : Guid.Parse(entity.Id),
-            Username = entity.Username,
+            Id = Guid.Parse(entity.Id),
+            Name = entity.Name,
             Email = entity.Email,
             PasswordHash = entity.PasswordHash,
             CreatedAt = entity.CreatedAt,

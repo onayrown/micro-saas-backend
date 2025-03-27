@@ -1,6 +1,5 @@
-using MicroSaaS.Domain.Interfaces;
-using System.Security.Cryptography;
-using System.Text;
+using MicroSaaS.Application.Interfaces.Services;
+using BC = BCrypt.Net.BCrypt;
 
 namespace MicroSaaS.Infrastructure.Services;
 
@@ -8,17 +7,11 @@ public class PasswordHasher : IPasswordHasher
 {
     public string HashPassword(string password)
     {
-        // Implementação simples usando SHA256
-        // Em produção, considere usar BCrypt ou PBKDF2
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
+        return BC.HashPassword(password);
     }
 
-    public bool VerifyPassword(string providedPassword, string storedPassword)
+    public bool VerifyPassword(string password, string hashedPassword)
     {
-        // Criar hash da senha fornecida e comparar com a armazenada
-        var hashedProvidedPassword = HashPassword(providedPassword);
-        return hashedProvidedPassword == storedPassword;
+        return BC.Verify(password, hashedPassword);
     }
 } 

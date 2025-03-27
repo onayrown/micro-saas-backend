@@ -1,7 +1,9 @@
+using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Shared.Models;
+using MicroSaaS.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,23 +15,36 @@ namespace MicroSaaS.Backend.Controllers;
 public class PerformanceController : ControllerBase
 {
     private readonly ISocialMediaIntegrationService _socialMediaService;
+    private readonly IContentCreatorRepository _creatorRepository;
+    private readonly ISocialMediaAccountRepository _accountRepository;
 
-    public PerformanceController(ISocialMediaIntegrationService socialMediaService)
+    public PerformanceController(
+        ISocialMediaIntegrationService socialMediaService,
+        IContentCreatorRepository creatorRepository,
+        ISocialMediaAccountRepository accountRepository)
     {
         _socialMediaService = socialMediaService;
+        _creatorRepository = creatorRepository;
+        _accountRepository = accountRepository;
     }
 
     [HttpGet("insights/{creatorId}/{platform}")]
-    public async Task<ActionResult<List<ContentPerformance>>> GetInsights(
+    public async Task<ActionResult<List<ContentPerformanceDto>>> GetInsights(
         Guid creatorId, 
         SocialMediaPlatform platform,
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
+        // Buscar a conta de mídia social
+        var accounts = await _accountRepository.GetByPlatformAsync(creatorId, platform);
+        var account = accounts.FirstOrDefault();
+        
+        if (account == null)
+            return NotFound("Nenhuma conta encontrada para a plataforma especificada");
+
         // Buscar dados de desempenho da plataforma
-        var insights = await _socialMediaService.GetContentInsightsAsync(
-            creatorId,
-            platform,
+        var insights = await _socialMediaService.GetAccountPerformanceAsync(
+            account.Id,
             startDate,
             endDate);
 
@@ -41,10 +56,15 @@ public class PerformanceController : ControllerBase
         Guid creatorId,
         SocialMediaPlatform platform)
     {
+        // Buscar a conta de mídia social
+        var accounts = await _accountRepository.GetByPlatformAsync(creatorId, platform);
+        var account = accounts.FirstOrDefault();
+        
+        if (account == null)
+            return NotFound("Nenhuma conta encontrada para a plataforma especificada");
+
         // Analisar melhores horários com base em desempenho passado
-        var recommendations = await _socialMediaService.GetBestPostTimesAsync(
-            creatorId,
-            platform);
+        var recommendations = await _socialMediaService.GetBestPostingTimesAsync(account.Id);
 
         return Ok(recommendations);
     }
@@ -55,24 +75,39 @@ public class PerformanceController : ControllerBase
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
-        // Obter dados de todas as plataformas e agregar
-        var instagram = await _socialMediaService.GetContentInsightsAsync(
-            creatorId, 
-            SocialMediaPlatform.Instagram, 
-            startDate, 
-            endDate);
-
-        var youtube = await _socialMediaService.GetContentInsightsAsync(
-            creatorId, 
-            SocialMediaPlatform.YouTube, 
-            startDate, 
-            endDate);
-
-        var tiktok = await _socialMediaService.GetContentInsightsAsync(
-            creatorId, 
-            SocialMediaPlatform.TikTok, 
-            startDate, 
-            endDate);
+        // Buscar todas as contas do criador
+        var accounts = await _accountRepository.GetByCreatorIdAsync(creatorId);
+        
+        if (!accounts.Any())
+            return NotFound("Nenhuma conta de mídia social encontrada");
+            
+        var instagramAccount = accounts.FirstOrDefault(a => a.Platform == SocialMediaPlatform.Instagram);
+        var youtubeAccount = accounts.FirstOrDefault(a => a.Platform == SocialMediaPlatform.YouTube);
+        var tiktokAccount = accounts.FirstOrDefault(a => a.Platform == SocialMediaPlatform.TikTok);
+        
+        // Inicializar listas vazias
+        var instagram = new List<ContentPerformanceDto>();
+        var youtube = new List<ContentPerformanceDto>();
+        var tiktok = new List<ContentPerformanceDto>();
+        
+        // Buscar dados de todas as plataformas
+        if (instagramAccount != null)
+        {
+            instagram = (await _socialMediaService.GetAccountPerformanceAsync(
+                instagramAccount.Id, startDate, endDate)).ToList();
+        }
+        
+        if (youtubeAccount != null)
+        {
+            youtube = (await _socialMediaService.GetAccountPerformanceAsync(
+                youtubeAccount.Id, startDate, endDate)).ToList();
+        }
+        
+        if (tiktokAccount != null)
+        {
+            tiktok = (await _socialMediaService.GetAccountPerformanceAsync(
+                tiktokAccount.Id, startDate, endDate)).ToList();
+        }
 
         // Calcular métricas agregadas
         var totalViews = instagram.Sum(i => i.Views) + 
@@ -98,34 +133,44 @@ public class PerformanceController : ControllerBase
             TotalLikes = totalLikes,
             TotalComments = totalComments,
             TotalShares = totalShares,
-            ByPlatform = new List<PlatformPerformance>
-            {
-                new PlatformPerformance
-                {
-                    Platform = SocialMediaPlatform.Instagram,
-                    Views = instagram.Sum(i => i.Views),
-                    Likes = instagram.Sum(i => i.Likes),
-                    Comments = instagram.Sum(i => i.Comments),
-                    Shares = instagram.Sum(i => i.Shares)
-                },
-                new PlatformPerformance
-                {
-                    Platform = SocialMediaPlatform.YouTube,
-                    Views = youtube.Sum(i => i.Views),
-                    Likes = youtube.Sum(i => i.Likes),
-                    Comments = youtube.Sum(i => i.Comments),
-                    Shares = youtube.Sum(i => i.Shares)
-                },
-                new PlatformPerformance
-                {
-                    Platform = SocialMediaPlatform.TikTok,
-                    Views = tiktok.Sum(i => i.Views),
-                    Likes = tiktok.Sum(i => i.Likes),
-                    Comments = tiktok.Sum(i => i.Comments),
-                    Shares = tiktok.Sum(i => i.Shares)
-                }
-            }
+            ByPlatform = new List<PlatformPerformance>()
         };
+        
+        if (instagram.Any())
+        {
+            summary.ByPlatform.Add(new PlatformPerformance
+            {
+                Platform = SocialMediaPlatform.Instagram,
+                Views = instagram.Sum(i => i.Views),
+                Likes = instagram.Sum(i => i.Likes),
+                Comments = instagram.Sum(i => i.Comments),
+                Shares = instagram.Sum(i => i.Shares)
+            });
+        }
+        
+        if (youtube.Any())
+        {
+            summary.ByPlatform.Add(new PlatformPerformance
+            {
+                Platform = SocialMediaPlatform.YouTube,
+                Views = youtube.Sum(i => i.Views),
+                Likes = youtube.Sum(i => i.Likes),
+                Comments = youtube.Sum(i => i.Comments),
+                Shares = youtube.Sum(i => i.Shares)
+            });
+        }
+        
+        if (tiktok.Any())
+        {
+            summary.ByPlatform.Add(new PlatformPerformance
+            {
+                Platform = SocialMediaPlatform.TikTok,
+                Views = tiktok.Sum(i => i.Views),
+                Likes = tiktok.Sum(i => i.Likes),
+                Comments = tiktok.Sum(i => i.Comments),
+                Shares = tiktok.Sum(i => i.Shares)
+            });
+        }
 
         return Ok(summary);
     }

@@ -1,5 +1,6 @@
-using MicroSaaS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
+using MicroSaaS.Application.DTOs.Auth;
+using MicroSaaS.Application.Interfaces.Services;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -15,64 +16,57 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _authService.RegisterAsync(
-            request.Username, 
-            request.Email, 
-            request.Password);
-
-        if (!result.IsSuccess)
-            return BadRequest(new { message = result.ErrorMessage });
-
-        return Ok(new
+        var result = await _authService.RegisterAsync(request);
+        if (!result.Success)
         {
-            user = new
-            {
-                id = result.User.Id,
-                username = result.User.Username,
-                email = result.User.Email
-            },
-            token = result.Token
-        });
+            return BadRequest(result);
+        }
+
+        return Ok(result);
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _authService.LoginAsync(request.Username, request.Password);
-
-        if (!result.IsSuccess)
-            return BadRequest(new { message = result.ErrorMessage });
-
-        return Ok(new
+        var result = await _authService.LoginAsync(request);
+        if (!result.Success)
         {
-            user = new
-            {
-                id = result.User.Id,
-                username = result.User.Username,
-                email = result.User.Email
-            },
-            token = result.Token
-        });
+            return BadRequest(result);
+        }
+
+        return Ok(result);
     }
-}
 
-public class RegisterRequest
-{
-    public string Username { get; set; }
-    public string Email { get; set; }
-    public string Password { get; set; }
-}
+    [HttpPost("refresh-token")]
+    public async Task<ActionResult<AuthResponse>> RefreshTokenAsync([FromHeader(Name = "Authorization")] string token)
+    {
+        if (string.IsNullOrEmpty(token) || !token.StartsWith("Bearer "))
+        {
+            return BadRequest(new AuthResponse { Success = false, Message = "Token inválido" });
+        }
 
-public class LoginRequest
-{
-    public string Username { get; set; }
-    public string Password { get; set; }
+        token = token.Substring("Bearer ".Length);
+        var result = await _authService.RefreshTokenAsync(token);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("revoke-token")]
+    public async Task<IActionResult> RevokeTokenAsync([FromHeader(Name = "Authorization")] string token)
+    {
+        if (string.IsNullOrEmpty(token) || !token.StartsWith("Bearer "))
+        {
+            return BadRequest(new AuthResponse { Success = false, Message = "Token inválido" });
+        }
+
+        token = token.Substring("Bearer ".Length);
+        await _authService.RevokeTokenAsync(token);
+        return Ok(new AuthResponse { Success = true, Message = "Token revogado com sucesso" });
+    }
 } 

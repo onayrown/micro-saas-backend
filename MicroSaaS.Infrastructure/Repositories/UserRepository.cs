@@ -1,67 +1,67 @@
 ﻿using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Infrastructure.Data;
-using MicroSaaS.Infrastructure.Entities;
-using MicroSaaS.Infrastructure.Mappers;
 using MongoDB.Driver;
 
 namespace MicroSaaS.Infrastructure.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly IMongoCollection<UserEntity> _users;
+    private readonly MongoDbContext _context;
 
     public UserRepository(MongoDbContext context)
     {
-        _users = context.Users;
+        _context = context;
     }
 
-    public async Task<User> GetByUsernameAsync(string username)
+    public async Task<User> GetByIdAsync(Guid id)
     {
-        var userEntity = await _users
-            .Find(u => u.Username == username)
-            .FirstOrDefaultAsync();
-
-        return userEntity?.ToDomain();
+        return await _context.Users.Find(u => u.Id == id).FirstOrDefaultAsync();
     }
 
     public async Task<User> GetByEmailAsync(string email)
     {
-        var userEntity = await _users
-            .Find(u => u.Email == email)
-            .FirstOrDefaultAsync();
+        return await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
+    }
 
-        return userEntity?.ToDomain();
+    public async Task<User?> GetByUsernameAsync(string username)
+    {
+        return await _context.Users.Find(u => u.Name == username).FirstOrDefaultAsync();
+    }
+
+    public async Task<IEnumerable<User>> GetAllAsync()
+    {
+        return await _context.Users.Find(_ => true).ToListAsync();
+    }
+
+    public async Task<User> AddAsync(User user)
+    {
+        await _context.Users.InsertOneAsync(user);
+        return user;
+    }
+
+    public async Task<User> UpdateAsync(User user)
+    {
+        var filter = Builders<User>.Filter.Eq(u => u.Id, user.Id);
+        await _context.Users.ReplaceOneAsync(filter, user);
+        return user;
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var filter = Builders<User>.Filter.Eq(u => u.Id, id);
+        await _context.Users.DeleteOneAsync(filter);
     }
 
     public async Task<User> CreateAsync(User user)
     {
-        var userEntity = user.ToEntity();
-        await _users.InsertOneAsync(userEntity);
-        return userEntity.ToDomain();
-    }
-
-    public async Task UpdateAsync(User user)
-    {
-        var userEntity = user.ToEntity();
-        await _users.ReplaceOneAsync(
-            u => u.Id == userEntity.Id,
-            userEntity,
-            new ReplaceOptions { IsUpsert = true }
-        );
-    }
-
-    public async Task<bool> CheckUsernameExistsAsync(string username)
-    {
-        var count = await _users
-            .CountDocumentsAsync(u => u.Username == username);
-        return count > 0;
+        await _context.Users.InsertOneAsync(user);
+        return user;
     }
 
     public async Task<bool> CheckEmailExistsAsync(string email)
     {
-        var count = await _users
-            .CountDocumentsAsync(u => u.Email == email);
+        var count = await _context.Users.CountDocumentsAsync(u => u.Email == email);
         return count > 0;
     }
 }

@@ -2,8 +2,8 @@
 
 public enum PostStatus
 {
+    Draft,
     Scheduled,
-    Posted,
-    Failed,
-    Pending
+    Published,
+    Failed
 }

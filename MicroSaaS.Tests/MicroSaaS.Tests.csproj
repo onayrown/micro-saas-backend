@@ -4,9 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,19 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Integration\Models\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\MicroSaaS.Application\MicroSaaS.Application.csproj" />
-    <ProjectReference Include="..\MicroSaaS.Backend\MicroSaaS.Backend.csproj" />
-    <ProjectReference Include="..\MicroSaaS.Domain\MicroSaaS.Domain.csproj" />
-    <ProjectReference Include="..\MicroSaaS.Infrastructure\MicroSaaS.Infrastructure.csproj" />
     <ProjectReference Include="..\MicroSaaS.Shared\MicroSaaS.Shared.csproj" />
+    <ProjectReference Include="..\MicroSaaS.Domain\MicroSaaS.Domain.csproj" />
+    <ProjectReference Include="..\MicroSaaS.Application\MicroSaaS.Application.csproj" />
   </ItemGroup>
 
 </Project>

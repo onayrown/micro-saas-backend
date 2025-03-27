@@ -1,12 +1,14 @@
-﻿using MicroSaaS.Domain.Entities;
+﻿using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Application.Services;
+using MicroSaaS.Domain.Entities;
 
 namespace MicroSaaS.Application.Interfaces.Services;
 
 public interface IAuthService
 {
-    Task<AuthenticationResult> RegisterAsync(string username, string email, string password);
-    Task<AuthenticationResult> LoginAsync(string username, string password);
-    Task<string> GenerateJwtTokenAsync(User user);
-    Task<bool> ValidateUserCredentialsAsync(string username, string password);
+    Task<AuthResponse> RegisterAsync(RegisterRequest request);
+    Task<AuthResponse> LoginAsync(LoginRequest request);
+    Task<AuthResponse> RefreshTokenAsync(string token);
+    Task RevokeTokenAsync(string token);
+    Task<bool> ValidateUserCredentialsAsync(string email, string password);
 }

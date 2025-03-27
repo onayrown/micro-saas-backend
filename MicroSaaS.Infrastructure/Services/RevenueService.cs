@@ -1,146 +1,114 @@
+using Microsoft.Extensions.Configuration;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MicroSaaS.Infrastructure.Services;
 
 public class RevenueService : IRevenueService
 {
-    private readonly IConfiguration _configuration;
     private readonly IContentCreatorRepository _creatorRepository;
+    private readonly IConfiguration _configuration;
 
     public RevenueService(
-        IConfiguration configuration,
-        IContentCreatorRepository creatorRepository)
+        IContentCreatorRepository creatorRepository,
+        IConfiguration configuration)
     {
-        _configuration = configuration;
         _creatorRepository = creatorRepository;
+        _configuration = configuration;
     }
 
-    public Task<string> GetAdSenseAuthUrlAsync(Guid creatorId, string callbackUrl)
+    public async Task<Application.Interfaces.Services.RevenueSummary> GetRevenueSummaryAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        // Gerar URL para autenticação com o Google AdSense
-        var clientId = _configuration["Revenue:AdSense:ClientId"];
-        var scope = "https://www.googleapis.com/auth/adsense.readonly";
-        var authUrl = $"https://accounts.google.com/o/oauth2/auth" +
-                     $"?client_id={clientId}" +
-                     $"&redirect_uri={Uri.EscapeDataString(callbackUrl)}" +
-                     $"&scope={Uri.EscapeDataString(scope)}" +
-                     $"&state={creatorId}" +
-                     $"&response_type=code" +
-                     $"&access_type=offline";
+        var creator = await _creatorRepository.GetByIdAsync(creatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado");
 
-        return Task.FromResult(authUrl);
+        var dailyRevenues = await GetDailyRevenueAsync(creatorId, startDate, endDate);
+        var platformRevenues = await GetPlatformRevenueAsync(creatorId, startDate, endDate);
+        var totalRevenue = await GetTotalRevenueAsync(creatorId, startDate, endDate);
+
+        return new Application.Interfaces.Services.RevenueSummary
+        {
+            TotalRevenue = totalRevenue,
+            EstimatedMonthlyRevenue = CalculateMRR(platformRevenues.ToList()),
+            AverageRevenuePerView = totalRevenue / platformRevenues.Sum(p => p.Views)
+        };
+    }
+
+    public async Task<IEnumerable<Application.Interfaces.Services.DailyRevenue>> GetDailyRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    {
+        // Implementação temporária
+        return new List<Application.Interfaces.Services.DailyRevenue>();
+    }
+
+    public async Task<IEnumerable<Application.Interfaces.Services.PlatformRevenue>> GetPlatformRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    {
+        // Implementação temporária
+        return new List<Application.Interfaces.Services.PlatformRevenue>();
+    }
+
+    public async Task<decimal> GetTotalRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    {
+        // Implementação temporária
+        return 0;
+    }
+
+    public async Task<string> GetAdSenseAuthUrlAsync(Guid creatorId, string callbackUrl)
+    {
+        // Implementação temporária
+        return string.Empty;
     }
 
     public async Task<bool> ConnectAdSenseAsync(Guid creatorId, string authorizationCode)
     {
-        // Na implementação real, trocaríamos o código por um token de acesso e atualizaríamos o criador
-        var creator = await _creatorRepository.GetByIdAsync(creatorId);
-        if (creator == null)
-            return false;
-
-        // Simular um token de acesso
-        var accessToken = $"mock_adsense_token_{Guid.NewGuid()}";
-        
-        // Integrar com AdSense
-        return await IntegrateGoogleAdSenseAsync(creator, accessToken);
+        // Implementação temporária
+        return false;
     }
 
     public async Task<bool> IntegrateGoogleAdSenseAsync(ContentCreator creator, string accessToken)
     {
-        // Na implementação real, armazenamos o token e associamos a conta ao criador
-        
-        // Salvar as alterações
-        await _creatorRepository.UpdateAsync(creator);
-        
-        return true;
+        // Implementação temporária
+        return false;
     }
 
-    public Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public async Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        // Implementação simulada - gerar um valor aleatório para demonstração
-        var days = (endDate - startDate).Days + 1;
-        var revenue = Math.Round((decimal)(Random.Shared.NextDouble() * 100 * days), 2);
-        
-        return Task.FromResult(revenue);
+        // Implementação temporária
+        return 0;
     }
 
-    public async Task<RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public async Task<Application.Interfaces.Services.RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        // Implementação simulada - em um ambiente real, isso buscaria dados do AdSense API
-        var totalRevenue = await GetEstimatedRevenueAsync(creatorId, startDate, endDate);
-        var daysInPeriod = (endDate - startDate).Days + 1;
-        
-        return new RevenueSummary
-        {
-            TotalRevenue = totalRevenue,
-            EstimatedMonthlyRevenue = totalRevenue * 30 / daysInPeriod,
-            AverageRevenuePerView = Math.Round(0.01m * (decimal)Random.Shared.NextDouble(), 4)
-        };
+        // Implementação temporária
+        return new Application.Interfaces.Services.RevenueSummary();
     }
 
-    public async Task<List<PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public async Task<List<Application.Interfaces.Services.PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        // Implementação simulada - gerar dados aleatórios para demonstração
-        var totalRevenue = await GetEstimatedRevenueAsync(creatorId, startDate, endDate);
-        
-        // Distribuir a receita entre as plataformas
-        var platformRevenues = new List<PlatformRevenue>
-        {
-            new PlatformRevenue
-            {
-                Platform = "YouTube",
-                Revenue = Math.Round(totalRevenue * 0.6m, 2),
-                Views = Random.Shared.Next(1000, 100000)
-            },
-            new PlatformRevenue
-            {
-                Platform = "Instagram",
-                Revenue = Math.Round(totalRevenue * 0.3m, 2),
-                Views = Random.Shared.Next(5000, 50000)
-            },
-            new PlatformRevenue
-            {
-                Platform = "TikTok",
-                Revenue = Math.Round(totalRevenue * 0.1m, 2),
-                Views = Random.Shared.Next(10000, 200000)
-            }
-        };
-        
-        return platformRevenues;
+        // Implementação temporária
+        return new List<Application.Interfaces.Services.PlatformRevenue>();
     }
 
-    public async Task<List<DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public async Task<List<Application.Interfaces.Services.DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        // Implementação simulada - gerar dados aleatórios para demonstração
-        var totalRevenue = await GetEstimatedRevenueAsync(creatorId, startDate, endDate);
-        var daysInPeriod = (endDate - startDate).Days + 1;
-        var avgDailyRevenue = totalRevenue / daysInPeriod;
-        
-        var dailyRevenues = new List<DailyRevenue>();
-        var currentDate = startDate;
-        
-        while (currentDate <= endDate)
-        {
-            // Adicionar alguma variação para tornar os dados mais realistas
-            var variation = (decimal)(Random.Shared.NextDouble() * 0.5 + 0.75); // Entre 0.75 e 1.25
-            var dailyRevenue = Math.Round(avgDailyRevenue * variation, 2);
-            
-            dailyRevenues.Add(new DailyRevenue
-            {
-                Date = currentDate,
-                Revenue = dailyRevenue,
-                Views = Random.Shared.Next(1000, 10000)
-            });
-            
-            currentDate = currentDate.AddDays(1);
-        }
-        
-        return dailyRevenues;
+        // Implementação temporária
+        return new List<Application.Interfaces.Services.DailyRevenue>();
+    }
+
+    private decimal CalculateMRR(IEnumerable<Application.Interfaces.Services.PlatformRevenue> platformRevenues)
+    {
+        // Implementação temporária
+        return 0;
+    }
+
+    private decimal CalculateARR(IEnumerable<Application.Interfaces.Services.PlatformRevenue> platformRevenues)
+    {
+        // Implementação temporária
+        return 0;
     }
 } 

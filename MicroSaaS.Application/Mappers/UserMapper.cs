@@ -1,38 +1,47 @@
-﻿using MicroSaaS.Application.DTOs;
+﻿using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Domain.Entities;
 
 namespace MicroSaaS.Application.Mappers;
 
 public static class UserMapper
 {
-    // Domínio para DTO
-    public static UserDto ToDto(this User user)
+    public static UserDto ToDto(User user)
     {
-        if (user == null) return null;
-
         return new UserDto
         {
             Id = user.Id,
-            Username = user.Username,
+            Name = user.Name,
             Email = user.Email,
-            PasswordHash = user.PasswordHash,
-            CreatedAt = user.CreatedAt,
+            IsActive = user.IsActive,
             LastLoginAt = user.LastLoginAt,
-            IsActive = user.IsActive
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
+    }
+
+    public static User ToEntity(RegisterRequest request)
+    {
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Email = request.Email,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
     // DTO para Domínio
-    public static User ToDomain(this UserDto userDto)
+    public static User? ToDomain(this UserDto userDto)
     {
         if (userDto == null) return null;
 
         return new User
         {
             Id = userDto.Id,
-            Username = userDto.Username,
+            Name = userDto.Name,
             Email = userDto.Email,
-            PasswordHash = userDto.PasswordHash,
             CreatedAt = userDto.CreatedAt,
             LastLoginAt = userDto.LastLoginAt,
             IsActive = userDto.IsActive

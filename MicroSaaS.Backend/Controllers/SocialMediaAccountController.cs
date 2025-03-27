@@ -14,13 +14,16 @@ public class SocialMediaAccountController : ControllerBase
 {
     private readonly IContentCreatorRepository _creatorRepository;
     private readonly ISocialMediaIntegrationService _socialMediaService;
+    private readonly ISocialMediaAccountRepository _socialMediaAccountRepository;
 
     public SocialMediaAccountController(
         IContentCreatorRepository creatorRepository,
-        ISocialMediaIntegrationService socialMediaService)
+        ISocialMediaIntegrationService socialMediaService,
+        ISocialMediaAccountRepository socialMediaAccountRepository)
     {
         _creatorRepository = creatorRepository;
         _socialMediaService = socialMediaService;
+        _socialMediaAccountRepository = socialMediaAccountRepository;
     }
 
     [HttpGet("{creatorId}")]
@@ -43,10 +46,7 @@ public class SocialMediaAccountController : ControllerBase
             return NotFound();
 
         // Iniciar o processo de autenticação com a plataforma de mídia social
-        var authUrl = _socialMediaService.GetAuthorizationUrl(
-            request.Platform, 
-            Url.Action(nameof(HandleCallback), new { creatorId, platform = request.Platform })
-        );
+        var authUrl = await _socialMediaService.GetAuthUrlAsync(request.Platform);
 
         return Ok(new { authorizationUrl = authUrl });
     }
@@ -63,21 +63,13 @@ public class SocialMediaAccountController : ControllerBase
             return NotFound();
 
         // Trocar o código de autorização por um token de acesso
-        var accessToken = await _socialMediaService.ExchangeCodeForToken(platform, code);
+        var account = await _socialMediaService.HandleAuthCallbackAsync(platform, code);
+        
+        // Definir o creatorId para a conta
+        account.CreatorId = creatorId;
 
-        // Adicionar a conta à lista de contas do criador
-        if (creator.SocialMediaAccounts == null)
-            creator.SocialMediaAccounts = new List<SocialMediaAccount>();
-
-        creator.SocialMediaAccounts.Add(new SocialMediaAccount
-        {
-            Id = Guid.NewGuid(),
-            Platform = platform,
-            AccessToken = accessToken,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await _creatorRepository.UpdateAsync(creator);
+        // Adicionar a conta ao repositório
+        await _socialMediaAccountRepository.AddAsync(account);
 
         // Redirecionar para a aplicação frontend
         return Redirect($"https://seuapp.com/connect/success?platform={platform}");

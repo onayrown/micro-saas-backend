@@ -1,4 +1,5 @@
 ﻿using MicroSaaS.Domain.Entities;
+using MicroSaaS.Shared.Models;
 
 namespace MicroSaaS.Application.Interfaces.Services;
 
@@ -14,6 +15,11 @@ public interface IRevenueService
     Task<RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     Task<List<PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     Task<List<DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+
+    Task<RevenueSummary> GetRevenueSummaryAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<IEnumerable<DailyRevenue>> GetDailyRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<IEnumerable<PlatformRevenue>> GetPlatformRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<decimal> GetTotalRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
 }
 
 public class RevenueSummary
@@ -25,7 +31,7 @@ public class RevenueSummary
 
 public class PlatformRevenue
 {
-    public string Platform { get; set; }
+    public required string Platform { get; set; }
     public decimal Revenue { get; set; }
     public long Views { get; set; }
 }
