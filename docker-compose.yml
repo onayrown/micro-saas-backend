@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Aplicação ASP.NET Core
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7169:80"
+      - "7170:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoDB=mongodb://mongodb:27017/microsaas
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      - ASPNETCORE_URLS=http://+:80;https://+:443
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=microsaas
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - microsaas_network
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+      - ./https:/https:ro
+
+  # Banco de dados MongoDB
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - microsaas_network
+
+  # Servidor Redis para cache e rate limiting
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - microsaas_network
+
+  # Interface de administração do MongoDB (opcional)
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=senha123
+    depends_on:
+      - mongodb
+    networks:
+      - microsaas_network
+
+  # Interface de administração do Redis (opcional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    ports:
+      - "8082:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - microsaas_network
+
+networks:
+  microsaas_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data: 
