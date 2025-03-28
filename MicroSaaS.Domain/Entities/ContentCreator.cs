@@ -25,4 +25,22 @@ public class ContentCreator
     public int TotalPosts { get; set; }
     public decimal AverageEngagementRate { get; set; }
     public decimal TotalRevenue { get; set; }
+    public AdSenseSettings? AdSenseSettings { get; set; }
+}
+
+public class AdSenseSettings
+{
+    public bool IsConnected { get; set; } = false;
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime TokenExpiresAt { get; set; }
+    public string AccountId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public DateTime ConnectedAt { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public decimal EstimatedMonthlyRevenue { get; set; }
+    public int TotalClicks { get; set; }
+    public int TotalImpressions { get; set; }
+    public decimal Ctr { get; set; } // Click-through rate
+    public decimal Rpm { get; set; } // Revenue per mille (thousand impressions)
 }

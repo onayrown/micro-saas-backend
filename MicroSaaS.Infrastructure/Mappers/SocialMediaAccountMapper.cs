@@ -6,7 +6,7 @@ namespace MicroSaaS.Infrastructure.Mappers;
 
 public static class SocialMediaAccountMapper
 {
-    public static SocialMediaAccount ToDomain(SocialMediaAccountEntity entity)
+    public static SocialMediaAccount? ToDomain(SocialMediaAccountEntity? entity)
     {
         if (entity == null) return null;
 
@@ -19,12 +19,16 @@ public static class SocialMediaAccountMapper
             AccessToken = entity.AccessToken,
             RefreshToken = entity.RefreshToken,
             TokenExpiresAt = entity.TokenExpiresAt,
+            IsActive = entity.IsActive,
+            FollowersCount = entity.FollowersCount,
+            ProfileUrl = entity.ProfileUrl,
+            ProfileImageUrl = entity.ProfileImageUrl,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
     }
 
-    public static SocialMediaAccountEntity ToEntity(SocialMediaAccount domain)
+    public static SocialMediaAccountEntity? ToEntity(SocialMediaAccount? domain)
     {
         if (domain == null) return null;
 
@@ -37,6 +41,10 @@ public static class SocialMediaAccountMapper
             AccessToken = domain.AccessToken,
             RefreshToken = domain.RefreshToken,
             TokenExpiresAt = domain.TokenExpiresAt,
+            IsActive = domain.IsActive,
+            FollowersCount = domain.FollowersCount,
+            ProfileUrl = domain.ProfileUrl,
+            ProfileImageUrl = domain.ProfileImageUrl,
             CreatedAt = domain.CreatedAt,
             UpdatedAt = domain.UpdatedAt
         };

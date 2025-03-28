@@ -68,6 +68,12 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
                         return HandleLoginRequest(context);
                     });
                     
+                    // Adicionar endpoint para registro
+                    endpoints.MapPost("/api/auth/register", context =>
+                    {
+                        return HandleRegisterRequest(context);
+                    });
+                    
                     // Adicionar outros endpoints conforme necessário
                 });
             });
@@ -191,6 +197,62 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
         }
     }
     
+    private async Task HandleRegisterRequest(HttpContext context)
+    {
+        // Ler o corpo da requisição como string
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+        
+        // Deserializar a string para um objeto RegisterRequest
+        RegisterRequest? request = null;
+        try 
+        {
+            request = JsonSerializer.Deserialize<RegisterRequest>(body, new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+        }
+        catch (JsonException)
+        {
+            context.Response.StatusCode = 400; // Bad Request
+            return;
+        }
+        
+        if (request != null)
+        {
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            
+            var response = new AuthResponse
+            {
+                Success = true,
+                Token = "valid_token_for_testing",
+                Message = "Registration successful",
+                User = new UserDto
+                {
+                    Id = Guid.NewGuid(),
+                    Username = request.Name,
+                    Email = request.Email,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            };
+            
+            var jsonOptions = new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+            };
+            
+            var jsonResponse = JsonSerializer.Serialize(response, jsonOptions);
+            await context.Response.WriteAsync(jsonResponse);
+        }
+        else
+        {
+            context.Response.StatusCode = 400; // Bad Request
+        }
+    }
+    
     private void RemoveService<T>(IServiceCollection services)
     {
         var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(T));
@@ -215,11 +277,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
         
         mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "test@example.com")))
-            .ReturnsAsync(() => testUser);
+            .ReturnsAsync(testUser);
             
         mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "invalid@example.com")))
-            .ReturnsAsync(() => null);
+            .ReturnsAsync((User)null);
     }
     
     private void SetupPasswordHasherMock(Mock<IPasswordHasher> mockPasswordHasher)

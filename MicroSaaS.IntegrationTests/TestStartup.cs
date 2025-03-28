@@ -46,6 +46,8 @@ namespace MicroSaaS.IntegrationTests
             services.AddScoped<ITokenService, MockTokenService>();
             services.AddScoped<IAuthService, MockAuthService>();
             services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
+            services.AddScoped<IRecommendationService, MockRecommendationService>();
+            services.AddScoped<ILoggingService, MockLoggingService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<TestStartup> logger)
@@ -87,8 +89,9 @@ namespace MicroSaaS.IntegrationTests
     {
         protected override bool IsController(TypeInfo typeInfo)
         {
-            // Garantir que apenas nosso controlador de teste seja reconhecido
-            if (typeInfo == typeof(TestAuthController).GetTypeInfo())
+            // Garantir que apenas nossos controladores de teste sejam reconhecidos
+            if (typeInfo == typeof(TestAuthController).GetTypeInfo() ||
+                typeInfo == typeof(TestRecommendationController).GetTypeInfo())
             {
                 return true;
             }

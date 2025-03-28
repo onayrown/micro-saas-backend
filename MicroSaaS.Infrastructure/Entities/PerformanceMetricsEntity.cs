@@ -8,6 +8,27 @@ namespace MicroSaaS.Infrastructure.Entities;
 
 public class PerformanceMetricsEntity
 {
+    public PerformanceMetricsEntity()
+    {
+        Id = Guid.NewGuid().ToString();
+        CreatorId = string.Empty;
+        Date = DateTime.UtcNow;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        TopPerformingContentIds = new List<string>();
+    }
+
+    public PerformanceMetricsEntity(string creatorId, SocialMediaPlatform platform)
+    {
+        Id = Guid.NewGuid().ToString();
+        CreatorId = creatorId;
+        Platform = platform;
+        Date = DateTime.UtcNow;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        TopPerformingContentIds = new List<string>();
+    }
+
     [BsonId]
     [BsonRepresentation(BsonType.String)]
     public string Id { get; set; }

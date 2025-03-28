@@ -8,7 +8,7 @@ namespace MicroSaaS.Infrastructure.Mappers;
 
 public static class ContentCreatorMapper
 {
-    public static ContentCreator ToDomain(ContentCreatorEntity entity)
+    public static ContentCreator? ToDomain(ContentCreatorEntity? entity)
     {
         if (entity == null) return null;
 
@@ -27,7 +27,7 @@ public static class ContentCreatorMapper
         };
     }
 
-    public static ContentCreatorEntity ToEntity(ContentCreator domain)
+    public static ContentCreatorEntity? ToEntity(ContentCreator? domain)
     {
         if (domain == null) return null;
 
@@ -49,7 +49,7 @@ public static class ContentCreatorMapper
 
 public static class SubscriptionPlanMapper
 {
-    public static SubscriptionPlan ToDomain(SubscriptionPlanEntity entity)
+    public static SubscriptionPlan? ToDomain(SubscriptionPlanEntity? entity)
     {
         if (entity == null) return null;
 
@@ -63,7 +63,7 @@ public static class SubscriptionPlanMapper
         };
     }
 
-    public static SubscriptionPlanEntity ToEntity(SubscriptionPlan domain)
+    public static SubscriptionPlanEntity? ToEntity(SubscriptionPlan? domain)
     {
         if (domain == null) return null;
 

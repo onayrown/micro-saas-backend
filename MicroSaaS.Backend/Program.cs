@@ -21,6 +21,7 @@ using AspNetCoreRateLimit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using MicroSaaS.Backend.Attributes;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace MicroSaaS.Backend;
 
@@ -139,13 +140,77 @@ public partial class Program
             builder.Services.AddScoped<IPerformanceAnalysisService, MicroSaaS.Infrastructure.Services.PerformanceAnalysisService>();
             builder.Services.AddScoped<ILoggingService, SerilogService>();
             builder.Services.AddScoped<ICacheService, RedisCacheService>();
+            builder.Services.AddScoped<IDashboardInsightsService, DashboardInsightsService>();
+            builder.Services.AddScoped<ISchedulerService, SchedulerService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
+            // Adicionar serviços hospedados
+            builder.Services.AddHostedService<SchedulerService>();
 
             // Adicionar controllers
             builder.Services.AddControllers();
 
             // Swagger
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                // Configuração para incluir documentação XML
+                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
+                
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "MicroSaaS API",
+                    Version = "v1",
+                    Description = "API para gestão de conteúdo para criadores",
+                    Contact = new Microsoft.OpenApi.Models.OpenApiContact
+                    {
+                        Name = "Equipe de Desenvolvimento",
+                        Email = "devteam@microsaas.com.br"
+                    }
+                });
+                
+                // Configuração do JWT para Swagger
+                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                    Description = "Token JWT de autenticação"
+                });
+                
+                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                {
+                    {
+                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        {
+                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+            
+            // Configuração de versionamento da API
+            builder.Services.AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = new ApiVersion(1, 0);
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
+            });
+            
+            builder.Services.AddVersionedApiExplorer(options =>
+            {
+                options.GroupNameFormat = "'v'VVV";
+                options.SubstituteApiVersionInUrl = true;
+            });
 
             // Configure CORS
             builder.Services.AddCors(options =>
@@ -183,7 +248,14 @@ public partial class Program
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c => 
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MicroSaaS API v1");
+                    c.RoutePrefix = string.Empty;
+                    c.DocExpansion(DocExpansion.List);
+                    c.EnableFilter();
+                    c.DisplayRequestDuration();
+                });
             }
 
             // Adicionar middleware do Serilog para request logging

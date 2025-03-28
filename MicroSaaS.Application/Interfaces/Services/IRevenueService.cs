@@ -1,4 +1,4 @@
-﻿using MicroSaaS.Domain.Entities;
+using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Models;
 
 namespace MicroSaaS.Application.Interfaces.Services;
@@ -25,6 +25,9 @@ public interface IRevenueService
     Task<decimal> CalculateContentRevenueAsync(Guid contentId);
     Task<decimal> CalculateCreatorRevenueAsync(Guid creatorId);
     Task RefreshRevenueMetricsAsync();
+    
+    // Métricas de monetização avançadas
+    Task<MonetizationMetricsDto> GetMonetizationMetricsAsync(Guid creatorId, DateTime startDate, DateTime endDate);
 }
 
 public class RevenueSummary
@@ -48,3 +51,23 @@ public class DailyRevenue
     public long Views { get; set; }
     public decimal Amount { get; set; }
 }
+
+public class MonetizationMetricsDto
+{
+    public decimal TotalRevenue { get; set; }
+    public decimal EstimatedMonthlyRevenue { get; set; }
+    public decimal EstimatedAnnualRevenue { get; set; }
+    public Dictionary<string, decimal> RevenueByPlatform { get; set; } = new();
+    public decimal RevenuePerView { get; set; }
+    public AdSenseMetricsDto? AdSenseMetrics { get; set; }
+}
+
+public class AdSenseMetricsDto
+{
+    public decimal EstimatedMonthlyRevenue { get; set; }
+    public int TotalClicks { get; set; }
+    public int TotalImpressions { get; set; }
+    public decimal Ctr { get; set; } // Click-through rate
+    public decimal Rpm { get; set; } // Revenue per mille (thousand impressions)
+    public DateTime LastUpdated { get; set; }
+} 

@@ -108,4 +108,42 @@ public class AuthControllerTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Register_WithValidData_ReturnsSuccess()
+    {
+        // Arrange
+        _output.WriteLine("Starting Register_WithValidData_ReturnsSuccess test");
+        
+        var registerRequest = new RegisterRequest
+        {
+            Name = "Test User",
+            Email = "testuser@example.com",
+            Password = "Test@123456"
+        };
+        
+        var content = new StringContent(
+            JsonSerializer.Serialize(registerRequest),
+            Encoding.UTF8,
+            "application/json");
+        
+        // Act
+        _output.WriteLine("Sending register request");
+        var response = await _client.PostAsync("/api/auth/register", content);
+        var responseString = await response.Content.ReadAsStringAsync();
+        _output.WriteLine($"Response status: {response.StatusCode}");
+        _output.WriteLine($"Response content: {responseString}");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        
+        var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseString, 
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        
+        Assert.NotNull(authResponse);
+        Assert.True(authResponse.Success);
+        Assert.NotNull(authResponse.Token);
+        Assert.NotNull(authResponse.User);
+        Assert.Equal(registerRequest.Email, authResponse.User.Email);
+    }
 } 

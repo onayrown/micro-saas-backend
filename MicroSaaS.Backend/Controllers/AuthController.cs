@@ -5,7 +5,8 @@ using MicroSaaS.Application.Interfaces.Services;
 namespace MicroSaaS.Backend.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -17,7 +18,18 @@ public class AuthController : ControllerBase
         _loggingService = loggingService;
     }
 
+    /// <summary>
+    /// Registra um novo usuário no sistema
+    /// </summary>
+    /// <param name="request">Dados para registro do usuário</param>
+    /// <returns>Resposta com token de autenticação</returns>
+    /// <response code="200">Usuário registrado com sucesso</response>
+    /// <response code="400">Dados de registro inválidos</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         try
@@ -41,7 +53,18 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Autentica um usuário existente no sistema
+    /// </summary>
+    /// <param name="request">Credenciais de login</param>
+    /// <returns>Resposta com token de autenticação</returns>
+    /// <response code="200">Login realizado com sucesso</response>
+    /// <response code="400">Credenciais inválidas</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
         try
@@ -65,7 +88,18 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Renova um token de autenticação existente
+    /// </summary>
+    /// <param name="token">Token atual no formato Bearer</param>
+    /// <returns>Resposta com novo token de autenticação</returns>
+    /// <response code="200">Token renovado com sucesso</response>
+    /// <response code="400">Token inválido ou expirado</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpPost("refresh-token")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AuthResponse>> RefreshTokenAsync([FromHeader(Name = "Authorization")] string token)
     {
         try
@@ -96,7 +130,18 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Revoga um token de autenticação existente
+    /// </summary>
+    /// <param name="token">Token a ser revogado no formato Bearer</param>
+    /// <returns>Confirmação de revogação</returns>
+    /// <response code="200">Token revogado com sucesso</response>
+    /// <response code="400">Token inválido</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpPost("revoke-token")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RevokeTokenAsync([FromHeader(Name = "Authorization")] string token)
     {
         try

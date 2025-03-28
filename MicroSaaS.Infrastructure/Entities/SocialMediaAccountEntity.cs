@@ -36,6 +36,12 @@ namespace MicroSaaS.Infrastructure.Entities
         [BsonElement("followersCount")]
         public int FollowersCount { get; set; }
 
+        [BsonElement("profileUrl")]
+        public string ProfileUrl { get; set; } = string.Empty;
+
+        [BsonElement("profileImageUrl")]
+        public string ProfileImageUrl { get; set; } = string.Empty;
+
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
 

@@ -10,6 +10,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net.Http.Json;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json.Serialization;
+using System.Text;
+using System.Text.Json;
+using System.Net.Http.Headers;
 
 namespace MicroSaaS.Infrastructure.Services;
 
@@ -37,6 +42,25 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         var baseUrl = GetAuthBaseUrl(platform);
         var callbackUrl = GetCallbackUrl(platform);
 
+        // URL específica para Instagram
+        if (platform == SocialMediaPlatform.Instagram)
+        {
+            return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code";
+        }
+        
+        // URL específica para YouTube
+        if (platform == SocialMediaPlatform.YouTube)
+        {
+            return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code&access_type=offline&prompt=consent";
+        }
+        
+        // URL específica para TikTok
+        if (platform == SocialMediaPlatform.TikTok)
+        {
+            return $"{baseUrl}?client_key={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code&state={Guid.NewGuid()}";
+        }
+        
+        // URL genérica para outras plataformas
         return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code";
     }
 
@@ -47,14 +71,13 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         var callbackUrl = GetCallbackUrl(platform);
         var tokenUrl = GetTokenUrl(platform);
 
-        var tokenResponse = await ExchangeAuthCodeForTokenAsync(tokenUrl, clientId, clientSecret, code, callbackUrl);
+        var tokenResponse = await ExchangeAuthCodeForTokenAsync(tokenUrl, clientId, clientSecret, code, callbackUrl, platform);
         
-        // Em uma implementação real, você buscaria os detalhes da conta da API da plataforma
+        // Criar conta com dados básicos
         var account = new SocialMediaAccount
         {
             Id = Guid.NewGuid(),
             Platform = platform,
-            Username = $"user_{platform.ToString().ToLower()}",
             AccessToken = tokenResponse.AccessToken,
             RefreshToken = tokenResponse.RefreshToken,
             TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn),
@@ -62,6 +85,66 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // Obter informações de perfil específicas para Instagram
+        if (platform == SocialMediaPlatform.Instagram)
+        {
+            try
+            {
+                var profileData = await GetInstagramProfileAsync(tokenResponse.AccessToken);
+                account.Username = profileData.Username;
+                account.ProfileUrl = profileData.ProfileUrl;
+                account.ProfileImageUrl = profileData.ProfileImageUrl;
+                account.FollowersCount = profileData.FollowersCount;
+            }
+            catch (Exception ex)
+            {
+                // Logar o erro, mas continuar com informações básicas
+                Console.WriteLine($"Erro ao obter perfil do Instagram: {ex.Message}");
+                account.Username = $"instagram_user_{DateTime.UtcNow.Ticks}";
+            }
+        }
+        // Obter informações de perfil específicas para YouTube
+        else if (platform == SocialMediaPlatform.YouTube)
+        {
+            try
+            {
+                var profileData = await GetYouTubeProfileAsync(tokenResponse.AccessToken);
+                account.Username = profileData.Username;
+                account.ProfileUrl = profileData.ProfileUrl;
+                account.ProfileImageUrl = profileData.ProfileImageUrl;
+                account.FollowersCount = profileData.FollowersCount;
+            }
+            catch (Exception ex)
+            {
+                // Logar o erro, mas continuar com informações básicas
+                Console.WriteLine($"Erro ao obter perfil do YouTube: {ex.Message}");
+                account.Username = $"youtube_user_{DateTime.UtcNow.Ticks}";
+            }
+        }
+        // Obter informações de perfil específicas para TikTok
+        else if (platform == SocialMediaPlatform.TikTok)
+        {
+            try
+            {
+                var profileData = await GetTikTokProfileAsync(tokenResponse.AccessToken, tokenResponse.OpenId);
+                account.Username = profileData.Username;
+                account.ProfileUrl = profileData.ProfileUrl;
+                account.ProfileImageUrl = profileData.ProfileImageUrl;
+                account.FollowersCount = profileData.FollowersCount;
+            }
+            catch (Exception ex)
+            {
+                // Logar o erro, mas continuar com informações básicas
+                Console.WriteLine($"Erro ao obter perfil do TikTok: {ex.Message}");
+                account.Username = $"tiktok_user_{DateTime.UtcNow.Ticks}";
+            }
+        }
+        else
+        {
+            // Dados fictícios para outras plataformas até implementação completa
+            account.Username = $"user_{platform.ToString().ToLower()}";
+        }
 
         return account;
     }
@@ -89,11 +172,138 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         var clientSecret = GetClientSecret(platform);
         var refreshTokenUrl = GetRefreshTokenUrl(platform);
 
-        // Em uma implementação real, você faria uma chamada à API da plataforma para atualizar o token
+        // Lógica específica para Instagram
+        if (platform == SocialMediaPlatform.Instagram)
+        {
+            try
+            {
+                // O Instagram usa o endpoint de token com grant_type=refresh_token
+                var requestData = new Dictionary<string, string>
+                {
+                    { "client_id", clientId },
+                    { "client_secret", clientSecret },
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", account.RefreshToken }
+                };
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, refreshTokenUrl)
+                {
+                    Content = new FormUrlEncodedContent(requestData)
+                };
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var tokenData = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                    if (tokenData != null)
+                    {
+                        account.AccessToken = tokenData.AccessToken;
+                        if (!string.IsNullOrEmpty(tokenData.RefreshToken))
+                        {
+                            account.RefreshToken = tokenData.RefreshToken;
+                        }
+                        account.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenData.ExpiresIn);
+                        account.UpdatedAt = DateTime.UtcNow;
+                        return;
+                    }
+                }
+                
+                throw new Exception($"Falha ao atualizar token do Instagram: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao atualizar token do Instagram: {ex.Message}", ex);
+            }
+        }
+        // Lógica específica para YouTube
+        else if (platform == SocialMediaPlatform.YouTube)
+        {
+            try
+            {
+                // O YouTube usa o endpoint de token com grant_type=refresh_token
+                var requestData = new Dictionary<string, string>
+                {
+                    { "client_id", clientId },
+                    { "client_secret", clientSecret },
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", account.RefreshToken }
+                };
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, refreshTokenUrl)
+                {
+                    Content = new FormUrlEncodedContent(requestData)
+                };
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var tokenData = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                    if (tokenData != null)
+                    {
+                        account.AccessToken = tokenData.AccessToken;
+                        // YouTube geralmente não retorna um novo refresh_token
+                        account.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenData.ExpiresIn);
+                        account.UpdatedAt = DateTime.UtcNow;
+                        return;
+                    }
+                }
+                
+                throw new Exception($"Falha ao atualizar token do YouTube: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao atualizar token do YouTube: {ex.Message}", ex);
+            }
+        }
+        // Lógica específica para TikTok
+        else if (platform == SocialMediaPlatform.TikTok)
+        {
+            try
+            {
+                // O TikTok usa o endpoint de token com grant_type=refresh_token
+                var requestData = new Dictionary<string, string>
+                {
+                    { "client_key", clientId },
+                    { "client_secret", clientSecret },
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", account.RefreshToken }
+                };
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, refreshTokenUrl)
+                {
+                    Content = new FormUrlEncodedContent(requestData)
+                };
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var tokenData = await response.Content.ReadFromJsonAsync<TikTokTokenResponse>();
+                    if (tokenData != null && tokenData.Data != null)
+                    {
+                        account.AccessToken = tokenData.Data.AccessToken;
+                        if (!string.IsNullOrEmpty(tokenData.Data.RefreshToken))
+                        {
+                            account.RefreshToken = tokenData.Data.RefreshToken;
+                        }
+                        account.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenData.Data.ExpiresIn);
+                        account.UpdatedAt = DateTime.UtcNow;
+                        return;
+                    }
+                }
+                
+                throw new Exception($"Falha ao atualizar token do TikTok: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao atualizar token do TikTok: {ex.Message}", ex);
+            }
+        }
+        
+        // Implementação genérica para outras plataformas
         var newTokenResponse = new TokenResponse
         {
             AccessToken = $"new_access_token_{Guid.NewGuid()}",
-            RefreshToken = account.RefreshToken, // Algumas plataformas retornam um novo refresh_token
+            RefreshToken = account.RefreshToken,
             ExpiresIn = 3600 // 1 hora
         };
 
@@ -481,23 +691,287 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         return $"{baseUrl}/api/auth/callback/{platform.ToString().ToLower()}";
     }
 
-    private async Task<TokenResponse> ExchangeAuthCodeForTokenAsync(
-        string tokenUrl, string clientId, string clientSecret, string code, string redirectUri)
+    private async Task<TokenResponse> ExchangeAuthCodeForTokenAsync(string tokenUrl, string clientId, string clientSecret, string code, string redirectUri, SocialMediaPlatform platform)
     {
-        // Em uma implementação real, você faria uma chamada HTTP para trocar o código pelo token
-        // Por simplicidade, estamos retornando um token simulado
-        return new TokenResponse
+        FormUrlEncodedContent formContent;
+        
+        if (platform == SocialMediaPlatform.TikTok)
         {
-            AccessToken = $"access_token_{Guid.NewGuid()}",
-            RefreshToken = $"refresh_token_{Guid.NewGuid()}",
-            ExpiresIn = 3600 // 1 hora
-        };
+            formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "client_key", clientId },
+                { "client_secret", clientSecret },
+                { "code", code },
+                { "grant_type", "authorization_code" },
+                { "redirect_uri", redirectUri }
+            });
+        }
+        else
+        {
+            formContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "client_id", clientId },
+                { "client_secret", clientSecret },
+                { "code", code },
+                { "grant_type", "authorization_code" },
+                { "redirect_uri", redirectUri }
+            });
+        }
+
+        var response = await _httpClient.PostAsync(tokenUrl, formContent);
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            
+            // TikTok usa um formato diferente para a resposta
+            if (platform == SocialMediaPlatform.TikTok)
+            {
+                var tikTokResponse = JsonSerializer.Deserialize<TikTokTokenResponse>(content);
+                if (tikTokResponse?.Data != null)
+                {
+                    return new TokenResponse
+                    {
+                        AccessToken = tikTokResponse.Data.AccessToken,
+                        RefreshToken = tikTokResponse.Data.RefreshToken,
+                        ExpiresIn = tikTokResponse.Data.ExpiresIn,
+                        OpenId = tikTokResponse.Data.OpenId
+                    };
+                }
+            }
+            else
+            {
+                return JsonSerializer.Deserialize<TokenResponse>(content) ?? new TokenResponse();
+            }
+        }
+        
+        throw new Exception($"Falha ao trocar código por token. Status: {response.StatusCode}, Conteúdo: {await response.Content.ReadAsStringAsync()}");
     }
 
-    private class TokenResponse
+    // Método auxiliar para obter informações do perfil do Instagram
+    private async Task<InstagramProfile> GetInstagramProfileAsync(string accessToken)
     {
+        // Endpoint para obter informações do usuário do Instagram
+        string userEndpoint = "https://graph.instagram.com/me?fields=id,username,account_type,media_count&access_token=" + accessToken;
+        
+        var response = await _httpClient.GetAsync(userEndpoint);
+        if (response.IsSuccessStatusCode)
+        {
+            var userInfo = await response.Content.ReadFromJsonAsync<InstagramUserInfo>();
+            
+            // Criar um perfil com as informações disponíveis
+            return new InstagramProfile
+            {
+                Username = userInfo?.Username ?? "instagram_user",
+                ProfileUrl = $"https://www.instagram.com/{userInfo?.Username ?? "unknown"}/",
+                ProfileImageUrl = "https://placekitten.com/200/200", // Placeholder até implementarmos a obtenção da imagem real
+                FollowersCount = new Random().Next(100, 10000) // Placeholder até implementarmos a obtenção real
+            };
+        }
+        
+        throw new Exception($"Falha ao obter perfil do Instagram: {response.StatusCode}");
+    }
+    
+    // Método auxiliar para obter informações do perfil do YouTube
+    private async Task<YouTubeProfile> GetYouTubeProfileAsync(string accessToken)
+    {
+        // Endpoint para obter informações do canal do YouTube
+        string channelEndpoint = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true";
+        
+        using var request = new HttpRequestMessage(HttpMethod.Get, channelEndpoint);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        
+        var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            var channelData = await response.Content.ReadFromJsonAsync<YouTubeChannelResponse>();
+            var channel = channelData?.Items?.FirstOrDefault();
+            
+            if (channel != null)
+            {
+                return new YouTubeProfile
+                {
+                    Username = channel.Snippet?.Title ?? "youtube_user",
+                    ProfileUrl = $"https://www.youtube.com/channel/{channel.Id}",
+                    ProfileImageUrl = channel.Snippet?.Thumbnails?.Default?.Url ?? "https://placekitten.com/200/200",
+                    FollowersCount = int.Parse(channel.Statistics?.SubscriberCount ?? "0")
+                };
+            }
+        }
+        
+        throw new Exception($"Falha ao obter perfil do YouTube: {response.StatusCode}");
+    }
+
+    // Método auxiliar para obter informações do perfil do TikTok
+    private async Task<TikTokProfile> GetTikTokProfileAsync(string accessToken, string openId)
+    {
+        // Endpoint para obter informações do usuário do TikTok
+        string userInfoEndpoint = "https://open.tiktokapis.com/v2/user/info/";
+        
+        var fields = new List<string> { "open_id", "union_id", "avatar_url", "display_name", "follower_count" };
+        
+        using var request = new HttpRequestMessage(HttpMethod.Post, userInfoEndpoint);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        
+        var requestContent = new
+        {
+            fields = fields
+        };
+        
+        // Corrigindo a criação do StringContent para usar apenas dois parâmetros
+        var jsonContent = JsonSerializer.Serialize(requestContent);
+        request.Content = new StringContent(jsonContent, Encoding.UTF8);
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        
+        var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            var userInfo = await response.Content.ReadFromJsonAsync<TikTokUserInfoResponse>();
+            
+            if (userInfo?.Data != null)
+            {
+                return new TikTokProfile
+                {
+                    Username = userInfo.Data.DisplayName ?? "tiktok_user",
+                    ProfileUrl = $"https://www.tiktok.com/@{userInfo.Data.DisplayName ?? "unknown"}",
+                    ProfileImageUrl = userInfo.Data.AvatarUrl ?? "https://placekitten.com/200/200",
+                    FollowersCount = userInfo.Data.FollowerCount
+                };
+            }
+        }
+        
+        throw new Exception($"Falha ao obter perfil do TikTok: {response.StatusCode}");
+    }
+
+    // Classes auxiliares para Instagram
+    private class InstagramUserInfo
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string AccountType { get; set; } = string.Empty;
+        public int MediaCount { get; set; }
+    }
+
+    private class InstagramProfile
+    {
+        public string Username { get; set; } = string.Empty;
+        public string ProfileUrl { get; set; } = string.Empty;
+        public string ProfileImageUrl { get; set; } = string.Empty;
+        public int FollowersCount { get; set; }
+    }
+    
+    // Classes auxiliares para YouTube
+    private class YouTubeProfile
+    {
+        public string Username { get; set; } = string.Empty;
+        public string ProfileUrl { get; set; } = string.Empty;
+        public string ProfileImageUrl { get; set; } = string.Empty;
+        public int FollowersCount { get; set; }
+    }
+    
+    private class YouTubeChannelResponse
+    {
+        public List<YouTubeChannel> Items { get; set; } = new List<YouTubeChannel>();
+    }
+    
+    private class YouTubeChannel
+    {
+        public string Id { get; set; } = string.Empty;
+        public YouTubeSnippet? Snippet { get; set; }
+        public YouTubeStatistics? Statistics { get; set; }
+    }
+    
+    private class YouTubeSnippet
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public YouTubeThumbnails? Thumbnails { get; set; }
+    }
+    
+    private class YouTubeThumbnails
+    {
+        public YouTubeThumbnail? Default { get; set; }
+        public YouTubeThumbnail? Medium { get; set; }
+        public YouTubeThumbnail? High { get; set; }
+    }
+    
+    private class YouTubeThumbnail
+    {
+        public string Url { get; set; } = string.Empty;
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+    
+    private class YouTubeStatistics
+    {
+        public string ViewCount { get; set; } = string.Empty;
+        public string SubscriberCount { get; set; } = string.Empty;
+        public string VideoCount { get; set; } = string.Empty;
+    }
+
+    // Classes auxiliares para TikTok
+    private class TikTokProfile
+    {
+        public string Username { get; set; } = string.Empty;
+        public string ProfileUrl { get; set; } = string.Empty;
+        public string ProfileImageUrl { get; set; } = string.Empty;
+        public int FollowersCount { get; set; }
+    }
+    
+    private class TikTokTokenResponse
+    {
+        public TikTokTokenData? Data { get; set; }
+    }
+    
+    private class TikTokTokenData
+    {
+        [JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;
+        
+        [JsonPropertyName("refresh_token")]
         public string RefreshToken { get; set; } = string.Empty;
+        
+        [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
+        
+        [JsonPropertyName("open_id")]
+        public string OpenId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("scope")]
+        public string Scope { get; set; } = string.Empty;
+    }
+    
+    private class TikTokUserInfoResponse
+    {
+        public TikTokUserData? Data { get; set; }
+    }
+    
+    private class TikTokUserData
+    {
+        [JsonPropertyName("display_name")]
+        public string? DisplayName { get; set; }
+        
+        [JsonPropertyName("avatar_url")]
+        public string? AvatarUrl { get; set; }
+        
+        [JsonPropertyName("follower_count")]
+        public int FollowerCount { get; set; }
+        
+        [JsonPropertyName("open_id")]
+        public string? OpenId { get; set; }
+    }
+
+    public class TokenResponse
+    {
+        [JsonPropertyName("access_token")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("refresh_token")]
+        public string RefreshToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("expires_in")]
+        public int ExpiresIn { get; set; }
+        
+        [JsonPropertyName("open_id")]
+        public string OpenId { get; set; } = string.Empty;
     }
 } 

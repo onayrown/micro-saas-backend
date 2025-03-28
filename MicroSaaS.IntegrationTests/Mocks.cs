@@ -317,4 +317,181 @@ namespace MicroSaaS.IntegrationTests
             return Task.FromResult<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>>(new List<MicroSaaS.Shared.Models.PostTimeRecommendation>());
         }
     }
+
+    public class MockRecommendationService : IRecommendationService
+    {
+        public Task<List<MicroSaaS.Domain.Entities.PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform)
+        {
+            // Gerar recomendações de teste para hora de postagem
+            var recommendations = new List<MicroSaaS.Domain.Entities.PostTimeRecommendation>
+            {
+                new MicroSaaS.Domain.Entities.PostTimeRecommendation 
+                { 
+                    DayOfWeek = DayOfWeek.Monday, 
+                    TimeOfDay = new TimeSpan(12, 0, 0),
+                    EngagementScore = 7.5
+                },
+                new MicroSaaS.Domain.Entities.PostTimeRecommendation 
+                { 
+                    DayOfWeek = DayOfWeek.Wednesday, 
+                    TimeOfDay = new TimeSpan(18, 0, 0),
+                    EngagementScore = 8.2
+                },
+                new MicroSaaS.Domain.Entities.PostTimeRecommendation 
+                { 
+                    DayOfWeek = DayOfWeek.Friday, 
+                    TimeOfDay = new TimeSpan(17, 0, 0),
+                    EngagementScore = 8.7
+                }
+            };
+            
+            return Task.FromResult(recommendations);
+        }
+
+        public Task<Dictionary<SocialMediaPlatform, List<MicroSaaS.Domain.Entities.PostTimeRecommendation>>> GetBestTimeToPostAllPlatformsAsync(Guid creatorId)
+        {
+            var result = new Dictionary<SocialMediaPlatform, List<MicroSaaS.Domain.Entities.PostTimeRecommendation>>
+            {
+                { 
+                    SocialMediaPlatform.Instagram, 
+                    new List<MicroSaaS.Domain.Entities.PostTimeRecommendation>
+                    {
+                        new MicroSaaS.Domain.Entities.PostTimeRecommendation 
+                        { 
+                            DayOfWeek = DayOfWeek.Monday, 
+                            TimeOfDay = new TimeSpan(12, 0, 0),
+                            EngagementScore = 7.5
+                        }
+                    }
+                },
+                { 
+                    SocialMediaPlatform.YouTube, 
+                    new List<MicroSaaS.Domain.Entities.PostTimeRecommendation>
+                    {
+                        new MicroSaaS.Domain.Entities.PostTimeRecommendation 
+                        { 
+                            DayOfWeek = DayOfWeek.Tuesday, 
+                            TimeOfDay = new TimeSpan(16, 0, 0),
+                            EngagementScore = 8.0
+                        }
+                    }
+                }
+            };
+            
+            return Task.FromResult(result);
+        }
+
+        public Task<List<ContentRecommendation>> GetContentRecommendationsAsync(Guid creatorId)
+        {
+            var recommendations = new List<ContentRecommendation>
+            {
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Diversifique seus tópicos",
+                    Description = "Baseado na análise do seu conteúdo, recomendamos expandir para tópicos relacionados para aumentar o alcance.",
+                    Type = RecommendationType.ContentTopic,
+                    SuggestedTopics = new List<string> { "Dicas práticas", "Tutoriais rápidos", "Histórias de sucesso" },
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Priority = 1,
+                    PotentialImpact = "Aumento potencial de 20% no alcance"
+                },
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Experimente vídeos curtos",
+                    Description = "Vídeos de 60-90 segundos estão gerando maior engajamento em sua niche. Considere adaptar parte do seu conteúdo para este formato.",
+                    Type = RecommendationType.ContentFormat,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Priority = 2,
+                    PotentialImpact = "Aumento potencial de 35% no engajamento"
+                }
+            };
+            
+            return Task.FromResult(recommendations);
+        }
+
+        // Implementar outros métodos conforme necessário
+        public Task<List<ContentRecommendation>> GetTopicRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<ContentRecommendation>());
+        }
+
+        public Task<List<ContentRecommendation>> GetFormatRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<ContentRecommendation>());
+        }
+
+        public Task<List<string>> GetHashtagRecommendationsAsync(Guid creatorId, string contentDescription, SocialMediaPlatform platform)
+        {
+            return Task.FromResult(new List<string> { "#exemplo", "#teste", "#mock" });
+        }
+
+        public Task<List<TrendTopic>> GetTrendingTopicsAsync(SocialMediaPlatform platform)
+        {
+            return Task.FromResult(new List<TrendTopic>());
+        }
+
+        public Task<List<TrendTopic>> GetNicheTrendingTopicsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<TrendTopic>());
+        }
+
+        public Task<List<ContentRecommendation>> GetMonetizationRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<ContentRecommendation>());
+        }
+
+        public Task<List<ContentRecommendation>> GetAudienceGrowthRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<ContentRecommendation>());
+        }
+
+        public Task<List<ContentRecommendation>> GetEngagementImprovementRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<ContentRecommendation>());
+        }
+
+        public Task<ContentAnalysis> AnalyzeContentPerformanceAsync(Guid contentId)
+        {
+            return Task.FromResult(new ContentAnalysis());
+        }
+
+        public Task RefreshRecommendationsAsync(Guid creatorId)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public class MockLoggingService : ILoggingService
+    {
+        public void LogInformation(string message, params object[] args)
+        {
+            Console.WriteLine($"[INFO] {string.Format(message, args)}");
+        }
+
+        public void LogWarning(string message, params object[] args)
+        {
+            Console.WriteLine($"[WARN] {string.Format(message, args)}");
+        }
+
+        public void LogError(Exception ex, string message, params object[] args)
+        {
+            Console.WriteLine($"[ERROR] {string.Format(message, args)}: {ex?.Message}");
+        }
+
+        public void LogDebug(string message, params object[] args)
+        {
+            Console.WriteLine($"[DEBUG] {string.Format(message, args)}");
+        }
+
+        public void LogCritical(Exception ex, string message, params object[] args)
+        {
+            Console.WriteLine($"[CRITICAL] {string.Format(message, args)}: {ex?.Message}");
+        }
+    }
 } 

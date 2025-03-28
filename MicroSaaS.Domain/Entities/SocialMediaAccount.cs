@@ -16,5 +16,7 @@ namespace MicroSaaS.Domain.Entities
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public int FollowersCount { get; set; }
+        public string ProfileUrl { get; set; } = string.Empty;
+        public string ProfileImageUrl { get; set; } = string.Empty;
     }
 }

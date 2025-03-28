@@ -87,27 +87,43 @@ public class RevenueController : ControllerBase
 
         return Ok(dailyRevenue);
     }
-}
 
-public class RevenueSummary
-{
-    public decimal TotalRevenue { get; set; }
-    public decimal EstimatedMonthlyRevenue { get; set; }
-    public decimal AverageRevenuePerView { get; set; }
-}
+    [HttpGet("monetization/{creatorId}")]
+    public async Task<ActionResult<MonetizationMetricsDto>> GetMonetizationMetrics(
+        Guid creatorId,
+        [FromQuery] DateTime startDate,
+        [FromQuery] DateTime endDate)
+    {
+        try
+        {
+            // Obter métricas avançadas de monetização
+            var metrics = await _revenueService.GetMonetizationMetricsAsync(
+                creatorId,
+                startDate,
+                endDate);
 
-public class PlatformRevenue
-{
-    public string Platform { get; set; }
-    public decimal Revenue { get; set; }
-    public long Views { get; set; }
-}
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
-public class DailyRevenue
-{
-    public DateTime Date { get; set; }
-    public decimal Revenue { get; set; }
-    public long Views { get; set; }
+    [HttpPost("adsense/refresh/{creatorId}")]
+    public async Task<IActionResult> RefreshAdSenseData(Guid creatorId)
+    {
+        try
+        {
+            // Atualizar os dados do AdSense
+            await _revenueService.RefreshRevenueMetricsAsync();
+            return Ok(new { message = "Dados do AdSense atualizados com sucesso" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
 
 public class ConnectAdSenseRequest
