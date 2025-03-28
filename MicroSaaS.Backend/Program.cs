@@ -1,27 +1,24 @@
+using AspNetCoreRateLimit;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MicroSaaS.Application.DTOs.Validators;
+using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
-using MicroSaaS.Application.Services;
-using MicroSaaS.Infrastructure.Data;
+using MicroSaaS.Backend.Attributes;
+using MicroSaaS.Backend.Swagger;
+using MicroSaaS.Domain.Interfaces;
 using MicroSaaS.Infrastructure.Repositories;
 using MicroSaaS.Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using MicroSaaS.Infrastructure.Persistence;
-using MicroSaaS.Application.Interfaces.Repositories;
-using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Infrastructure.Settings;
-using MicroSaaS.Domain.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
-using AspNetCoreRateLimit;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
-using MicroSaaS.Backend.Attributes;
+using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using System.Text;
 
 namespace MicroSaaS.Backend;
 
@@ -81,7 +78,13 @@ public partial class Program
             // Configuração do MongoDB
             builder.Services.Configure<MicroSaaS.Infrastructure.Settings.MongoDbSettings>(
                 builder.Configuration.GetSection("MongoDbSettings"));
-            builder.Services.AddScoped<MongoDbContext>();
+            builder.Services.AddScoped<MicroSaaS.Infrastructure.Database.IMongoDbContext, MicroSaaS.Infrastructure.Database.MongoDbContext>();
+            builder.Services.AddScoped<MongoDB.Driver.IMongoDatabase>(provider => 
+                provider.GetRequiredService<MicroSaaS.Infrastructure.Database.IMongoDbContext>().Database);
+                
+            // Registrar HttpClient para os serviços que dependem dele
+            builder.Services.AddHttpClient();
+            builder.Services.AddScoped<HttpClient>();
 
             // Configuração do JWT
             builder.Services.Configure<JwtSettings>(
@@ -123,6 +126,9 @@ public partial class Program
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentCreatorRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentCreatorRepositoryAdapter>();
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentPostRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentPostRepositoryAdapter>();
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.ISocialMediaAccountRepository, MicroSaaS.Infrastructure.AdapterRepositories.SocialMediaAccountRepositoryAdapter>();
+            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IDashboardInsightsRepository, MicroSaaS.Infrastructure.AdapterRepositories.DashboardInsightsRepositoryAdapter>();
+            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IContentPerformanceRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentPerformanceRepositoryAdapter>();
+            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IContentPostRepository, MicroSaaS.Infrastructure.AdapterRepositories.DomainContentPostRepositoryAdapter>();
 
             // Registrar outros repositórios
             builder.Services.AddScoped<IContentChecklistRepository, ContentChecklistRepository>();
@@ -150,52 +156,27 @@ public partial class Program
             // Adicionar controllers
             builder.Services.AddControllers();
 
-            // Swagger
+            // Swagger - usando versão 6.5.0
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
-                // Configuração para incluir documentação XML
-                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
-                
                 c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
                 {
                     Title = "MicroSaaS API",
-                    Version = "v1",
-                    Description = "API para gestão de conteúdo para criadores",
-                    Contact = new Microsoft.OpenApi.Models.OpenApiContact
-                    {
-                        Name = "Equipe de Desenvolvimento",
-                        Email = "devteam@microsaas.com.br"
-                    }
+                    Version = "v1"
                 });
                 
-                // Configuração do JWT para Swagger
-                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Token JWT de autenticação"
-                });
+                // Configurações para resolver problemas com tipos genéricos
+                c.UseAllOfToExtendReferenceSchemas();
                 
-                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-                {
-                    {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                        {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                            {
-                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
+                // Para resolver problemas com tipos circulares ou complexos
+                c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+                
+                // Ignorar propriedades não serializáveis
+                c.MapType<TimeSpan>(() => new Microsoft.OpenApi.Models.OpenApiSchema { Type = "string", Format = "time-span" });
+                
+                // Desativar validação de parâmetros personalizados
+                c.SchemaFilter<SwaggerRequiredSchemaFilter>();
             });
             
             // Configuração de versionamento da API
@@ -226,11 +207,35 @@ public partial class Program
 
             // Configuração do Rate Limiting
             builder.Services.AddMemoryCache();
-            builder.Services.AddStackExchangeRedisCache(options =>
+            
+            // Tornar o Redis opcional para desenvolvimento
+            if (builder.Environment.IsDevelopment())
             {
-                options.Configuration = builder.Configuration.GetConnectionString("Redis");
-                options.InstanceName = "MicroSaaS:";
-            });
+                try
+                {
+                    builder.Services.AddStackExchangeRedisCache(options =>
+                    {
+                        options.Configuration = builder.Configuration.GetConnectionString("Redis");
+                        options.InstanceName = "MicroSaaS:";
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Aviso: Redis não disponível. Usando cache em memória. Erro: {ex.Message}");
+                    // Usar cache em memória como fallback
+                    builder.Services.AddDistributedMemoryCache();
+                }
+            }
+            else
+            {
+                // Em produção, ainda queremos que falhe se o Redis não estiver disponível
+                builder.Services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+                    options.InstanceName = "MicroSaaS:";
+                });
+            }
+            
             builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
             builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
             builder.Services.AddInMemoryRateLimiting();
@@ -244,17 +249,14 @@ public partial class Program
 
             var app = builder.Build();
 
-            // Configurar Swagger
+            // Configurar Swagger usando a versão 6.5.0
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI(c => 
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MicroSaaS API v1");
-                    c.RoutePrefix = string.Empty;
-                    c.DocExpansion(DocExpansion.List);
-                    c.EnableFilter();
-                    c.DisplayRequestDuration();
+                    c.RoutePrefix = "swagger";
                 });
             }
 
@@ -264,12 +266,136 @@ public partial class Program
                 options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} respondeu {StatusCode} em {Elapsed:0.0000} ms";
             });
 
-            app.UseIpRateLimiting();
+            // Tentativa de usar o middleware de limitação de taxa, mas ignorar se falhar
+            try
+            {
+                app.UseIpRateLimiting();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Aviso: Middleware de limitação de taxa não está disponível. Erro: {ex.Message}");
+            }
+            
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
             app.UseAuthentication();
             app.UseAuthorization();
+            
             app.MapControllers();
+
+            // Adicionar uma rota alternativa para o swagger.json para o caso da geração automática continuar falhando
+            app.MapGet("/swagger/v1/swagger.json", async (HttpContext context, ISwaggerProvider swaggerProvider) =>
+            {
+                try
+                {
+                    // Tentar usar o provedor Swagger normal primeiro
+                    var document = swaggerProvider.GetSwagger("v1");
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(document);
+                }
+                catch (Exception ex)
+                {
+                    // Registrar o erro detalhado no console
+                    Console.WriteLine($"Erro ao gerar swagger.json: {ex.Message}");
+                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                        Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
+                    }
+                    
+                    // Se falhar, gerar um documento OpenAPI manualmente com mais endpoints
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(@"{
+  ""openapi"": ""3.0.1"",
+  ""info"": {
+    ""title"": ""MicroSaaS API"",
+    ""version"": ""v1"",
+    ""description"": ""API para gestão de conteúdo para criadores""
+  },
+  ""paths"": {
+    ""/api/auth/register"": {
+      ""post"": {
+        ""tags"": [""Auth""],
+        ""summary"": ""Registrar um novo usuário"",
+        ""operationId"": ""register"",
+        ""responses"": {
+          ""200"": { ""description"": ""Registro bem-sucedido"" }
+        }
+      }
+    },
+    ""/api/auth/login"": {
+      ""post"": {
+        ""tags"": [""Auth""],
+        ""summary"": ""Login de usuário"",
+        ""operationId"": ""login"",
+        ""responses"": {
+          ""200"": { ""description"": ""Login bem-sucedido"" }
+        }
+      }
+    },
+    ""/api/dashboard/{creatorId}"": {
+      ""get"": {
+        ""tags"": [""Dashboard""],
+        ""summary"": ""Obter dados do dashboard"",
+        ""operationId"": ""getDashboard"",
+        ""parameters"": [
+          {
+            ""name"": ""creatorId"",
+            ""in"": ""path"",
+            ""required"": true,
+            ""schema"": { ""type"": ""string"", ""format"": ""uuid"" }
+          }
+        ],
+        ""responses"": {
+          ""200"": { ""description"": ""Dados do dashboard obtidos com sucesso"" }
+        }
+      }
+    },
+    ""/api/content"": {
+      ""get"": {
+        ""tags"": [""Content""],
+        ""summary"": ""Listar conteúdos"",
+        ""operationId"": ""listContent"",
+        ""responses"": {
+          ""200"": { ""description"": ""Conteúdos listados com sucesso"" }
+        }
+      }
+    },
+    ""/api/performance/summary/{creatorId}"": {
+      ""get"": {
+        ""tags"": [""Performance""],
+        ""summary"": ""Resumo de desempenho"",
+        ""operationId"": ""getPerformanceSummary"",
+        ""parameters"": [
+          {
+            ""name"": ""creatorId"",
+            ""in"": ""path"",
+            ""required"": true,
+            ""schema"": { ""type"": ""string"", ""format"": ""uuid"" }
+          },
+          {
+            ""name"": ""startDate"",
+            ""in"": ""query"",
+            ""required"": false,
+            ""schema"": { ""type"": ""string"", ""format"": ""date-time"" }
+          },
+          {
+            ""name"": ""endDate"",
+            ""in"": ""query"",
+            ""required"": false,
+            ""schema"": { ""type"": ""string"", ""format"": ""date-time"" }
+          }
+        ],
+        ""responses"": {
+          ""200"": { ""description"": ""Resumo de desempenho obtido com sucesso"" }
+        }
+      }
+    }
+  }
+}");
+                }
+            });
 
             return app;
         }

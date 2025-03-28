@@ -6,6 +6,7 @@ using MicroSaaS.Shared.Models;
 using MicroSaaS.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -52,6 +53,7 @@ public class PerformanceController : ControllerBase
     }
 
     [HttpGet("best-times/{creatorId}/{platform}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<List<MicroSaaS.Shared.Models.PostTimeRecommendation>>> GetBestPostTimes(
         Guid creatorId,
         SocialMediaPlatform platform)

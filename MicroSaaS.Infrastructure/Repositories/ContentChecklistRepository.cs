@@ -1,6 +1,6 @@
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Data;
+using MicroSaaS.Infrastructure.Database;
 using MicroSaaS.Shared.Enums;
 using MongoDB.Driver;
 using System;
@@ -11,9 +11,9 @@ namespace MicroSaaS.Infrastructure.Repositories;
 
 public class ContentChecklistRepository : IContentChecklistRepository
 {
-    private readonly MongoDbContext _context;
+    private readonly IMongoDbContext _context;
 
-    public ContentChecklistRepository(MongoDbContext context)
+    public ContentChecklistRepository(IMongoDbContext context)
     {
         _context = context;
     }

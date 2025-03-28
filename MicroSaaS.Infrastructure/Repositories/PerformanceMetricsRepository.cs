@@ -1,6 +1,7 @@
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Data;
+using MicroSaaS.Infrastructure.Database;
+using MicroSaaS.Infrastructure.Entities;
 using MicroSaaS.Infrastructure.Mappers;
 using MicroSaaS.Shared.Enums;
 using MongoDB.Driver;
@@ -13,16 +14,16 @@ namespace MicroSaaS.Infrastructure.Repositories;
 
 public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 {
-    private readonly MongoDbContext _context;
+    private readonly IMongoDbContext _context;
 
-    public PerformanceMetricsRepository(MongoDbContext context)
+    public PerformanceMetricsRepository(IMongoDbContext context)
     {
         _context = context;
     }
 
     public async Task<PerformanceMetrics> GetByIdAsync(Guid id)
     {
-        var entity = await _context.PerformanceMetrics
+        var entity = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.Id == id.ToString())
             .FirstOrDefaultAsync();
         
@@ -31,7 +32,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task<IEnumerable<PerformanceMetrics>> GetAllAsync()
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(_ => true)
             .ToListAsync();
         
@@ -40,7 +41,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task<IEnumerable<PerformanceMetrics>> GetByCreatorIdAsync(Guid creatorId)
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.CreatorId == creatorId.ToString())
             .ToListAsync();
         
@@ -49,7 +50,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task<IEnumerable<PerformanceMetrics>> GetByCreatorAndPlatformAsync(Guid creatorId, SocialMediaPlatform platform)
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.CreatorId == creatorId.ToString() && p.Platform == platform)
             .ToListAsync();
         
@@ -58,7 +59,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task<IEnumerable<PerformanceMetrics>> GetByDateRangeAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.CreatorId == creatorId.ToString() && p.Date >= startDate && p.Date <= endDate)
             .ToListAsync();
         
@@ -70,7 +71,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
         var startOfDay = new DateTime(date.Year, date.Month, date.Day, 0, 0, 0, DateTimeKind.Utc);
         var endOfDay = startOfDay.AddDays(1).AddTicks(-1);
 
-        var entity = await _context.PerformanceMetrics
+        var entity = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.CreatorId == creatorId.ToString() && p.Platform == platform &&
                    p.Date >= startOfDay && p.Date <= endOfDay)
             .FirstOrDefaultAsync();
@@ -81,27 +82,27 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
     public async Task<PerformanceMetrics> AddAsync(PerformanceMetrics metrics)
     {
         var entity = metrics.ToEntity();
-        await _context.PerformanceMetrics.InsertOneAsync(entity);
+        await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").InsertOneAsync(entity);
         return metrics;
     }
 
     public async Task<PerformanceMetrics> UpdateAsync(PerformanceMetrics metrics)
     {
         var entity = metrics.ToEntity();
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.PerformanceMetricsEntity>.Filter.Eq(p => p.Id, metrics.Id.ToString());
-        await _context.PerformanceMetrics.ReplaceOneAsync(filter, entity);
+        var filter = Builders<PerformanceMetricsEntity>.Filter.Eq(p => p.Id, metrics.Id.ToString());
+        await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").ReplaceOneAsync(filter, entity);
         return metrics;
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.PerformanceMetricsEntity>.Filter.Eq(p => p.Id, id.ToString());
-        await _context.PerformanceMetrics.DeleteOneAsync(filter);
+        var filter = Builders<PerformanceMetricsEntity>.Filter.Eq(p => p.Id, id.ToString());
+        await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").DeleteOneAsync(filter);
     }
 
     public async Task<decimal> GetAverageEngagementRateAsync()
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(_ => true)
             .ToListAsync();
             
@@ -114,7 +115,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task<decimal> GetAverageEngagementRateByCreatorAsync(Guid creatorId)
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(p => p.CreatorId == creatorId.ToString())
             .ToListAsync();
             
@@ -127,7 +128,7 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 
     public async Task RefreshMetricsAsync()
     {
-        var entities = await _context.PerformanceMetrics
+        var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics")
             .Find(_ => true)
             .ToListAsync();
             
@@ -141,8 +142,8 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
         
         foreach (var entity in entities)
         {
-            var filter = Builders<MicroSaaS.Infrastructure.Entities.PerformanceMetricsEntity>.Filter.Eq(p => p.Id, entity.Id);
-            await _context.PerformanceMetrics.ReplaceOneAsync(filter, entity);
+            var filter = Builders<PerformanceMetricsEntity>.Filter.Eq(p => p.Id, entity.Id);
+            await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").ReplaceOneAsync(filter, entity);
         }
     }
 } 

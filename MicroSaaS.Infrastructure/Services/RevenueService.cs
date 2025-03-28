@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Data;
+using MicroSaaS.Infrastructure.Database;
 using MicroSaaS.Infrastructure.Settings;
 using MongoDB.Driver;
 using System;
@@ -22,13 +22,13 @@ public class RevenueService : IRevenueService
 {
     private readonly IContentCreatorRepository _creatorRepository;
     private readonly IConfiguration _configuration;
-    private readonly MongoDbContext _context;
+    private readonly IMongoDbContext _context;
     private readonly HttpClient _httpClient;
 
     public RevenueService(
         IContentCreatorRepository creatorRepository,
         IConfiguration configuration,
-        MongoDbContext context,
+        IMongoDbContext context,
         HttpClient httpClient)
     {
         _creatorRepository = creatorRepository;
@@ -72,7 +72,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -217,7 +217,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -231,7 +231,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -253,7 +253,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -275,7 +275,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -362,7 +362,7 @@ public class RevenueService : IRevenueService
     public async Task<decimal> CalculateContentRevenueAsync(Guid contentId)
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq("PostId", contentId.ToString());
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(filter)
             .ToListAsync();
             
@@ -372,14 +372,14 @@ public class RevenueService : IRevenueService
     public async Task<decimal> CalculateCreatorRevenueAsync(Guid creatorId)
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Eq(x => x.CreatorId, creatorId);
-        var posts = await _context.ContentPosts
+        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>("content_posts")
             .Find(filter)
             .ToListAsync();
             
         var postIds = posts.Select(p => p.Id).ToList();
         
         var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.In(x => x.PostId, postIds);
-        var performances = await _context.ContentPerformances
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
             .Find(performanceFilter)
             .ToListAsync();
             
@@ -389,14 +389,14 @@ public class RevenueService : IRevenueService
     public async Task RefreshRevenueMetricsAsync()
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Empty;
-        var posts = await _context.ContentPosts
+        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>("content_posts")
             .Find(filter)
             .ToListAsync();
             
         foreach (var post in posts)
         {
             var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq(p => p.PostId, post.Id);
-            var performances = await _context.ContentPerformances
+            var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
                 .Find(performanceFilter)
                 .ToListAsync();
                 
@@ -408,86 +408,14 @@ public class RevenueService : IRevenueService
                 var update = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Update
                     .Set(p => p.CollectedAt, DateTime.UtcNow);
                     
-                await _context.ContentPerformances.UpdateOneAsync(
-                    p => p.Id == performance.Id,
-                    update);
+                await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+                    .UpdateOneAsync(
+                        p => p.Id == performance.Id,
+                        update);
             }
         }
     }
 
-    private async Task RefreshAdSenseRevenueDataAsync(Guid creatorId)
-    {
-        var creator = await _creatorRepository.GetByIdAsync(creatorId);
-        if (creator == null || creator.AdSenseSettings == null || !creator.AdSenseSettings.IsConnected)
-            return;
-
-        try
-        {
-            // Verificar se o token expirou e atualizá-lo se necessário
-            if (creator.AdSenseSettings.TokenExpiresAt <= DateTime.UtcNow)
-            {
-                await RefreshAdSenseTokenAsync(creator);
-            }
-            
-            // Endpoint para obter relatórios do AdSense
-            var reportEndpoint = $"https://www.googleapis.com/adsense/v2/accounts/{creator.AdSenseSettings.AccountId}/reports:generate";
-            
-            // Construir a solicitação para obter dados dos últimos 30 dias
-            var endDate = DateTime.UtcNow.Date;
-            var startDate = endDate.AddDays(-30);
-            
-            var requestObj = new
-            {
-                reportingTimeZone = "ACCOUNT_TIME_ZONE",
-                dateRange = new
-                {
-                    startDate = new 
-                    { 
-                        year = startDate.Year,
-                        month = startDate.Month,
-                        day = startDate.Day
-                    },
-                    endDate = new 
-                    { 
-                        year = endDate.Year,
-                        month = endDate.Month,
-                        day = endDate.Day
-                    }
-                },
-                metrics = new[] { "ESTIMATED_EARNINGS", "PAGE_VIEWS", "CLICKS" },
-                dimensions = new[] { "DATE" }
-            };
-            
-            var jsonRequest = JsonSerializer.Serialize(requestObj);
-            var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-            
-            _httpClient.DefaultRequestHeaders.Authorization = 
-                new AuthenticationHeaderValue("Bearer", creator.AdSenseSettings.AccessToken);
-            
-            var response = await _httpClient.PostAsync(reportEndpoint, content);
-            if (response.IsSuccessStatusCode)
-            {
-                var report = await response.Content.ReadFromJsonAsync<AdSenseReportResponse>();
-                
-                if (report != null)
-                {
-                    // Processar os dados do relatório e salvar no banco de dados
-                    // Implementação depende da estrutura específica do relatório retornado
-                    // e como você quer armazenar os dados
-                    
-                    // Atualizar timestamp da última atualização
-                    creator.AdSenseSettings.LastUpdated = DateTime.UtcNow;
-                    await _creatorRepository.UpdateAsync(creator);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Logar o erro
-            Console.WriteLine($"Erro ao atualizar dados do AdSense: {ex.Message}");
-        }
-    }
-    
     private async Task RefreshAdSenseTokenAsync(ContentCreator creator)
     {
         if (creator?.AdSenseSettings == null || string.IsNullOrEmpty(creator.AdSenseSettings.RefreshToken))
