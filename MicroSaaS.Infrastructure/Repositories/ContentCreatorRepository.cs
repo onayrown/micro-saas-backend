@@ -1,50 +1,83 @@
-﻿using MicroSaaS.Application.Interfaces.Repositories;
-using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Data;
+﻿using MicroSaaS.Domain.Entities;
+using MicroSaaS.Domain.Repositories;
+using MicroSaaS.Infrastructure.Database;
+using MicroSaaS.Infrastructure.Entities;
+using MicroSaaS.Infrastructure.Mappers;
 using MongoDB.Driver;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace MicroSaaS.Infrastructure.Repositories;
-
-public class ContentCreatorRepository : IContentCreatorRepository
+namespace MicroSaaS.Infrastructure.Repositories
 {
-    private readonly MongoDbContext _context;
-
-    public ContentCreatorRepository(MongoDbContext context)
+    public class ContentCreatorRepository : IContentCreatorRepository
     {
-        _context = context;
-    }
+        private readonly IMongoCollection<ContentCreatorEntity> _creators;
 
-    public async Task<ContentCreator> GetByIdAsync(Guid id)
-    {
-        return await _context.ContentCreators.Find(c => c.Id == id).FirstOrDefaultAsync();
-    }
+        public ContentCreatorRepository(IMongoDbContext context)
+        {
+            _creators = context.GetCollection<ContentCreatorEntity>("ContentCreators");
+        }
 
-    public async Task<IEnumerable<ContentCreator>> GetAllAsync()
-    {
-        return await _context.ContentCreators.Find(_ => true).ToListAsync();
-    }
+        public async Task<ContentCreator> GetByIdAsync(Guid id)
+        {
+            var entity = await _creators.Find(x => x.Id == id).FirstOrDefaultAsync();
+            return ContentCreatorMapper.ToDomain(entity);
+        }
 
-    public async Task<ContentCreator> AddAsync(ContentCreator creator)
-    {
-        await _context.ContentCreators.InsertOneAsync(creator);
-        return creator;
-    }
+        public async Task<ContentCreator> GetByUserIdAsync(Guid userId)
+        {
+            var entity = await _creators.Find(x => x.UserId == userId).FirstOrDefaultAsync();
+            return ContentCreatorMapper.ToDomain(entity);
+        }
 
-    public async Task<ContentCreator> UpdateAsync(ContentCreator creator)
-    {
-        var filter = Builders<ContentCreator>.Filter.Eq(c => c.Id, creator.Id);
-        await _context.ContentCreators.ReplaceOneAsync(filter, creator);
-        return creator;
-    }
+        public async Task<ContentCreator> GetByUsernameAsync(string username)
+        {
+            var entity = await _creators.Find(x => x.Username == username).FirstOrDefaultAsync();
+            return ContentCreatorMapper.ToDomain(entity);
+        }
 
-    public async Task DeleteAsync(Guid id)
-    {
-        var filter = Builders<ContentCreator>.Filter.Eq(c => c.Id, id);
-        await _context.ContentCreators.DeleteOneAsync(filter);
-    }
+        public async Task<IEnumerable<ContentCreator>> GetAllAsync()
+        {
+            var entities = await _creators.Find(_ => true).ToListAsync();
+            return entities.Select(ContentCreatorMapper.ToDomain);
+        }
 
-    public async Task<IEnumerable<ContentCreator>> GetByUserIdAsync(Guid userId)
-    {
-        return await _context.ContentCreators.Find(c => c.UserId == userId).ToListAsync();
+        public async Task<ContentCreator> GetByEmailAsync(string email)
+        {
+            var entity = await _creators.Find(x => x.Email == email).FirstOrDefaultAsync();
+            return ContentCreatorMapper.ToDomain(entity);
+        }
+
+        public async Task<ContentCreator> AddAsync(ContentCreator creator)
+        {
+            var entity = ContentCreatorMapper.ToEntity(creator);
+            await _creators.InsertOneAsync(entity);
+            return ContentCreatorMapper.ToDomain(entity);
+        }
+
+        public async Task<ContentCreator> UpdateAsync(ContentCreator creator)
+        {
+            var entity = ContentCreatorMapper.ToEntity(creator);
+            var filter = Builders<ContentCreatorEntity>.Filter.Eq(x => x.Id, creator.Id);
+            await _creators.ReplaceOneAsync(filter, entity);
+            return ContentCreatorMapper.ToDomain(entity);
+        }
+
+        public async Task<bool> DeleteAsync(Guid id)
+        {
+            var filter = Builders<ContentCreatorEntity>.Filter.Eq(x => x.Id, id);
+            var result = await _creators.DeleteOneAsync(filter);
+            return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
+        public async Task<bool> IsUsernameUniqueAsync(string username)
+        {
+            var count = await _creators
+                .CountDocumentsAsync(c => c.Username == username);
+
+            return count == 0;
+        }
     }
 }

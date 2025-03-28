@@ -1,32 +1,14 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using System;
 
 namespace MicroSaaS.Domain.Entities;
 
 public class User
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.String)]
-    public Guid Id { get; set; }
-
-    [BsonElement("name")]
-    public string Name { get; set; } = string.Empty;
-
-    [BsonElement("email")]
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-
-    [BsonElement("passwordHash")]
     public string PasswordHash { get; set; } = string.Empty;
-
-    [BsonElement("isActive")]
-    public bool IsActive { get; set; }
-
-    [BsonElement("lastLoginAt")]
-    public DateTime? LastLoginAt { get; set; }
-
-    [BsonElement("createdAt")]
-    public DateTime CreatedAt { get; set; }
-
-    [BsonElement("updatedAt")]
-    public DateTime UpdatedAt { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

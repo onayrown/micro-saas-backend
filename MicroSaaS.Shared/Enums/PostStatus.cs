@@ -5,5 +5,6 @@ public enum PostStatus
     Draft,
     Scheduled,
     Published,
-    Failed
+    Failed,
+    Deleted
 }

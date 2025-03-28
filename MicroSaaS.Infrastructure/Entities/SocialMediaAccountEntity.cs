@@ -1,11 +1,7 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MicroSaaS.Shared.Enums;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MicroSaaS.Shared.Enums;
 
 namespace MicroSaaS.Infrastructure.Entities
 {
@@ -13,24 +9,37 @@ namespace MicroSaaS.Infrastructure.Entities
     {
         [BsonId]
         [BsonRepresentation(BsonType.String)]
-        public string? Id { get; set; }
-        
+        public Guid Id { get; set; }
+
+        [BsonElement("creatorId")]
+        [BsonRepresentation(BsonType.String)]
+        public Guid CreatorId { get; set; }
+
         [BsonElement("platform")]
         public SocialMediaPlatform Platform { get; set; }
 
-        [BsonElement("access_token")]
-        public string? AccessToken { get; set; }
+        [BsonElement("username")]
+        public string Username { get; set; } = string.Empty;
 
-        [BsonElement("refresh_token")]
-        public string? RefreshToken { get; set; }
+        [BsonElement("accessToken")]
+        public string AccessToken { get; set; } = string.Empty;
 
-        [BsonElement("token_expiry")]
-        public DateTime? TokenExpiry { get; set; }
+        [BsonElement("refreshToken")]
+        public string RefreshToken { get; set; } = string.Empty;
 
-        [BsonElement("created_at")]
+        [BsonElement("tokenExpiresAt")]
+        public DateTime TokenExpiresAt { get; set; }
+
+        [BsonElement("isActive")]
+        public bool IsActive { get; set; }
+
+        [BsonElement("followersCount")]
+        public int FollowersCount { get; set; }
+
+        [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
 
-        [BsonElement("updated_at")]
+        [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }
 }

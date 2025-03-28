@@ -52,7 +52,7 @@ public class PerformanceController : ControllerBase
     }
 
     [HttpGet("best-times/{creatorId}/{platform}")]
-    public async Task<ActionResult<List<PostTimeRecommendation>>> GetBestPostTimes(
+    public async Task<ActionResult<List<MicroSaaS.Shared.Models.PostTimeRecommendation>>> GetBestPostTimes(
         Guid creatorId,
         SocialMediaPlatform platform)
     {

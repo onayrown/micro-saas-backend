@@ -2,7 +2,7 @@
 
 Este documento contém o estado atual do projeto MicroSaaS e um checklist detalhado do que já foi implementado e o que ainda precisa ser implementado. Use-o para acompanhar o desenvolvimento e marcar os itens conforme são concluídos.
 
-Última atualização: <!-- DATA -->
+Última atualização: 19/03/2024
 
 ## Arquitetura
 
@@ -32,6 +32,7 @@ Este documento contém o estado atual do projeto MicroSaaS e um checklist detalh
 - [x] Sistema de registro e login
 - [x] Geração e validação de tokens JWT
 - [x] Proteção de rotas com atributos `[Authorize]`
+- [x] Testes de integração para autenticação
 
 ### Gerenciamento de Usuários e Criadores de Conteúdo
 - [x] CRUD completo para usuários
@@ -58,10 +59,13 @@ Este documento contém o estado atual do projeto MicroSaaS e um checklist detalh
 - [x] Configuração do ambiente
 - [x] Validações com FluentValidation
 - [x] Swagger para documentação da API
+- [x] Sistema de logs centralizado com Serilog
 
 ### Testes
 - [x] Testes unitários para serviços e repositórios
 - [x] Testes de integração para controllers
+- [x] Configuração de ambiente de testes
+- [x] Mocks para serviços e repositórios
 
 ## O que Falta Implementar
 
@@ -111,7 +115,7 @@ Este documento contém o estado atual do projeto MicroSaaS e um checklist detalh
 - [ ] Melhorar validação de entradas
 
 #### Logs e Monitoramento
-- [ ] Sistema de logs centralizado
+- [x] Sistema de logs centralizado
 - [ ] Métricas de performance
 - [ ] Alertas de erros
 
@@ -147,10 +151,11 @@ Este documento contém o estado atual do projeto MicroSaaS e um checklist detalh
 ## Prioridades
 
 ### Curto Prazo (1-2 semanas)
-- [ ] Finalizar qualquer funcionalidade básica pendente
-- [ ] Aumentar cobertura de testes unitários
-- [ ] Implementar logs e monitoramento
-- [ ] Melhorar segurança dos endpoints existentes
+- [x] Implementar testes de integração para autenticação
+- [x] Corrigir problemas de nulabilidade nos testes
+- [x] Implementar sistema de logs centralizado
+- [ ] Adicionar rate limiting nos endpoints
+- [ ] Melhorar documentação da API
 
 ### Médio Prazo (1-2 meses)
 - [ ] Sistema de notificações
@@ -168,6 +173,16 @@ Este documento contém o estado atual do projeto MicroSaaS e um checklist detalh
 
 ## Notas de Progresso
 
-> Use esta seção para adicionar notas sobre o progresso do projeto, decisões tomadas, alterações de escopo, etc.
+### 19/03/2024
+- Implementados testes de integração para autenticação
+- Corrigidos problemas de nulabilidade nos testes
+- Melhorada a estrutura de mocks para testes
+- Todos os testes de integração passando com sucesso
+- Implementado sistema de logs centralizado usando Serilog
+- Adicionado logging estruturado no AuthController
 
-<!-- PROGRESSO --> 
+### Próximos Passos
+1. Adicionar rate limiting nos endpoints para melhor segurança
+2. Expandir a documentação da API além do Swagger
+3. Começar a implementação do sistema de notificações
+4. Implementar métricas de performance 

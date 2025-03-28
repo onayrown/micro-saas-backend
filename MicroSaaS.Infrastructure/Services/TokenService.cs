@@ -31,7 +31,7 @@ public class TokenService : ITokenService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Name, user.Name)
+            new Claim(JwtRegisteredClaimNames.Name, user.Username)
         };
 
         var token = new JwtSecurityToken(
@@ -91,7 +91,7 @@ public class TokenService : ITokenService
         var user = new User
         {
             Id = Guid.Parse(userId),
-            Name = jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Name).Value,
+            Username = jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Name).Value,
             Email = jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value
         };
 

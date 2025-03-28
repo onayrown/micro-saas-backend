@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using MicroSaaS.Application.DTOs.Auth;
 using System.Text.Json;
+using Microsoft.Extensions.Hosting;
 
 namespace MicroSaaS.IntegrationTests;
 
@@ -31,6 +32,9 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            // Usar o TestStartup que criamos
+            builder.UseSetting("Environment", "Testing");
+            
             // Configurar para usar nosso arquivo appsettings.json para testes
             builder.ConfigureAppConfiguration((context, config) =>
             {
@@ -51,7 +55,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
                 AddAllMockServices(services);
             });
 
-            // Substituir middlewares e endpoints
+            // Configurar a aplicação de teste
             builder.Configure(app => 
             {
                 app.UseRouting();
@@ -69,6 +73,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
             });
         });
 
+        // Criar cliente HTTP para testes
         _client = _factory.CreateClient();
     }
     
@@ -164,7 +169,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
                 User = new UserDto
                 {
                     Id = Guid.NewGuid(),
-                    Name = "Test User",
+                    Username = "Test User",
                     Email = request.Email,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
@@ -201,18 +206,20 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
         {
             Id = Guid.NewGuid(),
             Email = "test@example.com",
-            Name = "Test User",
+            Username = "Test User",
             PasswordHash = "hashed_password",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         
-        mockUserRepository.Setup(x => x.GetByEmailAsync("test@example.com"))
-            .ReturnsAsync(testUser);
+        mockUserRepository
+            .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "test@example.com")))
+            .ReturnsAsync(() => testUser);
             
-        mockUserRepository.Setup(x => x.GetByEmailAsync("invalid@example.com"))
-            .ReturnsAsync((User)null);
+        mockUserRepository
+            .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "invalid@example.com")))
+            .ReturnsAsync(() => null);
     }
     
     private void SetupPasswordHasherMock(Mock<IPasswordHasher> mockPasswordHasher)

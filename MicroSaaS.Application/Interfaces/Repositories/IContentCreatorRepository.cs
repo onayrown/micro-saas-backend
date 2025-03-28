@@ -10,4 +10,5 @@ public interface IContentCreatorRepository
     Task<ContentCreator> UpdateAsync(ContentCreator creator);
     Task DeleteAsync(Guid id);
     Task<IEnumerable<ContentCreator>> GetByUserIdAsync(Guid userId);
+    Task<int> CountAsync();
 } 

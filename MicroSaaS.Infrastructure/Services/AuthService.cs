@@ -42,7 +42,7 @@ public class AuthService : IAuthService
             User = new UserDto
             {
                 Id = user.Id,
-                Name = user.Name,
+                Username = user.Username,
                 Email = user.Email
             }
         };
@@ -59,7 +59,7 @@ public class AuthService : IAuthService
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
+            Username = request.Name,
             Email = request.Email,
             PasswordHash = passwordHash,
             IsActive = true,
@@ -77,7 +77,7 @@ public class AuthService : IAuthService
             User = new UserDto
             {
                 Id = user.Id,
-                Name = user.Name,
+                Username = user.Username,
                 Email = user.Email
             }
         };
@@ -98,7 +98,7 @@ public class AuthService : IAuthService
             User = new UserDto
             {
                 Id = user.Id,
-                Name = user.Name,
+                Username = user.Username,
                 Email = user.Email
             }
         };

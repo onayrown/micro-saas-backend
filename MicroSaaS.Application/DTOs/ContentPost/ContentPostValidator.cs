@@ -1,5 +1,6 @@
 using FluentValidation;
 using MicroSaaS.Shared.Enums;
+using System;
 
 namespace MicroSaaS.Application.DTOs.ContentPost;
 
@@ -19,9 +20,9 @@ public class ContentPostValidator : AbstractValidator<CreatePostRequest>
             .When(x => !string.IsNullOrEmpty(x.MediaUrl))
             .WithMessage("URL da mídia inválida");
 
-        RuleFor(x => x.ScheduledTime)
+        RuleFor(x => x.ScheduledFor)
             .GreaterThan(DateTime.UtcNow)
-            .When(x => x.ScheduledTime.HasValue)
+            .When(x => x.ScheduledFor.HasValue)
             .WithMessage("A data de agendamento deve ser futura");
     }
 }
@@ -42,9 +43,9 @@ public class UpdatePostValidator : AbstractValidator<UpdatePostRequest>
             .When(x => !string.IsNullOrEmpty(x.MediaUrl))
             .WithMessage("URL da mídia inválida");
 
-        RuleFor(x => x.ScheduledTime)
+        RuleFor(x => x.ScheduledFor)
             .GreaterThan(DateTime.UtcNow)
-            .When(x => x.ScheduledTime.HasValue)
+            .When(x => x.ScheduledFor.HasValue)
             .WithMessage("A data de agendamento deve ser futura");
     }
 } 

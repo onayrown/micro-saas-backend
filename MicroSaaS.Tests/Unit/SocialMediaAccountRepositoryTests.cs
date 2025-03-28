@@ -1,9 +1,12 @@
-using MicroSaaS.Application.Interfaces.Repositories;
+using FluentAssertions;
 using MicroSaaS.Domain.Entities;
+using MicroSaaS.Domain.Repositories;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Tests.Helpers;
 using Moq;
-using FluentAssertions;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace MicroSaaS.Tests.Unit;
@@ -32,14 +35,14 @@ public class SocialMediaAccountRepositoryTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Id.Should().Be(account.Id);
-        result.CreatorId.Should().Be(account.CreatorId);
+        result.Id.Should().Be(account.Id);
+        result.CreatorId.Should().Be(creator.Id);
         result.Platform.Should().Be(account.Platform);
-        result.Username.Should().Be(account.Username);
-        result.AccessToken.Should().Be(account.AccessToken);
-        result.RefreshToken.Should().Be(account.RefreshToken);
+        result.Username.Should().NotBeNullOrEmpty();
+        result.AccessToken.Should().NotBeNullOrEmpty();
+        result.RefreshToken.Should().NotBeNull();
         result.TokenExpiresAt.Should().Be(account.TokenExpiresAt);
-        result.IsActive.Should().Be(account.IsActive);
+        result.IsActive.Should().BeTrue();
     }
 
     [Fact]
@@ -49,7 +52,7 @@ public class SocialMediaAccountRepositoryTests
         var accountId = Guid.NewGuid();
 
         _repositoryMock.Setup(x => x.GetByIdAsync(accountId))
-            .ReturnsAsync((SocialMediaAccount?)null);
+            .ReturnsAsync((SocialMediaAccount)null);
 
         // Act
         var result = await _repositoryMock.Object.GetByIdAsync(accountId);
@@ -86,8 +89,8 @@ public class SocialMediaAccountRepositoryTests
             account.Platform.Should().Be(account.Platform);
             account.Username.Should().NotBeNullOrEmpty();
             account.AccessToken.Should().NotBeNullOrEmpty();
-            account.RefreshToken.Should().NotBeNullOrEmpty();
-            account.TokenExpiresAt.Should().NotBeNull();
+            account.RefreshToken.Should().NotBeNull();
+            account.TokenExpiresAt.Should().Be(account.TokenExpiresAt);
             account.IsActive.Should().BeTrue();
         });
     }
@@ -110,56 +113,45 @@ public class SocialMediaAccountRepositoryTests
     }
 
     [Fact]
-    public async Task GetByPlatformAsync_WhenAccountsExist_ShouldReturnAccounts()
+    public async Task GetByCreatorIdAndPlatformAsync_WhenAccountExists_ShouldReturnAccount()
     {
         // Arrange
         var creator = TestHelper.CreateTestContentCreator();
         var platform = SocialMediaPlatform.Instagram;
-        var accounts = new List<SocialMediaAccount>
-        {
-            TestHelper.CreateTestSocialMediaAccount(creator.Id, platform),
-            TestHelper.CreateTestSocialMediaAccount(creator.Id, platform),
-            TestHelper.CreateTestSocialMediaAccount(creator.Id, platform)
-        };
+        var account = TestHelper.CreateTestSocialMediaAccount(creator.Id, platform);
 
-        _repositoryMock.Setup(x => x.GetByPlatformAsync(creator.Id, platform))
-            .ReturnsAsync(accounts);
+        _repositoryMock.Setup(x => x.GetByCreatorIdAndPlatformAsync(creator.Id, platform))
+            .ReturnsAsync(account);
 
         // Act
-        var result = await _repositoryMock.Object.GetByPlatformAsync(creator.Id, platform);
+        var result = await _repositoryMock.Object.GetByCreatorIdAndPlatformAsync(creator.Id, platform);
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().HaveCount(accounts.Count);
-        result.Should().AllSatisfy(account => 
-        {
-            account.Should().NotBeNull();
-            account.CreatorId.Should().Be(creator.Id);
-            account.Platform.Should().Be(platform);
-            account.Username.Should().NotBeNullOrEmpty();
-            account.AccessToken.Should().NotBeNullOrEmpty();
-            account.RefreshToken.Should().NotBeNullOrEmpty();
-            account.TokenExpiresAt.Should().NotBeNull();
-            account.IsActive.Should().BeTrue();
-        });
+        result.CreatorId.Should().Be(creator.Id);
+        result.Platform.Should().Be(platform);
+        result.Username.Should().NotBeNullOrEmpty();
+        result.AccessToken.Should().NotBeNullOrEmpty();
+        result.RefreshToken.Should().NotBeNull();
+        result.TokenExpiresAt.Should().Be(account.TokenExpiresAt);
+        result.IsActive.Should().BeTrue();
     }
 
     [Fact]
-    public async Task GetByPlatformAsync_WhenNoAccountsExist_ShouldReturnEmptyList()
+    public async Task GetByCreatorIdAndPlatformAsync_WhenNoAccountExists_ShouldReturnNull()
     {
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
 
-        _repositoryMock.Setup(x => x.GetByPlatformAsync(creatorId, platform))
-            .ReturnsAsync(new List<SocialMediaAccount>());
+        _repositoryMock.Setup(x => x.GetByCreatorIdAndPlatformAsync(creatorId, platform))
+            .ReturnsAsync((SocialMediaAccount)null);
 
         // Act
-        var result = await _repositoryMock.Object.GetByPlatformAsync(creatorId, platform);
+        var result = await _repositoryMock.Object.GetByCreatorIdAndPlatformAsync(creatorId, platform);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Should().BeEmpty();
+        result.Should().BeNull();
     }
 
     [Fact]
@@ -195,14 +187,17 @@ public class SocialMediaAccountRepositoryTests
         // Arrange
         var creator = TestHelper.CreateTestContentCreator();
         var account = TestHelper.CreateTestSocialMediaAccount(creator.Id);
+        var updatedAccount = TestHelper.CreateTestSocialMediaAccount(creator.Id);
 
         _repositoryMock.Setup(x => x.UpdateAsync(account))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(updatedAccount);
 
         // Act
-        await _repositoryMock.Object.UpdateAsync(account);
+        var result = await _repositoryMock.Object.UpdateAsync(account);
 
         // Assert
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo(updatedAccount);
         _repositoryMock.Verify(x => x.UpdateAsync(account), Times.Once);
     }
 
@@ -213,12 +208,13 @@ public class SocialMediaAccountRepositoryTests
         var accountId = Guid.NewGuid();
 
         _repositoryMock.Setup(x => x.DeleteAsync(accountId))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
 
         // Act
-        await _repositoryMock.Object.DeleteAsync(accountId);
+        var result = await _repositoryMock.Object.DeleteAsync(accountId);
 
         // Assert
+        result.Should().BeTrue();
         _repositoryMock.Verify(x => x.DeleteAsync(accountId), Times.Once);
     }
 

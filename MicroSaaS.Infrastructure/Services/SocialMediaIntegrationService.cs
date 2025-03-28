@@ -286,34 +286,37 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         };
     }
 
-    public async Task<IEnumerable<PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId)
+    public async Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId)
     {
         if (accountId == Guid.Empty)
             throw new ArgumentException("ID da conta é obrigatório", nameof(accountId));
 
         // Em uma implementação real, você analisaria dados históricos para determinar os melhores horários
-        var recommendations = new List<PostTimeRecommendation>();
+        var recommendations = new List<MicroSaaS.Shared.Models.PostTimeRecommendation>();
         
         // Gerar recomendações para diferentes dias da semana
         foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
         {
             // Adicionar algumas recomendações para manhã, tarde e noite
-            recommendations.Add(new PostTimeRecommendation
+            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
             {
+                Id = Guid.NewGuid(),
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(9, 0, 0), // 9:00 AM
                 EngagementScore = (decimal)(0.6 + Random.Shared.NextDouble() * 0.4)
             });
             
-            recommendations.Add(new PostTimeRecommendation
+            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
             {
+                Id = Guid.NewGuid(),
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(12, 0, 0), // 12:00 PM
                 EngagementScore = (decimal)(0.5 + Random.Shared.NextDouble() * 0.5)
             });
             
-            recommendations.Add(new PostTimeRecommendation
+            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
             {
+                Id = Guid.NewGuid(),
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(18, 0, 0), // 6:00 PM
                 EngagementScore = (decimal)(0.7 + Random.Shared.NextDouble() * 0.3)

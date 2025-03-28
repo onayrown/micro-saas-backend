@@ -7,5 +7,8 @@ public enum SocialMediaPlatform
     TikTok,
     Facebook,
     Twitter,
-    LinkedIn
+    LinkedIn,
+    Pinterest,
+    Snapchat,
+    All
 }

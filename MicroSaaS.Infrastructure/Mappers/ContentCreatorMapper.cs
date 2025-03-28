@@ -2,48 +2,78 @@ using MicroSaaS.Domain.Entities;
 using MicroSaaS.Infrastructure.Entities;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace MicroSaaS.Infrastructure.Mappers;
 
 public static class ContentCreatorMapper
 {
-    public static ContentCreatorEntity? ToEntity(this ContentCreator creator)
-    {
-        if (creator == null) return null;
-
-        return new ContentCreatorEntity
-        {
-            Id = creator.Id.ToString(),
-            Name = creator.Name,
-            Email = creator.Email,
-            Username = creator.Username,
-            Bio = creator.Bio,
-            Niche = creator.Niche,
-            ContentType = creator.ContentType,
-            SubscriptionPlan = creator.SubscriptionPlan?.ToEntity(),
-            SocialMediaAccounts = creator.SocialMediaAccounts?.Select(a => a.ToEntity()).ToList() ?? new List<SocialMediaAccountEntity>(),
-            CreatedAt = creator.CreatedAt,
-            UpdatedAt = creator.UpdatedAt
-        };
-    }
-
-    public static ContentCreator? ToDomain(this ContentCreatorEntity entity)
+    public static ContentCreator ToDomain(ContentCreatorEntity entity)
     {
         if (entity == null) return null;
 
         return new ContentCreator
         {
-            Id = string.IsNullOrEmpty(entity.Id) ? Guid.Empty : Guid.Parse(entity.Id),
+            Id = entity.Id,
+            UserId = entity.UserId,
             Name = entity.Name,
             Email = entity.Email,
             Username = entity.Username,
             Bio = entity.Bio,
-            Niche = entity.Niche,
-            ContentType = entity.ContentType,
-            SubscriptionPlan = entity.SubscriptionPlan?.ToDomain(),
-            SocialMediaAccounts = entity.SocialMediaAccounts?.Select(a => a.ToDomain()).ToList() ?? new List<SocialMediaAccount>(),
+            ProfileImageUrl = entity.ProfileImageUrl,
+            WebsiteUrl = entity.WebsiteUrl,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    public static ContentCreatorEntity ToEntity(ContentCreator domain)
+    {
+        if (domain == null) return null;
+
+        return new ContentCreatorEntity
+        {
+            Id = domain.Id,
+            UserId = domain.UserId,
+            Name = domain.Name,
+            Email = domain.Email,
+            Username = domain.Username,
+            Bio = domain.Bio,
+            ProfileImageUrl = domain.ProfileImageUrl,
+            WebsiteUrl = domain.WebsiteUrl,
+            CreatedAt = domain.CreatedAt,
+            UpdatedAt = domain.UpdatedAt
+        };
+    }
+}
+
+public static class SubscriptionPlanMapper
+{
+    public static SubscriptionPlan ToDomain(SubscriptionPlanEntity entity)
+    {
+        if (entity == null) return null;
+
+        return new SubscriptionPlan
+        {
+            Id = Guid.Parse(entity.Id),
+            Name = entity.Name,
+            Price = entity.Price,
+            MaxPosts = entity.MaxPosts,
+            IsFreePlan = entity.IsFreePlan
+        };
+    }
+
+    public static SubscriptionPlanEntity ToEntity(SubscriptionPlan domain)
+    {
+        if (domain == null) return null;
+
+        return new SubscriptionPlanEntity
+        {
+            Id = domain.Id.ToString(),
+            Name = domain.Name,
+            Price = domain.Price,
+            MaxPosts = domain.MaxPosts,
+            IsFreePlan = domain.IsFreePlan
         };
     }
 } 

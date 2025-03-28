@@ -1,11 +1,16 @@
 ﻿using MicroSaaS.Application.DTOs.ContentPost;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Application.Mappers;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Domain.Validators;
 using MicroSaaS.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -32,20 +37,9 @@ public class ContentPostController : ControllerBase
     public async Task<ActionResult<List<ContentPostDto>>> GetScheduledPosts(Guid creatorId)
     {
         var posts = await _repository.GetScheduledByCreatorIdAsync(creatorId);
+        var postsDto = posts.Select(ContentPostMapper.ToDto).ToList();
 
-        return Ok(posts.Select(post => new ContentPostDto
-        {
-            Id = post.Id,
-            CreatorId = post.CreatorId,
-            Title = post.Title,
-            Content = post.Content,
-            Platform = post.Platform,
-            MediaUrl = post.MediaUrl,
-            ScheduledTime = post.ScheduledTime,
-            Status = post.Status,
-            CreatedAt = post.CreatedAt,
-            UpdatedAt = post.UpdatedAt
-        }).ToList());
+        return Ok(postsDto);
     }
 
     [HttpPost]
@@ -55,34 +49,13 @@ public class ContentPostController : ControllerBase
         if (creator == null)
             return BadRequest(new { message = "Criador de conteúdo não encontrado" });
 
-        var post = await _contentPlanningService.CreatePostAsync(new Domain.Entities.ContentPost
-        {
-            Id = Guid.NewGuid(),
-            CreatorId = request.CreatorId,
-            Creator = creator,
-            Title = request.Title ?? "Novo Post",
-            Content = request.Content,
-            Platform = request.Platform,
-            MediaUrl = request.MediaUrl,
-            ScheduledTime = request.ScheduledTime ?? DateTime.UtcNow.AddDays(1),
-            Status = PostStatus.Scheduled,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
+        var postEntity = ContentPostMapper.ToEntity(request);
+        postEntity.Creator = creator;
 
-        return CreatedAtAction(nameof(GetById), new { id = post.Id }, new ContentPostDto
-        {
-            Id = post.Id,
-            CreatorId = post.CreatorId,
-            Title = post.Title,
-            Content = post.Content,
-            Platform = post.Platform,
-            MediaUrl = post.MediaUrl,
-            ScheduledTime = post.ScheduledTime,
-            Status = post.Status,
-            CreatedAt = post.CreatedAt,
-            UpdatedAt = post.UpdatedAt
-        });
+        var post = await _contentPlanningService.CreatePostAsync(postEntity);
+        var postDto = ContentPostMapper.ToDto(post);
+
+        return CreatedAtAction(nameof(GetById), new { id = post.Id }, postDto);
     }
 
     [HttpGet("{id}")]
@@ -93,19 +66,8 @@ public class ContentPostController : ControllerBase
         if (post == null)
             return NotFound();
 
-        return Ok(new ContentPostDto
-        {
-            Id = post.Id,
-            CreatorId = post.CreatorId,
-            Title = post.Title,
-            Content = post.Content,
-            Platform = post.Platform,
-            MediaUrl = post.MediaUrl,
-            ScheduledTime = post.ScheduledTime,
-            Status = post.Status,
-            CreatedAt = post.CreatedAt,
-            UpdatedAt = post.UpdatedAt
-        });
+        var postDto = ContentPostMapper.ToDto(post);
+        return Ok(postDto);
     }
 
     [HttpPut("{id}")]
@@ -116,36 +78,9 @@ public class ContentPostController : ControllerBase
         if (existingPost == null)
             return NotFound();
 
-        request.Platform = existingPost.Platform;
-
-        existingPost.Title = request.Title ?? existingPost.Title;
-        existingPost.Content = request.Content;
-        existingPost.MediaUrl = request.MediaUrl;
-        existingPost.ScheduledTime = request.ScheduledTime ?? existingPost.ScheduledTime;
-        existingPost.Status = request.Status;
-        existingPost.UpdatedAt = DateTime.UtcNow;
-
+        ContentPostMapper.UpdateEntity(existingPost, request);
         await _repository.UpdateAsync(existingPost);
+        
         return NoContent();
     }
-}
-
-public class CreatePostRequest
-{
-    public Guid CreatorId { get; set; }
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public SocialMediaPlatform Platform { get; set; }
-    public string MediaUrl { get; set; }
-    public DateTime? ScheduledTime { get; set; }
-}
-
-public class UpdatePostRequest
-{
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public string MediaUrl { get; set; }
-    public DateTime? ScheduledTime { get; set; }
-    public PostStatus Status { get; set; }
-    public SocialMediaPlatform Platform { get; set; }
 }

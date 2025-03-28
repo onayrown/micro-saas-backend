@@ -1,5 +1,6 @@
 ﻿using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Domain.Entities;
+using System;
 
 namespace MicroSaaS.Application.Mappers;
 
@@ -10,10 +11,9 @@ public static class UserMapper
         return new UserDto
         {
             Id = user.Id,
-            Name = user.Name,
+            Username = user.Username,
             Email = user.Email,
             IsActive = user.IsActive,
-            LastLoginAt = user.LastLoginAt,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
@@ -24,8 +24,9 @@ public static class UserMapper
         return new User
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
+            Username = request.Name,
             Email = request.Email,
+            PasswordHash = string.Empty, // Será preenchido pelo serviço
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -40,11 +41,12 @@ public static class UserMapper
         return new User
         {
             Id = userDto.Id,
-            Name = userDto.Name,
+            Username = userDto.Username,
             Email = userDto.Email,
+            PasswordHash = string.Empty, // Será preenchido pelo serviço
+            IsActive = userDto.IsActive,
             CreatedAt = userDto.CreatedAt,
-            LastLoginAt = userDto.LastLoginAt,
-            IsActive = userDto.IsActive
+            UpdatedAt = userDto.UpdatedAt
         };
     }
 }

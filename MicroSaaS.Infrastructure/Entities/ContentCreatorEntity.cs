@@ -1,11 +1,8 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MicroSaaS.Shared.Enums;
 
 namespace MicroSaaS.Infrastructure.Entities
 {
@@ -13,36 +10,37 @@ namespace MicroSaaS.Infrastructure.Entities
     {
         [BsonId]
         [BsonRepresentation(BsonType.String)]
-        public string? Id { get; set; }
+        public Guid Id { get; set; }
+
+        [BsonRepresentation(BsonType.String)]
+        public Guid UserId { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Bio { get; set; } = string.Empty;
+        public string ProfileImageUrl { get; set; } = string.Empty;
+        public string WebsiteUrl { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    public class SubscriptionPlanEntity
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.String)]
+        public string Id { get; set; } = string.Empty;
 
         [BsonElement("name")]
-        public string? Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
-        [BsonElement("email")]
-        public string? Email { get; set; }
+        [BsonElement("price")]
+        public decimal Price { get; set; }
 
-        [BsonElement("username")]
-        public string? Username { get; set; }
+        [BsonElement("max_posts")]
+        public int MaxPosts { get; set; }
 
-        [BsonElement("bio")]
-        public string? Bio { get; set; }
-
-        [BsonElement("niche")]
-        public string? Niche { get; set; }
-
-        [BsonElement("content_type")]
-        public ContentType ContentType { get; set; }
-
-        [BsonElement("subscription_plan")]
-        public SubscriptionPlanEntity? SubscriptionPlan { get; set; }
-
-        [BsonElement("social_media_accounts")]
-        public List<SocialMediaAccountEntity> SocialMediaAccounts { get; set; } = new();
-
-        [BsonElement("created_at")]
-        public DateTime CreatedAt { get; set; }
-
-        [BsonElement("updated_at")]
-        public DateTime UpdatedAt { get; set; }
+        [BsonElement("is_free_plan")]
+        public bool IsFreePlan { get; set; }
     }
 }

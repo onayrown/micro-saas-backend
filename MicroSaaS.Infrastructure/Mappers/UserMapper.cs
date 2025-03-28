@@ -6,35 +6,35 @@ namespace MicroSaaS.Infrastructure.Mappers;
 
 public static class UserMapper
 {
-    public static UserEntity ToEntity(this User user)
+    public static UserEntity? ToEntity(this User? user)
     {
         if (user == null) return null;
 
         return new UserEntity
         {
             Id = user.Id.ToString(),
-            Name = user.Name,
+            Username = user.Username,
             Email = user.Email,
             PasswordHash = user.PasswordHash,
+            IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
-            IsActive = user.IsActive
+            UpdatedAt = user.UpdatedAt
         };
     }
 
-    public static User ToDomain(this UserEntity entity)
+    public static User? ToDomain(this UserEntity? entity)
     {
         if (entity == null) return null;
 
         return new User
         {
             Id = Guid.Parse(entity.Id),
-            Name = entity.Name,
+            Username = entity.Username,
             Email = entity.Email,
             PasswordHash = entity.PasswordHash,
+            IsActive = entity.IsActive,
             CreatedAt = entity.CreatedAt,
-            LastLoginAt = entity.LastLoginAt,
-            IsActive = entity.IsActive
+            UpdatedAt = entity.UpdatedAt
         };
     }
 } 

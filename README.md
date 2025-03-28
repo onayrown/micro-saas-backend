@@ -4,7 +4,7 @@ Este é o backend de um projeto Micro SaaS para gerenciar o conteúdo de criador
 
 ## Estado Atual do Projeto
 
-O projeto está em desenvolvimento ativo com as principais funcionalidades já implementadas. Para ver o estado detalhado do projeto e o checklist de funcionalidades, consulte o arquivo [MicroSaaS/docs/projeto-status.md](MicroSaaS/docs/projeto-status.md).
+O projeto está em desenvolvimento ativo com as principais funcionalidades já implementadas. Para ver o estado detalhado do projeto e o checklist de funcionalidades, consulte o arquivo [docs/projeto-status.md](docs/projeto-status.md).
 
 ### Destaques
 - ✅ Estrutura de arquitetura limpa implementada
@@ -34,6 +34,7 @@ O projeto está em desenvolvimento ativo com as principais funcionalidades já i
 - **Documentação de API**: Swagger
 - **Autenticação**: JWT (JSON Web Tokens)
 - **Testes**: xUnit, Moq, FluentAssertions
+- **Logging**: Serilog
 
 ## Estrutura do Projeto
 
@@ -46,6 +47,16 @@ O projeto segue a arquitetura limpa (Clean Architecture) com as seguintes camada
 - **MicroSaaS.Backend**: Controllers e configurações da API
 - **MicroSaaS.Tests**: Testes unitários
 - **MicroSaaS.IntegrationTests**: Testes de integração
+
+### Diretrizes de Arquitetura
+
+Para garantir a consistência e manutenibilidade do código, seguimos diretrizes específicas para as dependências entre camadas. Consulte o documento [docs/arquitetura.md](docs/arquitetura.md) para entender:
+
+- Estrutura de referências entre projetos
+- Responsabilidades de cada camada
+- Padrões de implementação a serem seguidos
+
+**Importante**: Todos os desenvolvedores devem seguir estas diretrizes ao contribuir para o projeto.
 
 ## Como Rodar o Projeto
 
@@ -94,7 +105,7 @@ dotnet test MicroSaaS.IntegrationTests
 
 ## Próximos Passos
 
-Confira o arquivo [MicroSaaS/docs/projeto-status.md](MicroSaaS/docs/projeto-status.md) para ver a lista completa de funcionalidades pendentes e as prioridades de desenvolvimento.
+Confira o arquivo [docs/projeto-status.md](docs/projeto-status.md) para ver a lista completa de funcionalidades pendentes e as prioridades de desenvolvimento.
 
 ## Contribuição
 

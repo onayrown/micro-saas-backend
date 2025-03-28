@@ -7,24 +7,24 @@ namespace MicroSaaS.Infrastructure.Entities;
 public class UserEntity
 {
     [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public required string Id { get; set; }
+    [BsonRepresentation(BsonType.String)]
+    public string Id { get; set; } = string.Empty;
 
-    [BsonElement("name")]
-    public required string Name { get; set; }
+    [BsonElement("username")]
+    public string Username { get; set; } = string.Empty;
 
     [BsonElement("email")]
-    public required string Email { get; set; }
+    public string Email { get; set; } = string.Empty;
 
-    [BsonElement("passwordHash")]
-    public required string PasswordHash { get; set; }
+    [BsonElement("password_hash")]
+    public string PasswordHash { get; set; } = string.Empty;
 
-    [BsonElement("createdAt")]
-    public DateTime CreatedAt { get; set; }
+    [BsonElement("is_active")]
+    public bool IsActive { get; set; } = true;
 
-    [BsonElement("lastLoginAt")]
-    public DateTime? LastLoginAt { get; set; }
+    [BsonElement("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [BsonElement("isActive")]
-    public bool IsActive { get; set; }
+    [BsonElement("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

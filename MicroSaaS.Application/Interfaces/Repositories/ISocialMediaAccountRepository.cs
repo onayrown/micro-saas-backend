@@ -12,4 +12,7 @@ public interface ISocialMediaAccountRepository
     Task UpdateAsync(SocialMediaAccount account);
     Task DeleteAsync(Guid id);
     Task UpdateTokenAsync(Guid id, string accessToken, string refreshToken, DateTime expiresAt);
+    Task<int> GetTotalFollowersAsync();
+    Task<int> GetTotalFollowersByCreatorAsync(Guid creatorId);
+    Task RefreshSocialMediaMetricsAsync();
 } 

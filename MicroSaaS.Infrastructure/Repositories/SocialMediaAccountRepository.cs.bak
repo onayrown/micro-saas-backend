@@ -1,0 +1,94 @@
+using MicroSaaS.Domain.Entities;
+using MicroSaaS.Domain.Repositories;
+using MicroSaaS.Infrastructure.Database;
+using MicroSaaS.Infrastructure.Entities;
+using MicroSaaS.Infrastructure.Mappers;
+using MicroSaaS.Shared.Enums;
+using MongoDB.Driver;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace MicroSaaS.Infrastructure.Repositories
+{
+    public class SocialMediaAccountRepository : ISocialMediaAccountRepository
+    {
+        private readonly IMongoCollection<SocialMediaAccountEntity> _accounts;
+
+        public SocialMediaAccountRepository(IMongoDbContext context)
+        {
+            _accounts = context.SocialMediaAccounts;
+        }
+
+        public async Task<SocialMediaAccount> GetByIdAsync(Guid id)
+        {
+            var account = await _accounts
+                .Find(a => a.Id == id.ToString())
+                .FirstOrDefaultAsync();
+
+            return account?.ToDomain();
+        }
+
+        public async Task<IEnumerable<SocialMediaAccount>> GetAllAsync()
+        {
+            var accounts = await _accounts
+                .Find(_ => true)
+                .ToListAsync();
+
+            return accounts.Select(a => a.ToDomain());
+        }
+
+        public async Task<SocialMediaAccount> AddAsync(SocialMediaAccount account)
+        {
+            var entity = account.ToEntity();
+            await _accounts.InsertOneAsync(entity);
+            return entity.ToDomain();
+        }
+
+        public async Task<SocialMediaAccount> UpdateAsync(SocialMediaAccount account)
+        {
+            var entity = account.ToEntity();
+            var result = await _accounts.ReplaceOneAsync(
+                a => a.Id == account.Id.ToString(),
+                entity);
+
+            return result.IsAcknowledged ? entity.ToDomain() : null;
+        }
+
+        public async Task<bool> DeleteAsync(Guid id)
+        {
+            var result = await _accounts.DeleteOneAsync(a => a.Id == id.ToString());
+            return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
+        public async Task<IEnumerable<SocialMediaAccount>> GetByCreatorIdAsync(Guid creatorId)
+        {
+            var accounts = await _accounts
+                .Find(a => a.CreatorId == creatorId.ToString())
+                .ToListAsync();
+
+            return accounts.Select(a => a.ToDomain());
+        }
+
+        public async Task<SocialMediaAccount> GetByCreatorIdAndPlatformAsync(Guid creatorId, SocialMediaPlatform platform)
+        {
+            var account = await _accounts
+                .Find(a => a.CreatorId == creatorId.ToString() && a.Platform == platform)
+                .FirstOrDefaultAsync();
+
+            return account?.ToDomain();
+        }
+
+        public async Task UpdateTokenAsync(Guid id, string accessToken, string refreshToken, DateTime expiresAt)
+        {
+            var update = Builders<SocialMediaAccountEntity>.Update
+                .Set(x => x.AccessToken, accessToken)
+                .Set(x => x.RefreshToken, refreshToken)
+                .Set(x => x.TokenExpiresAt, expiresAt)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            await _accounts.UpdateOneAsync(x => x.Id == id.ToString(), update);
+        }
+    }
+} 

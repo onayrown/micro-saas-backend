@@ -6,35 +6,39 @@ namespace MicroSaaS.Infrastructure.Mappers;
 
 public static class SocialMediaAccountMapper
 {
-    public static SocialMediaAccountEntity? ToEntity(this SocialMediaAccount account)
-    {
-        if (account == null) return null;
-
-        return new SocialMediaAccountEntity
-        {
-            Id = account.Id.ToString(),
-            Platform = account.Platform,
-            AccessToken = account.AccessToken,
-            RefreshToken = account.RefreshToken,
-            TokenExpiry = account.TokenExpiresAt,
-            CreatedAt = account.CreatedAt,
-            UpdatedAt = account.UpdatedAt
-        };
-    }
-
-    public static SocialMediaAccount? ToDomain(this SocialMediaAccountEntity entity)
+    public static SocialMediaAccount ToDomain(SocialMediaAccountEntity entity)
     {
         if (entity == null) return null;
 
         return new SocialMediaAccount
         {
-            Id = string.IsNullOrEmpty(entity.Id) ? Guid.Empty : Guid.Parse(entity.Id),
+            Id = entity.Id,
+            CreatorId = entity.CreatorId,
             Platform = entity.Platform,
+            Username = entity.Username,
             AccessToken = entity.AccessToken,
             RefreshToken = entity.RefreshToken,
-            TokenExpiresAt = entity.TokenExpiry,
+            TokenExpiresAt = entity.TokenExpiresAt,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    public static SocialMediaAccountEntity ToEntity(SocialMediaAccount domain)
+    {
+        if (domain == null) return null;
+
+        return new SocialMediaAccountEntity
+        {
+            Id = domain.Id,
+            CreatorId = domain.CreatorId,
+            Platform = domain.Platform,
+            Username = domain.Username,
+            AccessToken = domain.AccessToken,
+            RefreshToken = domain.RefreshToken,
+            TokenExpiresAt = domain.TokenExpiresAt,
+            CreatedAt = domain.CreatedAt,
+            UpdatedAt = domain.UpdatedAt
         };
     }
 } 

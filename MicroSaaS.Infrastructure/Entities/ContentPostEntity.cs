@@ -1,6 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MicroSaaS.Shared.Enums;
+using System;
 
 namespace MicroSaaS.Infrastructure.Entities;
 
@@ -15,13 +16,13 @@ public class ContentPostEntity
     public Guid CreatorId { get; set; }
 
     [BsonElement("title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = string.Empty;
 
     [BsonElement("content")]
-    public string Content { get; set; }
+    public string Content { get; set; } = string.Empty;
 
     [BsonElement("mediaUrl")]
-    public string MediaUrl { get; set; }
+    public string MediaUrl { get; set; } = string.Empty;
 
     [BsonElement("platform")]
     public SocialMediaPlatform Platform { get; set; }
@@ -30,7 +31,7 @@ public class ContentPostEntity
     public PostStatus Status { get; set; }
 
     [BsonElement("scheduledTime")]
-    public DateTime ScheduledTime { get; set; }
+    public DateTime? ScheduledTime { get; set; }
 
     [BsonElement("scheduledFor")]
     public DateTime? ScheduledFor { get; set; }
@@ -40,6 +41,21 @@ public class ContentPostEntity
 
     [BsonElement("postedTime")]
     public DateTime? PostedTime { get; set; }
+
+    [BsonElement("views")]
+    public long Views { get; set; }
+
+    [BsonElement("likes")]
+    public long Likes { get; set; }
+
+    [BsonElement("comments")]
+    public long Comments { get; set; }
+
+    [BsonElement("shares")]
+    public long Shares { get; set; }
+
+    [BsonElement("engagementRate")]
+    public decimal EngagementRate { get; set; }
 
     [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; }

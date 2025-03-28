@@ -20,6 +20,11 @@ public interface IRevenueService
     Task<IEnumerable<DailyRevenue>> GetDailyRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     Task<IEnumerable<PlatformRevenue>> GetPlatformRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     Task<decimal> GetTotalRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    
+    // Métodos adicionais
+    Task<decimal> CalculateContentRevenueAsync(Guid contentId);
+    Task<decimal> CalculateCreatorRevenueAsync(Guid creatorId);
+    Task RefreshRevenueMetricsAsync();
 }
 
 public class RevenueSummary
@@ -41,4 +46,5 @@ public class DailyRevenue
     public DateTime Date { get; set; }
     public decimal Revenue { get; set; }
     public long Views { get; set; }
+    public decimal Amount { get; set; }
 }

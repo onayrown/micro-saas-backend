@@ -36,7 +36,7 @@ public class TestAuthController : ControllerBase
             User = new UserDto
             {
                 Id = Guid.NewGuid(),
-                Name = "Test User",
+                Username = "Test User",
                 Email = request.Email,
                 IsActive = true
             }
@@ -56,7 +56,7 @@ public class TestAuthController : ControllerBase
             User = new UserDto
             {
                 Id = Guid.NewGuid(),
-                Name = request.Name,
+                Username = request.Name,
                 Email = request.Email,
                 IsActive = true
             }

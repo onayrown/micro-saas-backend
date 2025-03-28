@@ -1,95 +1,96 @@
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
+using System;
+using System.Collections.Generic;
 
 namespace MicroSaaS.Tests.Helpers;
 
 public static class TestHelper
 {
-    public static User CreateTestUser(
-        string? name = null,
-        string? email = null,
-        string? passwordHash = null,
-        bool isActive = true)
+    public static User CreateTestUser(string username = "testuser", string email = "test@example.com")
     {
         return new User
         {
             Id = Guid.NewGuid(),
-            Name = name ?? "testuser",
-            Email = email ?? "test@example.com",
-            PasswordHash = passwordHash ?? "hashedpassword123",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            IsActive = isActive
-        };
-    }
-
-    public static ContentCreator CreateTestContentCreator(
-        string? name = null,
-        string? email = null,
-        string? username = null,
-        Domain.Entities.SubscriptionPlan? subscriptionPlan = null)
-    {
-        return new ContentCreator
-        {
-            Id = Guid.NewGuid(),
-            Name = name ?? "Test Creator",
-            Email = email ?? "creator@example.com",
-            Username = username ?? "testcreator",
-            Bio = "Test bio",
-            Niche = "Test niche",
-            SocialMediaAccounts = new List<SocialMediaAccount>(),
-            SubscriptionPlan = subscriptionPlan ?? new Domain.Entities.SubscriptionPlan
-            {
-                Id = Guid.NewGuid(),
-                Name = Shared.Enums.SubscriptionPlan.Free.ToString(),
-                Price = 0,
-                MaxPosts = 10,
-                IsFreePlan = true
-            }
-        };
-    }
-
-    public static SocialMediaAccount CreateTestSocialMediaAccount(
-        Guid creatorId,
-        SocialMediaPlatform? platform = null)
-    {
-        return new SocialMediaAccount
-        {
-            Id = Guid.NewGuid(),
-            CreatorId = creatorId,
-            Platform = platform ?? SocialMediaPlatform.Instagram,
-            Username = "testaccount",
-            AccessToken = "test_access_token",
-            RefreshToken = "test_refresh_token",
-            TokenExpiresAt = DateTime.UtcNow.AddHours(1),
+            Username = username,
+            Email = email,
+            PasswordHash = "hashedpassword",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
     }
 
-    public static ContentPost CreateTestContentPost(
-        Guid creatorId,
-        string? title = null,
-        string? content = null,
-        PostStatus status = PostStatus.Draft)
+    public static ContentCreator CreateTestContentCreator(Guid? userId = null)
     {
-        var creator = CreateTestContentCreator();
+        userId ??= Guid.NewGuid();
         
+        return new ContentCreator
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId.Value,
+            Name = "Test Creator",
+            Username = "testcreator",
+            Email = "creator@example.com",
+            Bio = "Test bio",
+            Niche = "Technology",
+            ContentType = "Blog",
+            SubscriptionPlan = CreateTestSubscriptionPlan(),
+            SocialMediaAccounts = new List<SocialMediaAccount>(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public static Domain.Entities.SubscriptionPlan CreateTestSubscriptionPlan()
+    {
+        return new Domain.Entities.SubscriptionPlan
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Plan",
+            Price = 9.99m,
+            MaxPosts = 10,
+            IsFreePlan = false
+        };
+    }
+
+    public static SocialMediaAccount CreateTestSocialMediaAccount(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
+    {
+        return new SocialMediaAccount
+        {
+            Id = Guid.NewGuid(),
+            CreatorId = creatorId,
+            Platform = platform,
+            Username = "testaccount",
+            AccessToken = "test_access_token",
+            RefreshToken = "test_refresh_token",
+            TokenExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public static ContentPost CreateTestContentPost(Guid creatorId, PostStatus status = PostStatus.Draft)
+    {
+        var now = DateTime.UtcNow;
+        var scheduledTime = now.Date.Add(TimeSpan.FromHours(12));
+
         return new ContentPost
         {
             Id = Guid.NewGuid(),
             CreatorId = creatorId,
-            Creator = creator,
-            Title = title ?? "Test Post",
-            Content = content ?? "Test content",
-            MediaUrl = "https://example.com/test.jpg",
+            Title = "Test Post",
+            Content = "Test content",
+            MediaUrl = "https://example.com/media.jpg",
             Platform = SocialMediaPlatform.Instagram,
             Status = status,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            ScheduledTime = DateTime.UtcNow.AddDays(1),
-            PublishedAt = status == PostStatus.Published ? DateTime.UtcNow : null
+            ScheduledTime = scheduledTime,
+            ScheduledFor = now.AddDays(1),
+            PublishedAt = status == PostStatus.Published ? now : null,
+            PostedTime = status == PostStatus.Published ? now : null,
+            CreatedAt = now,
+            UpdatedAt = now
         };
     }
 

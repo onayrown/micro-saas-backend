@@ -1,53 +1,28 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using MicroSaaS.Shared.Enums;
+﻿using MicroSaaS.Shared.Enums;
+using System;
 
 namespace MicroSaaS.Domain.Entities
 {
     public class ContentPost
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; }
-
-        [BsonElement("creatorId")]
-        [BsonRepresentation(BsonType.String)]
         public Guid CreatorId { get; set; }
-
-        [BsonElement("creator")]
-        public required ContentCreator Creator { get; set; }
-
-        [BsonElement("title")]
-        public required string Title { get; set; }
-
-        [BsonElement("content")]
-        public required string Content { get; set; }
-
-        [BsonElement("mediaUrl")]
-        public required string MediaUrl { get; set; }
-
-        [BsonElement("platform")]
+        public ContentCreator Creator { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public string MediaUrl { get; set; } = string.Empty;
         public SocialMediaPlatform Platform { get; set; }
-
-        [BsonElement("status")]
         public PostStatus Status { get; set; }
-
-        [BsonElement("scheduledTime")]
-        public DateTime ScheduledTime { get; set; }
-        
-        [BsonElement("scheduledFor")]
+        public DateTime? ScheduledTime { get; set; }
         public DateTime? ScheduledFor { get; set; }
-
-        [BsonElement("publishedAt")]
         public DateTime? PublishedAt { get; set; }
-
-        [BsonElement("postedTime")]
         public DateTime? PostedTime { get; set; }
-
-        [BsonElement("createdAt")]
+        public long Views { get; set; }
+        public long Likes { get; set; }
+        public long Comments { get; set; }
+        public long Shares { get; set; }
+        public decimal EngagementRate { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }
 }
