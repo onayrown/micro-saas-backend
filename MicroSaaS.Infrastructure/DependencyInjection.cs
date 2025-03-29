@@ -6,6 +6,8 @@ using MicroSaaS.Infrastructure.Database;
 using MicroSaaS.Infrastructure.Repositories;
 using MicroSaaS.Infrastructure.Settings;
 using MongoDB.Driver;
+using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Infrastructure.Services;
 
 namespace MicroSaaS.Infrastructure
 {
@@ -15,6 +17,8 @@ namespace MicroSaaS.Infrastructure
         {
             // Configure MongoDB
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDb"));
+            
+            // Registrar o contexto do MongoDB usando a implementação Database
             services.AddSingleton<IMongoDbContext, MongoDbContext>();
 
             // Register repositories
@@ -25,6 +29,25 @@ namespace MicroSaaS.Infrastructure
             services.AddScoped<AppRepos.IContentPerformanceRepository, ContentPerformanceRepository>();
             services.AddScoped<AppRepos.IPerformanceMetricsRepository, PerformanceMetricsRepository>();
             services.AddScoped<AppRepos.IDashboardInsightsRepository, DashboardInsightsRepository>();
+            
+            // Adicionar o serviço de análise de conteúdo
+            services.AddScoped<IContentAnalysisService, ContentAnalysisService>();
+            
+            // Adicionar o serviço de recomendação
+            services.AddScoped<IRecommendationService, RecommendationService>();
+            
+            // Adicionar serviço de logging
+            services.AddScoped<ILoggingService, SerilogService>();
+            
+            // Adicionar serviços relacionados à otimização de desempenho
+            services.AddSingleton<ICacheService, RedisCacheService>();
+            
+            // Configurar Redis para caching
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("Redis");
+                options.InstanceName = "MicroSaaS:";
+            });
 
             return services;
         }

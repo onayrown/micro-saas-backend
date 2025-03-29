@@ -21,7 +21,7 @@ namespace MicroSaaS.Infrastructure.AdapterRepositories
             return await _domainRepository.GetByIdAsync(id);
         }
 
-        public async Task<User> GetByEmailAsync(string email)
+        public async Task<User?> GetByEmailAsync(string email)
         {
             return await _domainRepository.GetByEmailAsync(email);
         }

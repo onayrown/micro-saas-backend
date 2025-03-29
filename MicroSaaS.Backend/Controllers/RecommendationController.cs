@@ -16,13 +16,16 @@ namespace MicroSaaS.Backend.Controllers;
 public class RecommendationController : ControllerBase
 {
     private readonly IRecommendationService _recommendationService;
+    private readonly IContentAnalysisService _contentAnalysisService;
     private readonly ILoggingService _loggingService;
 
     public RecommendationController(
         IRecommendationService recommendationService,
+        IContentAnalysisService contentAnalysisService,
         ILoggingService loggingService)
     {
         _recommendationService = recommendationService;
+        _contentAnalysisService = contentAnalysisService;
         _loggingService = loggingService;
     }
 
@@ -257,6 +260,96 @@ public class RecommendationController : ControllerBase
         {
             _loggingService.LogError(ex, "Erro ao atualizar recomendações");
             return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("content-insights/{contentId}")]
+    public async Task<IActionResult> GetContentInsights(Guid contentId)
+    {
+        try
+        {
+            var insights = await _contentAnalysisService.GetContentInsightsAsync(contentId);
+            return Ok(insights);
+        }
+        catch (ArgumentException aex)
+        {
+            _loggingService.LogWarning($"Solicitação inválida para insights de conteúdo: {aex.Message}");
+            return BadRequest(aex.Message);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogError(ex, $"Erro ao obter insights de conteúdo: {ex.Message}");
+            return StatusCode(500, "Erro ao processar a solicitação de insights de conteúdo.");
+        }
+    }
+
+    [HttpGet("high-performance-patterns/{creatorId}")]
+    public async Task<IActionResult> GetHighPerformancePatterns(Guid creatorId, [FromQuery] int topPostsCount = 20)
+    {
+        try
+        {
+            var patterns = await _contentAnalysisService.AnalyzeHighPerformancePatternsAsync(creatorId, topPostsCount);
+            return Ok(patterns);
+        }
+        catch (ArgumentException aex)
+        {
+            _loggingService.LogWarning($"Solicitação inválida para padrões de alto desempenho: {aex.Message}");
+            return BadRequest(aex.Message);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogError(ex, $"Erro ao obter padrões de alto desempenho: {ex.Message}");
+            return StatusCode(500, "Erro ao processar a solicitação de padrões de alto desempenho.");
+        }
+    }
+
+    [HttpGet("content-recommendations/{creatorId}")]
+    public async Task<IActionResult> GenerateContentRecommendations(Guid creatorId)
+    {
+        try
+        {
+            var recommendations = await _contentAnalysisService.GenerateContentRecommendationsAsync(creatorId);
+            return Ok(recommendations);
+        }
+        catch (ArgumentException aex)
+        {
+            _loggingService.LogWarning($"Solicitação inválida para recomendações de conteúdo: {aex.Message}");
+            return BadRequest(aex.Message);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogError(ex, $"Erro ao obter recomendações de conteúdo: {ex.Message}");
+            return StatusCode(500, "Erro ao processar a solicitação de recomendações de conteúdo.");
+        }
+    }
+
+    [HttpGet("topic-suggestions/{creatorId}")]
+    public async Task<IActionResult> GetTopicSuggestions(Guid creatorId)
+    {
+        try
+        {
+            var topics = await _recommendationService.GetTopicRecommendationsAsync(creatorId);
+            return Ok(topics);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogError(ex, $"Erro ao obter sugestões de tópicos: {ex.Message}");
+            return StatusCode(500, "Erro ao processar a solicitação de sugestões de tópicos.");
+        }
+    }
+
+    [HttpGet("format-suggestions/{creatorId}")]
+    public async Task<IActionResult> GetFormatSuggestions(Guid creatorId)
+    {
+        try
+        {
+            var formats = await _recommendationService.GetFormatRecommendationsAsync(creatorId);
+            return Ok(formats);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogError(ex, $"Erro ao obter sugestões de formatos: {ex.Message}");
+            return StatusCode(500, "Erro ao processar a solicitação de sugestões de formatos.");
         }
     }
 } 

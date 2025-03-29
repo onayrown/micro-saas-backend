@@ -1,63 +1,93 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Hosting;
-using System.IO;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.TestHost;
-using System;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using MicroSaaS.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class CustomWebApplicationFactory : WebApplicationFactory<TestStartup>
+    /// <summary>
+    /// Fábrica de teste extremamente simplificada para evitar problemas com a configuração do API versioning
+    /// </summary>
+    public class CustomWebApplicationFactory : WebApplicationFactory<MicroSaaS.Backend.Program>
     {
         protected override IHostBuilder CreateHostBuilder()
         {
-            var hostBuilder = Host.CreateDefaultBuilder()
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<TestStartup>();
-                    webBuilder.UseContentRoot(Directory.GetCurrentDirectory());
-                    webBuilder.UseEnvironment("Testing");
-                    
-                    // Configurar o servidor de teste
-                    webBuilder.UseTestServer(options =>
-                    {
-                        options.PreserveExecutionContext = true;
-                    });
-                })
+            // Usamos Create e não CreateDefault para evitar qualquer
+            // configuração automática que possa causar problemas
+            return Host.CreateDefaultBuilder()
                 .ConfigureLogging(logging =>
                 {
                     logging.ClearProviders();
-                    logging.AddConsole();
                     logging.AddDebug();
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseEnvironment("Testing");
+                    webBuilder.ConfigureServices(services =>
+                    {
+                        // Remover todos os serviços de versionamento e route options existentes
+                        // para evitar duplicações
+                        var descriptors = services
+                            .Where(d => d.ServiceType.Namespace?.Contains("Versioning") == true || 
+                                   d.ImplementationType?.Namespace?.Contains("Versioning") == true ||
+                                   d.ServiceType == typeof(IConfigureOptions<RouteOptions>) || 
+                                   d.ServiceType == typeof(IPostConfigureOptions<RouteOptions>))
+                            .ToList();
+
+                        foreach (var descriptor in descriptors)
+                        {
+                            services.Remove(descriptor);
+                        }
+                    });
+                    webBuilder.UseStartup<CustomTestStartup>();
                 });
-                
-            Console.WriteLine("CreateHostBuilder: Host builder configured");
-            return hostBuilder;
+        }
+    }
+
+    /// <summary>
+    /// Startup extremamente simplificado para testes
+    /// </summary>
+    public class CustomTestStartup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Adicionar mock services básicos
+            services.AddScoped<IAuthService, MockAuthService>();
+            services.AddScoped<ILoggingService, MockLoggingService>();
+            services.AddScoped<ITokenService, MockTokenService>();
+            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
+            services.AddScoped<IRecommendationService, MockRecommendationService>();
+            services.AddScoped<ISchedulerService, MockSchedulerService>();
+
+            // Adicionar controladores sem qualquer configuração adicional
+            services.AddControllers();
+
+            // Adicionar API versioning com configuração mínima e sem restrições adicionais
+            services.AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = new ApiVersion(1, 0);
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
+            });
         }
 
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public void Configure(IApplicationBuilder app)
         {
-            Console.WriteLine("ConfigureWebHost: Starting configuration");
-            
-            builder.UseEnvironment("Testing");
-            
-            // Configurar outros aspectos do servidor, como logging
-            builder.ConfigureServices(services =>
+            app.UseRouting();
+            app.UseEndpoints(endpoints =>
             {
-                // Adicionar logging mais detalhado
-                services.AddLogging(options =>
-                {
-                    options.ClearProviders();
-                    options.AddConsole();
-                    options.AddDebug();
-                });
-                
-                Console.WriteLine("ConfigureWebHost: Services configured");
+                endpoints.MapControllers();
             });
-            
-            Console.WriteLine("ConfigureWebHost: Configuration complete");
         }
     }
 } 

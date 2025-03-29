@@ -1,4 +1,5 @@
 using MicroSaaS.Domain.Entities;
+using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
@@ -34,6 +35,13 @@ public interface IRecommendationService
     
     // Atualização de recomendações
     Task RefreshRecommendationsAsync(Guid creatorId);
+
+    // Novos métodos para DTOs
+    Task<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestPostingTimesAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<List<ContentRecommendationDto>> GetContentRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<List<GrowthRecommendationDto>> GetGrowthRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<ContentRecommendationDto> GenerateCustomRecommendationAsync(CustomRecommendationRequestDto request);
+    Task<MicroSaaS.Shared.DTOs.AudienceSensitivityDto> GetAudienceSensitivityAnalysisAsync(Guid creatorId, SocialMediaPlatform platform);
 }
 
 public class TrendTopic

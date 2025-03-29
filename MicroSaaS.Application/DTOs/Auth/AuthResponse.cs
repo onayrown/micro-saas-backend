@@ -14,7 +14,7 @@ public class AuthResponse
     public UserDto? User { get; set; }
 
     [JsonPropertyName("token")]
-    public string? Token { get; set; }
+    public string Token { get; set; } = string.Empty;
 
     public static AuthResponse SuccessResponse(UserDto user, string token)
     {

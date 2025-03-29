@@ -5,11 +5,11 @@ namespace MicroSaaS.Application.DTOs.Auth;
 public class AuthenticationResult
 {
     public bool IsSuccess { get; private set; }
-    public string ErrorMessage { get; private set; }
-    public User User { get; private set; }
-    public string Token { get; private set; }
+    public string ErrorMessage { get; private set; } = string.Empty;
+    public User? User { get; private set; }
+    public string Token { get; private set; } = string.Empty;
 
-    private AuthenticationResult(bool isSuccess, string errorMessage, User user, string token)
+    private AuthenticationResult(bool isSuccess, string errorMessage, User? user, string token)
     {
         IsSuccess = isSuccess;
         ErrorMessage = errorMessage;

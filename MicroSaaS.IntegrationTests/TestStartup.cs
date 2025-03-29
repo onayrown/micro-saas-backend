@@ -13,71 +13,43 @@ using MongoDB.Driver;
 using Moq;
 using System;
 using System.Reflection;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MicroSaaS.IntegrationTests
 {
     public class TestStartup
     {
-        public void ConfigureServices(IServiceCollection services)
+        private readonly IConfiguration _configuration;
+
+        public TestStartup(IConfiguration configuration)
         {
-            // Registrar serviços de logging
-            services.AddLogging(options =>
-            {
-                options.ClearProviders();
-                options.AddConsole();
-                options.AddDebug();
-            });
-
-            // Registrar serviços MVC
-            services.AddControllers()
-                .ConfigureApplicationPartManager(manager =>
-                {
-                    // Remover todos os provedores de recursos existentes
-                    manager.FeatureProviders.Clear();
-                    
-                    // Adicionar nosso provedor personalizado
-                    manager.FeatureProviders.Add(new TestControllersFeatureProvider());
-                });
-
-            // Registrar serviços necessários para os testes
-            services.AddSingleton<IMongoDatabase>(sp => Mock.Of<IMongoDatabase>());
-            services.AddScoped<ISocialMediaAccountRepository, MockSocialMediaAccountRepository>();
-            services.AddScoped<IUserRepository, MockUserRepository>();
-            services.AddScoped<ITokenService, MockTokenService>();
-            services.AddScoped<IAuthService, MockAuthService>();
-            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
-            services.AddScoped<IRecommendationService, MockRecommendationService>();
-            services.AddScoped<ILoggingService, MockLoggingService>();
+            _configuration = configuration;
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<TestStartup> logger)
+        // Este método será chamado pelo runtime para adicionar serviços ao container
+        public void ConfigureServices(IServiceCollection services)
         {
-            // Middleware para logging de requisições
-            app.Use(async (context, next) =>
-            {
-                logger.LogInformation($"Incoming request: {context.Request.Method} {context.Request.Path}");
-                await next();
-            });
+            // Não vamos adicionar versionamento aqui - será feito na SharedTestFactory 
+            // para garantir apenas uma configuração
 
-            // Middleware para logging de respostas
-            app.Use(async (context, next) =>
-            {
-                var originalBodyStream = context.Response.Body;
-                using var responseBody = new MemoryStream();
-                context.Response.Body = responseBody;
+            // Adicionar mock services
+            services.AddScoped<IAuthService, MockAuthService>();
+            services.AddScoped<ILoggingService, MockLoggingService>();
+            services.AddScoped<ITokenService, MockTokenService>();
+            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
+            services.AddScoped<IRecommendationService, MockRecommendationService>();
+            services.AddScoped<ISchedulerService, MockSchedulerService>();
 
-                await next();
+            // Configurar serviços MVC
+            services.AddControllers();
+        }
 
-                responseBody.Seek(0, SeekOrigin.Begin);
-                var responseText = await new StreamReader(responseBody).ReadToEndAsync();
-                logger.LogInformation($"Response: {context.Response.StatusCode} - {responseText}");
-
-                responseBody.Seek(0, SeekOrigin.Begin);
-                await responseBody.CopyToAsync(originalBodyStream);
-                context.Response.Body = originalBodyStream;
-            });
-
+        // Este método será chamado pelo runtime para configurar o pipeline HTTP
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
             app.UseRouting();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
@@ -85,7 +57,7 @@ namespace MicroSaaS.IntegrationTests
         }
     }
 
-    public class TestControllersFeatureProvider : ControllerFeatureProvider
+    public class FilteredControllersFeatureProvider : ControllerFeatureProvider
     {
         protected override bool IsController(TypeInfo typeInfo)
         {

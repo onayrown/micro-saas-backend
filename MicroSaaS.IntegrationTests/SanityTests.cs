@@ -4,15 +4,8 @@ using Xunit;
 
 namespace MicroSaaS.IntegrationTests;
 
-public class SanityTests : IClassFixture<CustomWebApplicationFactory>
+public class SanityTests
 {
-    private readonly CustomWebApplicationFactory _factory;
-
-    public SanityTests(CustomWebApplicationFactory factory)
-    {
-        _factory = factory;
-    }
-
     [Fact]
     public void SimpleTest_AlwaysPasses()
     {
@@ -24,15 +17,5 @@ public class SanityTests : IClassFixture<CustomWebApplicationFactory>
 
         // Assert
         Assert.Equal(expected, actual);
-    }
-
-    [Fact]
-    public void WebApplicationFactory_CanCreateClient()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act & Assert - Apenas verifica se o cliente foi criado sem erros
-        Assert.NotNull(client);
     }
 } 

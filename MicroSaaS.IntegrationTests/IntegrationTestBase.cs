@@ -20,6 +20,10 @@ using Microsoft.AspNetCore.TestHost;
 using MicroSaaS.Application.DTOs.Auth;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace MicroSaaS.IntegrationTests;
 
@@ -281,7 +285,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
             
         mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "invalid@example.com")))
-            .ReturnsAsync((User)null);
+            .ReturnsAsync((User?)null);
     }
     
     private void SetupPasswordHasherMock(Mock<IPasswordHasher> mockPasswordHasher)

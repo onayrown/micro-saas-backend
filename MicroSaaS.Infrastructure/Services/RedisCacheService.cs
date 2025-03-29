@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using MicroSaaS.Application.Interfaces.Services;
+using System.Text;
 
 namespace MicroSaaS.Infrastructure.Services;
 
@@ -20,8 +21,11 @@ public class RedisCacheService : ICacheService
 
     public async Task<T?> GetAsync<T>(string key)
     {
-        var value = await _cache.GetStringAsync(key);
-        return value == null ? default : JsonSerializer.Deserialize<T>(value);
+        var bytes = await _cache.GetAsync(key);
+        if (bytes == null) return default;
+        
+        var json = Encoding.UTF8.GetString(bytes);
+        return JsonSerializer.Deserialize<T>(json);
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
@@ -31,7 +35,8 @@ public class RedisCacheService : ICacheService
             : _defaultOptions;
 
         var serializedValue = JsonSerializer.Serialize(value);
-        await _cache.SetStringAsync(key, serializedValue, options);
+        var bytes = Encoding.UTF8.GetBytes(serializedValue);
+        await _cache.SetAsync(key, bytes, options);
     }
 
     public async Task RemoveAsync(string key)

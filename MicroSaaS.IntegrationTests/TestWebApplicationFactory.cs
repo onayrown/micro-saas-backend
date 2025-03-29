@@ -17,24 +17,74 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using MicroSaaS.IntegrationTests.Controllers;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class TestWebApplicationFactory<TEntryPoint> 
-        : WebApplicationFactory<TEntryPoint> where TEntryPoint : class
+    /// <summary>
+    /// Factory personalizada para testes de integração que substitui a configuração da aplicação
+    /// com a configuração de teste especificada em TestStartup
+    /// </summary>
+    public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            // Definir ambiente de testes
             builder.UseEnvironment("Testing");
-            builder.UseContentRoot(Directory.GetCurrentDirectory());
-            builder.UseStartup<TestStartup>();
-            
+
+            // Configurar o logging para testes
             builder.ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
-                logging.AddConsole();
                 logging.AddDebug();
             });
+
+            // Substituir o Startup original pelo nosso TestStartup
+            builder.UseStartup<TestStartup>();
+
+            // Configurar serviços adicionais
+            builder.ConfigureServices(services =>
+            {
+                // Remover quaisquer configurações existentes de RouteOptions para evitar conflitos
+                var routeOptionsDescriptors = services
+                    .Where(d => d.ServiceType == typeof(IConfigureOptions<RouteOptions>))
+                    .ToList();
+
+                foreach (var descriptor in routeOptionsDescriptors)
+                {
+                    services.Remove(descriptor);
+                }
+
+                // Configurar RouteOptions de forma limpa, apenas uma vez
+                services.Configure<RouteOptions>(options =>
+                {
+                    // Se a chave já estiver presente, remova-a antes de adicionar novamente
+                    if (options.ConstraintMap.ContainsKey("apiVersion"))
+                    {
+                        options.ConstraintMap.Remove("apiVersion");
+                    }
+
+                    // Adicionar a constraint
+                    options.ConstraintMap.Add("apiVersion", typeof(ApiVersionRouteConstraint));
+                });
+            });
+        }
+
+        protected override IHostBuilder CreateHostBuilder()
+        {
+            return Host.CreateDefaultBuilder()
+                .ConfigureWebHost(webBuilder =>
+                {
+                    webBuilder.UseStartup<TestStartup>();
+                    webBuilder.UseTestServer();
+                });
         }
     }
     

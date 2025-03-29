@@ -107,11 +107,12 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task RevokeTokenAsync(string token)
+    public Task RevokeTokenAsync(string token)
     {
         // Implementação do revoke token
         // Por enquanto, apenas valida o token
         _tokenService.ValidateToken(token);
+        return Task.CompletedTask;
     }
 
     public async Task<bool> ValidateUserCredentialsAsync(string email, string password)

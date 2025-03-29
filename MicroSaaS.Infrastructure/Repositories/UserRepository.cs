@@ -20,7 +20,7 @@ namespace MicroSaaS.Infrastructure.Repositories
             _users = context.Users;
         }
 
-        public async Task<User> GetByIdAsync(Guid id)
+        public async Task<User?> GetByIdAsync(Guid id)
         {
             var user = await _users
                 .Find(u => u.Id == id.ToString())
@@ -29,7 +29,7 @@ namespace MicroSaaS.Infrastructure.Repositories
             return user?.ToDomain();
         }
 
-        public async Task<User> GetByEmailAsync(string email)
+        public async Task<User?> GetByEmailAsync(string email)
         {
             var user = await _users
                 .Find(u => u.Email == email)
@@ -38,7 +38,7 @@ namespace MicroSaaS.Infrastructure.Repositories
             return user?.ToDomain();
         }
 
-        public async Task<User> GetByUsernameAsync(string username)
+        public async Task<User?> GetByUsernameAsync(string username)
         {
             var user = await _users
                 .Find(u => u.Username == username)

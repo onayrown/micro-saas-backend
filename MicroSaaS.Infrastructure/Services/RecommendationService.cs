@@ -1,6 +1,7 @@
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
+using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
@@ -34,7 +35,7 @@ public class RecommendationService : IRecommendationService
         _socialMediaService = socialMediaService;
     }
 
-    public async Task<List<PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform)
+    public virtual async Task<List<PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform)
     {
         var creator = await _creatorRepository.GetByIdAsync(creatorId);
         if (creator == null)
@@ -184,7 +185,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Diversifique seus tópicos",
                 Description = "Baseado na análise do seu conteúdo, recomendamos expandir para tópicos relacionados para aumentar o alcance.",
-                Type = RecommendationType.ContentTopic,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.ContentTopic,
                 SuggestedTopics = new List<string> { "Dicas práticas", "Tutoriais rápidos", "Histórias de sucesso" },
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -212,7 +213,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Experimente vídeos curtos",
                 Description = "Vídeos de 60-90 segundos estão gerando maior engajamento em sua niche. Considere adaptar parte do seu conteúdo para este formato.",
-                Type = RecommendationType.ContentFormat,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 2,
@@ -410,7 +411,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Conecte Google AdSense",
                 Description = "Integre o Google AdSense para monetizar seu conteúdo com anúncios relevantes.",
-                Type = RecommendationType.MonetizationStrategy,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.MonetizationStrategy,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 1,
@@ -427,7 +428,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Diversifique suas plataformas",
                 Description = "Estar presente em mais plataformas aumenta seu alcance e oportunidades de monetização.",
-                Type = RecommendationType.CrossPlatformPromotion,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.CrossPlatformPromotion,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 2,
@@ -442,7 +443,7 @@ public class RecommendationService : IRecommendationService
             CreatorId = creatorId,
             Title = "Conteúdo premium exclusivo",
             Description = "Considere criar conteúdo exclusivo para uma audiência disposta a pagar por acesso privilegiado.",
-            Type = RecommendationType.MonetizationStrategy,
+            Type = MicroSaaS.Shared.Enums.RecommendationType.MonetizationStrategy,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             Priority = 3,
@@ -498,7 +499,7 @@ public class RecommendationService : IRecommendationService
                     CreatorId = creatorId,
                     Title = $"Acelere o crescimento no {platform}",
                     Description = $"Sua taxa de crescimento no {platform} está abaixo da média. Considere aumentar a frequência de postagens e interações.",
-                    Type = RecommendationType.AudienceTargeting,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.AudienceTargeting,
                     Platform = platform,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
@@ -515,7 +516,7 @@ public class RecommendationService : IRecommendationService
                     CreatorId = creatorId,
                     Title = "Construa sua base inicial",
                     Description = "Foque em nichos específicos e construa uma comunidade engajada antes de diversificar muito seu conteúdo.",
-                    Type = RecommendationType.AudienceTargeting,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.AudienceTargeting,
                     Platform = platform,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
@@ -532,7 +533,7 @@ public class RecommendationService : IRecommendationService
             CreatorId = creatorId,
             Title = "Colaborações estratégicas",
             Description = "Identifique criadores com audiência semelhante mas não concorrente e proponha colaborações.",
-            Type = RecommendationType.CollaborationOpportunity,
+            Type = MicroSaaS.Shared.Enums.RecommendationType.CollaborationOpportunity,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             Priority = 3,
@@ -580,7 +581,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Aumente a interatividade",
                 Description = "Seu engajamento está abaixo da média. Experimente fazer perguntas, enquetes, e conteúdo que solicite diretamente a participação da audiência.",
-                Type = RecommendationType.EngagementTactic,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.EngagementTactic,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 1,
@@ -593,7 +594,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Responda a comentários",
                 Description = "Dedique tempo para responder comentários e interagir com sua audiência. Isso estimula mais interações e fideliza seguidores.",
-                Type = RecommendationType.EngagementTactic,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.EngagementTactic,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 2,
@@ -608,7 +609,7 @@ public class RecommendationService : IRecommendationService
                 CreatorId = creatorId,
                 Title = "Crie conteúdo seriado",
                 Description = "Seu engajamento é razoável. Experimente criar séries de conteúdo que mantenham sua audiência voltando para ver a continuação.",
-                Type = RecommendationType.ContentFormat,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Priority = 2,
@@ -623,7 +624,7 @@ public class RecommendationService : IRecommendationService
             CreatorId = creatorId,
             Title = "Otimize seus horários de postagem",
             Description = "Poste consistentemente nos horários de maior engajamento para sua audiência.",
-            Type = RecommendationType.PostingTime,
+            Type = MicroSaaS.Shared.Enums.RecommendationType.PostingTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             Priority = 3,
@@ -788,5 +789,240 @@ public class RecommendationService : IRecommendationService
             return 0;
             
         return ((decimal)(endMetrics.Followers - startMetrics.Followers) / startMetrics.Followers) * 100;
+    }
+
+    // Novos métodos implementados para cumprir a interface
+    public async Task<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestPostingTimesAsync(Guid creatorId, SocialMediaPlatform platform)
+    {
+        var creator = await _creatorRepository.GetByIdAsync(creatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado", nameof(creatorId));
+
+        // Obter recomendações através do método existente
+        var timeRecommendations = await GetBestTimeToPostAsync(creatorId, platform);
+        
+        // Converter de PostTimeRecommendation para BestTimeSlotDto
+        return timeRecommendations.Select(r => new MicroSaaS.Shared.DTOs.BestTimeSlotDto
+        {
+            Id = Guid.NewGuid(),
+            CreatorId = creatorId,
+            Platform = platform,
+            DayOfWeek = r.DayOfWeek,
+            TimeOfDay = r.TimeOfDay,
+            Hour = r.TimeOfDay.Hours,
+            EngagementScore = (decimal)r.EngagementScore,
+            ConfidenceScore = (decimal)(r.EngagementScore / 10.0),
+            EngagementPotential = (int)(r.EngagementScore * 10),
+            RecommendationStrength = r.EngagementScore > 7.0 ? "Alto" : 
+                                    r.EngagementScore > 4.0 ? "Médio" : "Baixo",
+            CreatedAt = DateTime.UtcNow
+        }).ToList();
+    }
+
+    public async Task<List<ContentRecommendationDto>> GetContentRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform)
+    {
+        var creator = await _creatorRepository.GetByIdAsync(creatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado", nameof(creatorId));
+
+        // Implementação de exemplo - na versão real faria análise dos dados de performance
+        var result = new List<ContentRecommendationDto>
+        {
+            new ContentRecommendationDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                Title = "Diversifique seus tópicos",
+                Description = "Baseado na análise do seu conteúdo, recomendamos expandir para tópicos relacionados para aumentar o alcance.",
+                Type = MicroSaaS.Shared.DTOs.RecommendationType.Topic,
+                Platform = platform,
+                ConfidenceScore = 0.85m,
+                ExampleContentIds = new List<string> { "post123", "post456" },
+                SuggestedHashtags = new List<string> { "#dicas", "#tutorial" },
+                SuggestedKeywords = new List<string> { "como fazer", "passo a passo" },
+                CreatedAt = DateTime.UtcNow
+            },
+            new ContentRecommendationDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                Title = "Experimente vídeos curtos",
+                Description = "Vídeos de 60-90 segundos estão gerando maior engajamento em sua niche.",
+                Type = MicroSaaS.Shared.DTOs.RecommendationType.Format,
+                Platform = platform,
+                ConfidenceScore = 0.9m,
+                ExampleContentIds = new List<string> { "post789", "post012" },
+                SuggestedHashtags = new List<string> { "#shorts", "#viral" },
+                SuggestedKeywords = new List<string> { "rápido", "simples" },
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        return result;
+    }
+
+    public async Task<List<GrowthRecommendationDto>> GetGrowthRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform)
+    {
+        var creator = await _creatorRepository.GetByIdAsync(creatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado", nameof(creatorId));
+
+        // Implementação de exemplo - versão real analisaria dados de crescimento
+        var result = new List<GrowthRecommendationDto>
+        {
+            new GrowthRecommendationDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                Title = "Aumente sua consistência",
+                Description = "Publicar conteúdo em horários regulares aumenta o engajamento.",
+                Category = MicroSaaS.Shared.DTOs.GrowthCategory.Engagement,
+                Platform = platform,
+                ImplementationSteps = new List<string> 
+                { 
+                    "Estabeleça um calendário semanal de publicações",
+                    "Mantenha ao menos 3 publicações por semana",
+                    "Priorize qualidade sobre quantidade"
+                },
+                ExpectedOutcome = "Aumento de 30% na retenção de audiência",
+                Difficulty = 2,
+                TimeToImplement = "1-2 semanas",
+                CreatedAt = DateTime.UtcNow
+            },
+            new GrowthRecommendationDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                Title = "Interaja mais com sua audiência",
+                Description = "Responder comentários aumenta a fidelidade dos seguidores.",
+                Category = MicroSaaS.Shared.DTOs.GrowthCategory.Followers,
+                Platform = platform,
+                ImplementationSteps = new List<string> 
+                { 
+                    "Reserve 30 minutos diários para responder comentários",
+                    "Faça perguntas que incentivem interação",
+                    "Agradeça publicamente participações relevantes"
+                },
+                ExpectedOutcome = "Aumento de 45% na taxa de comentários",
+                Difficulty = 1,
+                TimeToImplement = "Imediato",
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        return result;
+    }
+
+    public async Task<ContentRecommendationDto> GenerateCustomRecommendationAsync(CustomRecommendationRequestDto request)
+    {
+        var creator = await _creatorRepository.GetByIdAsync(request.CreatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado", nameof(request.CreatorId));
+
+        // Implementação de exemplo - versão real usaria dados históricos e ML
+        var recommendation = new ContentRecommendationDto
+        {
+            Id = Guid.NewGuid(),
+            CreatorId = request.CreatorId,
+            Title = $"Recomendação personalizada: {request.RecommendationType}",
+            Description = $"Recomendação baseada em seus critérios específicos para {request.Platform}.",
+            Type = request.RecommendationType,
+            Platform = request.Platform,
+            ConfidenceScore = 0.85m,
+            ExampleContentIds = new List<string> { "post123", "post456" },
+            SuggestedHashtags = new List<string> { "#personalizado", "#recomendado" },
+            SuggestedKeywords = new List<string> { request.SpecificTopic ?? "conteúdo", request.ContentGoal ?? "engajamento" },
+            CreatedAt = DateTime.UtcNow
+        };
+
+        return recommendation;
+    }
+
+    public async Task<MicroSaaS.Shared.DTOs.AudienceSensitivityDto> GetAudienceSensitivityAnalysisAsync(Guid creatorId, SocialMediaPlatform platform)
+    {
+        var creator = await _creatorRepository.GetByIdAsync(creatorId);
+        if (creator == null)
+            throw new ArgumentException("Criador de conteúdo não encontrado", nameof(creatorId));
+
+        // Implementação simplificada para primeira versão
+        // Em uma versão completa, analisaríamos histórico de postagens e reações para definir a sensibilidade
+        
+        var posts = await _contentRepository.GetByCreatorIdAsync(creatorId);
+        var recentPosts = posts.Where(p => p.PublishedAt.HasValue)
+                              .OrderByDescending(p => p.PublishedAt)
+                              .Take(20).ToList();
+                              
+        var performances = new List<ContentPerformance>();
+        foreach (var post in recentPosts)
+        {
+            var postPerformances = await _contentPerformanceRepository.GetByPostIdAsync(post.Id.ToString());
+            performances.AddRange(postPerformances.Where(p => p.Platform == platform));
+        }
+        
+        // Análise baseada em dados
+        var sensitivityTopics = new Dictionary<string, int>
+        {
+            { "Política", 0 },
+            { "Temas sociais", 0 },
+            { "Religião", 0 },
+            { "Saúde", 0 },
+            { "Finanças", 0 },
+            { "Controvérsias", 0 }
+        };
+        
+        // Em uma implementação real, faríamos análise de conteúdo e feedback
+        // Aqui estamos gerando resultados simulados baseados no ID do criador
+        var creatorIdValue = creatorId.GetHashCode();
+        var random = new Random(creatorIdValue);
+        
+        foreach (var topic in sensitivityTopics.Keys.ToList())
+        {
+            sensitivityTopics[topic] = random.Next(1, 10);
+        }
+        
+        var result = new MicroSaaS.Shared.DTOs.AudienceSensitivityDto
+        {
+            CreatorId = creatorId,
+            Platform = platform.ToString(),
+            TopResponsiveTopics = new List<string> { "tutorial", "dicas", "novidades" },
+            TopResponsiveFormats = new List<string> { "vídeo curto", "carrossel", "guia passo-a-passo" },
+            BestTimeOfDay = new List<TimeSpan> { new TimeSpan(18, 0, 0), new TimeSpan(21, 0, 0) },
+            BestDaysOfWeek = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Friday },
+            ConfidenceScore = 0.8m,
+            LastUpdated = DateTime.UtcNow,
+            SensitivityTopics = sensitivityTopics.Select(kvp => new MicroSaaS.Shared.DTOs.TopicSensitivityDto 
+            {
+                Topic = kvp.Key,
+                SensitivityLevel = kvp.Value,
+                RecommendedApproach = GetRecommendedApproach(kvp.Value)
+            }).ToList(),
+            OverallSensitivity = sensitivityTopics.Values.Average(),
+            Analysis = "Análise baseada nas últimas " + performances.Count + " publicações na plataforma " + platform,
+            RecommendedContentApproach = GetGeneralContentApproach(sensitivityTopics)
+        };
+
+        return result;
+    }
+    
+    private string GetRecommendedApproach(int sensitivityLevel)
+    {
+        if (sensitivityLevel >= 8)
+            return "Evitar o tópico ou tratar com extrema cautela";
+        else if (sensitivityLevel >= 5)
+            return "Abordar de maneira neutra e educativa";
+        else
+            return "Pode abordar normalmente com sensibilidade regular";
+    }
+    
+    private string GetGeneralContentApproach(Dictionary<string, int> sensitivities)
+    {
+        var avgSensitivity = sensitivities.Values.Average();
+        
+        if (avgSensitivity > 7)
+            return "Sua audiência é bastante sensível a tópicos controversos. Recomendamos foco em conteúdo positivo e educativo.";
+        else if (avgSensitivity > 4)
+            return "Sua audiência tem sensibilidade moderada. Balance conteúdo neutro com alguns tópicos mais envolventes.";
+        else
+            return "Sua audiência é receptiva a diversos tópicos. Você tem flexibilidade para explorar conteúdo variado.";
     }
 } 

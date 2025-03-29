@@ -7,7 +7,7 @@ namespace MicroSaaS.Application.Mappers;
 
 public static class ContentPostMapper
 {
-    public static ContentPostDto ToDto(ContentPost post)
+    public static ContentPostDto? ToDto(ContentPost? post)
     {
         if (post == null) return null;
 
@@ -27,7 +27,7 @@ public static class ContentPostMapper
         };
     }
 
-    public static ContentPost ToEntity(CreatePostRequest request)
+    public static ContentPost? ToEntity(CreatePostRequest? request)
     {
         if (request == null) return null;
 

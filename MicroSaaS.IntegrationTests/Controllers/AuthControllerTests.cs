@@ -1,149 +1,118 @@
 using System;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using MicroSaaS.Application.DTOs.Auth;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
-using MongoDB.Driver;
-using Moq;
-using MicroSaaS.Application.Interfaces.Repositories;
-using MicroSaaS.Application.Interfaces.Services;
+using FluentAssertions;
 
-namespace MicroSaaS.IntegrationTests.Controllers;
-
-public class AuthControllerTests : IClassFixture<CustomWebApplicationFactory>
+namespace MicroSaaS.IntegrationTests.Controllers
 {
-    private readonly HttpClient _client;
-    private readonly ITestOutputHelper _output;
-
-    public AuthControllerTests(CustomWebApplicationFactory factory, ITestOutputHelper output)
+    public class AuthControllerTests : IClassFixture<SimplifiedTestFactory>
     {
-        _output = output;
-        _output.WriteLine("Initializing AuthControllerTests");
-        
-        // Cria um cliente HTTP com configurações específicas para teste
-        _client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        private readonly HttpClient _client;
+        private readonly ITestOutputHelper _output;
+
+        public AuthControllerTests(SimplifiedTestFactory factory, ITestOutputHelper output)
         {
-            AllowAutoRedirect = false,
-            HandleCookies = true,
-            MaxAutomaticRedirections = 0
-        });
-        
-        _client.DefaultRequestHeaders.Accept.Clear();
-        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        
-        _output.WriteLine("HttpClient initialized");
-    }
-
-    [Fact]
-    public async Task Login_WithValidCredentials_ShouldReturnToken()
-    {
-        _output.WriteLine("Starting test: Login_WithValidCredentials_ShouldReturnToken");
-        
-        // Arrange
-        var loginRequest = new LoginRequest { Email = "test@example.com", Password = "Test@123" };
-        var jsonContent = JsonSerializer.Serialize(loginRequest);
-        _output.WriteLine($"Request content: {jsonContent}");
-        
-        var content = new StringContent(
-            jsonContent,
-            Encoding.UTF8,
-            "application/json");
-
-        // Act
-        _output.WriteLine("Sending request to /api/auth/login");
-        var response = await _client.PostAsync("/api/auth/login", content);
-        
-        // Log da resposta para debug
-        _output.WriteLine($"Response status code: {response.StatusCode}");
-        var responseBody = await response.Content.ReadAsStringAsync();
-        _output.WriteLine($"Response body: {responseBody}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
-        if (response.IsSuccessStatusCode)
-        {
-            var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseBody, deserializeOptions);
-
-            Assert.NotNull(authResponse);
-            Assert.True(authResponse.Success);
-            Assert.NotNull(authResponse.Token);
-            Assert.NotNull(authResponse.User);
-            Assert.Equal("test@example.com", authResponse.User.Email);
+            _output = output;
+            _output.WriteLine("Initializing AuthControllerTests");
+            _client = factory.CreateClient();
+            _output.WriteLine("HttpClient initialized");
         }
-    }
 
-    [Fact]
-    public async Task Login_WithInvalidCredentials_ShouldReturnUnauthorized()
-    {
-        _output.WriteLine("Starting test: Login_WithInvalidCredentials_ShouldReturnUnauthorized");
-        
-        // Arrange
-        var loginRequest = new LoginRequest { Email = "invalid@example.com", Password = "WrongPassword" };
-        var jsonContent = JsonSerializer.Serialize(loginRequest);
-        _output.WriteLine($"Request content: {jsonContent}");
-        
-        var content = new StringContent(
-            jsonContent,
-            Encoding.UTF8,
-            "application/json");
-
-        // Act
-        _output.WriteLine("Sending request to /api/auth/login");
-        var response = await _client.PostAsync("/api/auth/login", content);
-        
-        // Log da resposta para debug
-        _output.WriteLine($"Response status code: {response.StatusCode}");
-        var responseBody = await response.Content.ReadAsStringAsync();
-        _output.WriteLine($"Response body: {responseBody}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Register_WithValidData_ReturnsSuccess()
-    {
-        // Arrange
-        _output.WriteLine("Starting Register_WithValidData_ReturnsSuccess test");
-        
-        var registerRequest = new RegisterRequest
+        [Fact]
+        public async Task Login_WithValidCredentials_ShouldReturnToken()
         {
-            Name = "Test User",
-            Email = "testuser@example.com",
-            Password = "Test@123456"
-        };
-        
-        var content = new StringContent(
-            JsonSerializer.Serialize(registerRequest),
-            Encoding.UTF8,
-            "application/json");
-        
-        // Act
-        _output.WriteLine("Sending register request");
-        var response = await _client.PostAsync("/api/auth/register", content);
-        var responseString = await response.Content.ReadAsStringAsync();
-        _output.WriteLine($"Response status: {response.StatusCode}");
-        _output.WriteLine($"Response content: {responseString}");
-        
-        // Assert
-        response.EnsureSuccessStatusCode();
-        
-        var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseString, 
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        
-        Assert.NotNull(authResponse);
-        Assert.True(authResponse.Success);
-        Assert.NotNull(authResponse.Token);
-        Assert.NotNull(authResponse.User);
-        Assert.Equal(registerRequest.Email, authResponse.User.Email);
+            // Arrange
+            _output.WriteLine("Starting test: Login_WithValidCredentials_ShouldReturnToken");
+            var loginRequest = new LoginRequest
+            {
+                Email = "test@example.com",
+                Password = "Test@123"
+            };
+
+            var json = JsonSerializer.Serialize(loginRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            _output.WriteLine($"Request content: {json}");
+
+            // Act
+            _output.WriteLine("Sending request to /api/auth/login");
+            var response = await _client.PostAsync("/api/auth/login", content);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            
+            var responseContent = await response.Content.ReadAsStringAsync();
+            _output.WriteLine($"Response: {responseContent}");
+            
+            var result = JsonSerializer.Deserialize<AuthResponse>(responseContent, 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            result.Should().NotBeNull();
+            result!.Success.Should().BeTrue();
+            result.Token.Should().NotBeNullOrEmpty();
+            result.User.Should().NotBeNull();
+            result.User.Email.Should().Be(loginRequest.Email);
+        }
+
+        [Fact]
+        public async Task Login_WithInvalidCredentials_ShouldReturnUnauthorized()
+        {
+            // Arrange
+            _output.WriteLine("Starting test: Login_WithInvalidCredentials_ShouldReturnUnauthorized");
+            var loginRequest = new LoginRequest
+            {
+                Email = "invalid@example.com",
+                Password = "WrongPassword"
+            };
+
+            var json = JsonSerializer.Serialize(loginRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            _output.WriteLine($"Request content: {json}");
+
+            // Act
+            _output.WriteLine("Sending request to /api/auth/login");
+            var response = await _client.PostAsync("/api/auth/login", content);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Fact]
+        public async Task Register_WithValidData_ReturnsSuccess()
+        {
+            // Arrange
+            _output.WriteLine("Starting Register_WithValidData_ReturnsSuccess test");
+            var registerRequest = new RegisterRequest
+            {
+                Name = "Test User",
+                Email = "newuser@example.com",
+                Password = "Test@123"
+            };
+
+            var json = JsonSerializer.Serialize(registerRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Act
+            _output.WriteLine("Sending register request");
+            var response = await _client.PostAsync("/api/auth/register", content);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<AuthResponse>(responseContent, 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            result.Should().NotBeNull();
+            result!.Success.Should().BeTrue();
+            result.Token.Should().NotBeNullOrEmpty();
+            result.User.Should().NotBeNull();
+            result.User.Email.Should().Be(registerRequest.Email);
+        }
     }
 } 

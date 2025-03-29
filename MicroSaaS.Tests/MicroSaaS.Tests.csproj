@@ -21,6 +21,7 @@
     <ProjectReference Include="..\MicroSaaS.Shared\MicroSaaS.Shared.csproj" />
     <ProjectReference Include="..\MicroSaaS.Domain\MicroSaaS.Domain.csproj" />
     <ProjectReference Include="..\MicroSaaS.Application\MicroSaaS.Application.csproj" />
+    <ProjectReference Include="..\MicroSaaS.Infrastructure\MicroSaaS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
