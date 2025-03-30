@@ -9,6 +9,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -40,22 +41,9 @@ namespace MicroSaaS.IntegrationTests
                     services.Remove(descriptor);
                 }
 
-                // Remover qualquer IConfigureOptions ou IPostConfigureOptions para RouteOptions
-                var routeOptionsDescriptors = services
-                    .Where(d => d.ServiceType == typeof(IConfigureOptions<RouteOptions>) || 
-                           d.ServiceType == typeof(IPostConfigureOptions<RouteOptions>))
-                    .ToList();
+                // Adicionar API versioning simplificado
+                services.AddApiVersioning();
 
-                foreach (var descriptor in routeOptionsDescriptors)
-                {
-                    services.Remove(descriptor);
-                }
-
-                // Registrar nossa opção personalizada para evitar duplicação de apiVersion
-                // Corrigindo o registro para usar factory com provedor de serviço
-                services.AddSingleton<IPostConfigureOptions<RouteOptions>>(
-                    sp => new ApiVersionOverridePostConfigureOptions(false));
-                    
                 // Garante que os controladores de teste sejam encontrados
                 services.AddMvcCore().ConfigureApplicationPartManager(manager => 
                 {
@@ -71,12 +59,22 @@ namespace MicroSaaS.IntegrationTests
             {
                 if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController) ||
                     typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAnalyticsController) ||
-                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController))
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentPostController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestSocialMediaAccountController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentChecklistController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentCreatorController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Controllers.TestRecommendationController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Controllers.HealthController))
                 {
                     return true;
                 }
                 
-                return base.IsController(typeInfo);
+                // Incluir outros controladores do namespace Utils e Controllers
+                bool isInUtilsNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).Namespace;
+                bool isInControllersNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Controllers.HealthController).Namespace;
+                
+                return (isInUtilsNamespace || isInControllersNamespace) && base.IsController(typeInfo);
             }
         }
     }

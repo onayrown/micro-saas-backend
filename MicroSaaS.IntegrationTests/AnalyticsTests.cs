@@ -7,22 +7,22 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using MicroSaaS.Application.DTOs;
-using MicroSaaS.IntegrationTests.Utils;
+using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using FluentAssertions;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class AnalyticsTests : IClassFixture<SharedTestFactory>
+    public class AnalyticsTests : IClassFixture<SimplifiedTestFactory>
     {
         private readonly HttpClient _client;
         private readonly string _validToken = "valid-token";
         private readonly string _invalidToken = "invalid-token";
         private readonly JsonSerializerOptions _jsonOptions;
 
-        public AnalyticsTests(SharedTestFactory factory)
+        public AnalyticsTests(SimplifiedTestFactory factory)
         {
             _client = factory.CreateClient();
             _jsonOptions = new JsonSerializerOptions

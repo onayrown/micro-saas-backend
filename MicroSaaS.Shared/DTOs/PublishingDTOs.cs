@@ -76,11 +76,14 @@ namespace MicroSaaS.Shared.DTOs
         [JsonPropertyName("postId")]
         public Guid PostId { get; set; }
 
-        [JsonPropertyName("includeOriginalComments")]
-        public bool IncludeOriginalComments { get; set; }
+        [JsonPropertyName("platform")]
+        public SocialMediaPlatform Platform { get; set; }
 
-        [JsonPropertyName("additionalComment")]
-        public string? AdditionalComment { get; set; }
+        [JsonPropertyName("additionalText")]
+        public string? AdditionalText { get; set; }
+
+        [JsonPropertyName("additionalTags")]
+        public List<string>? AdditionalTags { get; set; }
     }
 
     public class PublishingStatsDto

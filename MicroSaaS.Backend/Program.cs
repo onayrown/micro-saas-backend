@@ -164,7 +164,19 @@ public partial class Program
                 c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
                 {
                     Title = "MicroSaaS API",
-                    Version = "v1"
+                    Version = "v1",
+                    Description = "API para gerenciamento de conteúdo para criadores de conteúdo digital",
+                    Contact = new Microsoft.OpenApi.Models.OpenApiContact
+                    {
+                        Name = "Equipe MicroSaaS",
+                        Email = "suporte@microsaas.com.br",
+                        Url = new Uri("https://www.microsaas.com.br/contato")
+                    },
+                    License = new Microsoft.OpenApi.Models.OpenApiLicense
+                    {
+                        Name = "Licença de Uso",
+                        Url = new Uri("https://www.microsaas.com.br/licenca")
+                    }
                 });
                 
                 // Configurações para resolver problemas com tipos genéricos
@@ -176,8 +188,45 @@ public partial class Program
                 // Ignorar propriedades não serializáveis
                 c.MapType<TimeSpan>(() => new Microsoft.OpenApi.Models.OpenApiSchema { Type = "string", Format = "time-span" });
                 
+                // Incluir arquivos XML de documentação
+                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                if (File.Exists(xmlPath))
+                {
+                    c.IncludeXmlComments(xmlPath);
+                }
+                
+                // Configurar autenticação JWT no Swagger
+                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header usando o esquema Bearer. Exemplo: \"Authorization: Bearer {token}\"",
+                    Name = "Authorization",
+                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                {
+                    {
+                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        {
+                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+                
                 // Desativar validação de parâmetros personalizados
                 c.SchemaFilter<SwaggerRequiredSchemaFilter>();
+                
+                // Agrupar endpoints por tag para melhor organização
+                c.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] });
+                c.DocInclusionPredicate((docName, api) => true);
             });
             
             // Configuração de versionamento da API
@@ -258,6 +307,11 @@ public partial class Program
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MicroSaaS API v1");
                     c.RoutePrefix = "swagger";
+                    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+                    c.DefaultModelsExpandDepth(-1); // Oculta a seção de modelos por padrão
+                    c.DisplayRequestDuration();
+                    c.EnableDeepLinking();
+                    c.EnableFilter();
                 });
             }
 

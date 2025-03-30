@@ -121,6 +121,12 @@ namespace MicroSaaS.IntegrationTests
         {
             return Task.CompletedTask;
         }
+
+        public Task<bool> CreatorExistsAsync(Guid creatorId)
+        {
+            // Para fins de teste, vamos considerar que qualquer ID fornecido existe
+            return Task.FromResult(true);
+        }
     }
 
     public class MockTokenService : ITokenService
@@ -233,92 +239,176 @@ namespace MicroSaaS.IntegrationTests
     {
         public Task<string> GetAuthUrlAsync(SocialMediaPlatform platform)
         {
-            return Task.FromResult("https://auth.example.com");
+            return Task.FromResult($"https://auth.test.com/{platform.ToString().ToLower()}/authorize");
         }
 
         public Task<SocialMediaAccount> HandleAuthCallbackAsync(SocialMediaPlatform platform, string code)
         {
-            return Task.FromResult(new SocialMediaAccount
+            if (string.IsNullOrEmpty(code))
+            {
+                throw new ArgumentException("Invalid authorization code", nameof(code));
+            }
+
+            var account = new SocialMediaAccount
             {
                 Id = Guid.NewGuid(),
                 CreatorId = Guid.NewGuid(),
                 Platform = platform,
-                Username = "testuser",
-                AccessToken = "test.access.token",
-                RefreshToken = "test.refresh.token",
-                TokenExpiresAt = DateTime.UtcNow.AddHours(1),
-                IsActive = true
-            });
+                Username = $"test_user_{platform.ToString().ToLower()}",
+                AccessToken = "mock_token",
+                RefreshToken = "mock_refresh_token",
+                TokenExpiresAt = DateTime.UtcNow.AddDays(30),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            return Task.FromResult(account);
         }
 
         public Task<bool> ValidateTokenAsync(SocialMediaAccount account)
         {
+            // Considera todos os tokens válidos para teste
             return Task.FromResult(true);
         }
 
         public Task RefreshTokenAsync(SocialMediaAccount account)
         {
+            // Atualiza o token da conta mock
+            account.AccessToken = "new_mock_token";
+            account.RefreshToken = "new_mock_refresh_token";
+            account.TokenExpiresAt = DateTime.UtcNow.AddDays(30);
+            
             return Task.CompletedTask;
         }
 
         public Task ConnectAccountAsync(SocialMediaAccount account)
         {
+            // Simula a conexão de uma conta
             return Task.CompletedTask;
         }
 
         public Task DisconnectAccountAsync(SocialMediaAccount account)
         {
+            // Simula a desconexão de uma conta
             return Task.CompletedTask;
         }
 
         public Task<Dictionary<string, int>> GetAccountStatsAsync(SocialMediaAccount account)
         {
-            return Task.FromResult(new Dictionary<string, int>());
+            // Retorna estatísticas de exemplo para a conta
+            return Task.FromResult(new Dictionary<string, int>
+            {
+                { "followers", 1000 },
+                { "following", 500 },
+                { "posts", 50 }
+            });
         }
 
         public Task PostContentAsync(ContentPost post)
         {
+            // Simula o post de conteúdo
+            post.Status = PostStatus.Published;
+            post.PublishedAt = DateTime.UtcNow;
             return Task.CompletedTask;
         }
 
         public Task SchedulePostAsync(ContentPost post, DateTime scheduledTime)
         {
+            // Simula o agendamento de um post
+            post.ScheduledTime = scheduledTime;
             return Task.CompletedTask;
         }
 
         public Task CancelScheduledPostAsync(string postId)
         {
+            // Simula o cancelamento de um post agendado
             return Task.CompletedTask;
         }
 
         public Task<IEnumerable<ContentPost>> GetScheduledPostsAsync(Guid creatorId)
         {
+            // Retorna uma lista vazia de posts agendados
             return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
         }
 
         public Task<IEnumerable<ContentPost>> GetPublishedPostsAsync(Guid creatorId)
         {
+            // Retorna uma lista vazia de posts publicados
             return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
         }
 
         public Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(string postId)
         {
-            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(new List<ContentPerformanceDto>());
+            // Retorna dados de performance de exemplo para um post
+            var performances = new List<ContentPerformanceDto>
+            {
+                new ContentPerformanceDto
+                {
+                    PostId = postId,
+                    Platform = SocialMediaPlatform.Instagram,
+                    Likes = 100,
+                    Comments = 25,
+                    Shares = 10,
+                    Views = 1000,
+                    Date = DateTime.UtcNow.AddDays(-1)
+                }
+            };
+            
+            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(performances);
         }
 
         public Task<IEnumerable<ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate)
         {
-            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(new List<ContentPerformanceDto>());
+            // Retorna dados de performance de exemplo para uma conta
+            var performances = new List<ContentPerformanceDto>
+            {
+                new ContentPerformanceDto
+                {
+                    AccountId = accountId,
+                    Platform = SocialMediaPlatform.Instagram,
+                    Likes = 500,
+                    Comments = 120,
+                    Shares = 50,
+                    Views = 5000,
+                    Date = DateTime.UtcNow.AddDays(-7)
+                }
+            };
+            
+            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(performances);
         }
 
         public Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate)
         {
-            return Task.FromResult(new Dictionary<string, decimal>());
+            // Retorna métricas de receita de exemplo
+            return Task.FromResult(new Dictionary<string, decimal>
+            {
+                { "total", 1000.0m },
+                { "sponsored", 750.0m },
+                { "affiliate", 250.0m }
+            });
         }
 
         public Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId)
         {
-            return Task.FromResult<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>>(new List<MicroSaaS.Shared.Models.PostTimeRecommendation>());
+            // Retorna recomendações de horário de exemplo
+            var recommendations = new List<MicroSaaS.Shared.Models.PostTimeRecommendation>
+            {
+                new MicroSaaS.Shared.Models.PostTimeRecommendation
+                {
+                    DayOfWeek = DayOfWeek.Monday,
+                    TimeOfDay = new TimeSpan(18, 0, 0),
+                    EngagementScore = 0.85m
+                },
+                new MicroSaaS.Shared.Models.PostTimeRecommendation
+                {
+                    DayOfWeek = DayOfWeek.Wednesday,
+                    TimeOfDay = new TimeSpan(12, 0, 0),
+                    EngagementScore = 0.75m
+                }
+            };
+            
+            return Task.FromResult<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>>(recommendations);
         }
     }
 
@@ -609,20 +699,10 @@ namespace MicroSaaS.IntegrationTests
 
     public class MockSchedulerService : ISchedulerService, IHostedService
     {
-        public Task StartAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync()
-        {
-            return Task.CompletedTask;
-        }
+        private readonly List<ScheduledPostDto> _scheduledPosts = new();
 
         public Task<ContentPost> SchedulePostAsync(ContentPost post)
         {
-            post.Status = PostStatus.Scheduled;
-            post.UpdatedAt = DateTime.UtcNow;
             return Task.FromResult(post);
         }
 
@@ -638,31 +718,7 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<IEnumerable<ContentPost>> GetScheduledPostsInRangeAsync(DateTime startDate, DateTime endDate)
         {
-            var posts = new List<ContentPost>
-            {
-                new ContentPost
-                {
-                    Id = Guid.NewGuid(),
-                    Title = "Scheduled Post 1",
-                    Content = "Content for scheduled post 1",
-                    Status = PostStatus.Scheduled,
-                    ScheduledFor = DateTime.UtcNow.AddHours(2),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new ContentPost
-                {
-                    Id = Guid.NewGuid(),
-                    Title = "Scheduled Post 2",
-                    Content = "Content for scheduled post 2",
-                    Status = PostStatus.Scheduled,
-                    ScheduledFor = DateTime.UtcNow.AddHours(5),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
-            };
-            
-            return Task.FromResult<IEnumerable<ContentPost>>(posts);
+            return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
         }
 
         public Task SendUpcomingPostNotificationsAsync(int hoursAhead = 1)
@@ -670,15 +726,92 @@ namespace MicroSaaS.IntegrationTests
             return Task.CompletedTask;
         }
 
-        // Implementação da interface IHostedService
+        public Task StartAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        // Métodos adicionais para suportar testes de integração
+        public Task<ScheduledPostDto> SchedulePostAsync(CreateScheduledPostDto request)
+        {
+            var post = new ScheduledPostDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = request.CreatorId,
+                Title = request.Title,
+                Content = request.Content,
+                ScheduledFor = request.ScheduledFor,
+                Platform = request.Platform,
+                MediaUrls = request.MediaUrls ?? new List<string>(),
+                Tags = request.Tags ?? new List<string>(),
+                Status = PostStatus.Scheduled,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _scheduledPosts.Add(post);
+            return Task.FromResult(post);
+        }
+
+        public Task<ScheduledPostDto> GetScheduledPostAsync(Guid id)
+        {
+            var post = _scheduledPosts.FirstOrDefault(p => p.Id == id);
+            return Task.FromResult(post);
+        }
+
+        public Task<ScheduledPostDto> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request)
+        {
+            var post = _scheduledPosts.FirstOrDefault(p => p.Id == id);
+            if (post == null)
+                return Task.FromResult<ScheduledPostDto>(null);
+
+            if (request.Title != null)
+                post.Title = request.Title;
+            
+            if (request.Content != null)
+                post.Content = request.Content;
+            
+            if (request.ScheduledFor.HasValue)
+                post.ScheduledFor = request.ScheduledFor.Value;
+            
+            if (request.MediaUrls != null)
+                post.MediaUrls = request.MediaUrls;
+            
+            if (request.Tags != null)
+                post.Tags = request.Tags;
+            
+            post.UpdatedAt = DateTime.UtcNow;
+            
+            return Task.FromResult(post);
+        }
+
+        public Task<List<ScheduledPostDto>> GetScheduledPostsInRangeDtoAsync(DateTime startDate, DateTime endDate)
+        {
+            var posts = _scheduledPosts
+                .Where(p => p.ScheduledFor >= startDate && p.ScheduledFor <= endDate)
+                .ToList();
+            
+            return Task.FromResult(posts);
+        }
+
+        Task<IEnumerable<Domain.Entities.ContentPost>> ISchedulerService.GetScheduledPostsInRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            return Task.FromResult<IEnumerable<Domain.Entities.ContentPost>>(new List<Domain.Entities.ContentPost>());
+        }
+
         Task IHostedService.StartAsync(CancellationToken cancellationToken)
         {
-            return StartAsync();
+            return Task.CompletedTask;
         }
 
         Task IHostedService.StopAsync(CancellationToken cancellationToken)
         {
-            return StopAsync();
+            return Task.CompletedTask;
         }
     }
 

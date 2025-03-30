@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MicroSaaS.Backend.Controllers;
 
+/// <summary>
+/// Controlador responsável pelas operações relacionadas ao dashboard
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 //[Authorize]
@@ -14,6 +17,11 @@ public class DashboardController : ControllerBase
     private readonly IDashboardService _dashboardService;
     private readonly ITokenService _tokenService;
 
+    /// <summary>
+    /// Construtor do DashboardController
+    /// </summary>
+    /// <param name="dashboardService">Serviço de dashboard</param>
+    /// <param name="tokenService">Serviço de validação de tokens</param>
     public DashboardController(
         IDashboardService dashboardService,
         ITokenService tokenService)
@@ -22,7 +30,20 @@ public class DashboardController : ControllerBase
         _tokenService = tokenService;
     }
 
+    /// <summary>
+    /// Obtém as insights mais recentes do dashboard para um criador específico
+    /// </summary>
+    /// <param name="creatorId">ID do criador de conteúdo</param>
+    /// <returns>Insights do dashboard</returns>
+    /// <response code="200">Insights recuperados com sucesso</response>
+    /// <response code="403">Token inválido ou expirado</response>
+    /// <response code="404">Criador não encontrado</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpGet("insights/{creatorId}")]
+    [ProducesResponseType(typeof(DashboardInsights), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<DashboardInsights>> GetLatestInsights(Guid creatorId)
     {
         // Verificar autenticação
@@ -42,7 +63,22 @@ public class DashboardController : ControllerBase
         return Ok(insights);
     }
 
+    /// <summary>
+    /// Gera novos insights para o dashboard de um criador específico
+    /// </summary>
+    /// <param name="creatorId">ID do criador de conteúdo</param>
+    /// <param name="startDate">Data de início opcional para o período de análise</param>
+    /// <param name="endDate">Data de fim opcional para o período de análise</param>
+    /// <returns>Insights recém-gerados do dashboard</returns>
+    /// <response code="200">Insights gerados com sucesso</response>
+    /// <response code="403">Usuário não autorizado</response>
+    /// <response code="404">Criador não encontrado</response>
+    /// <response code="500">Erro interno do servidor</response>
     [HttpGet("insights/{creatorId}/generate")]
+    [ProducesResponseType(typeof(DashboardInsights), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<DashboardInsights>> GenerateInsights(
         Guid creatorId, 
         [FromQuery] DateTime? startDate = null, 

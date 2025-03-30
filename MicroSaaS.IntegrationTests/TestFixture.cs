@@ -23,14 +23,14 @@ namespace MicroSaaS.IntegrationTests
 {
     public class TestFixture : IDisposable
     {
-        private readonly SharedTestFactory _factory;
+        private readonly SimplifiedTestFactory _factory;
 
         public HttpClient Client { get; }
 
         public TestFixture()
         {
-            // Usar a SharedTestFactory para evitar duplicação
-            _factory = new SharedTestFactory();
+            // Usar a SimplifiedTestFactory para evitar duplicação
+            _factory = new SimplifiedTestFactory();
             Client = _factory.CreateClient();
         }
 

@@ -1,6 +1,7 @@
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
+using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Shared.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -190,32 +191,177 @@ public class SchedulerService : BackgroundService, ISchedulerService
 
             if (postsForNotification.Any())
             {
-                _logger.LogInformation("Encontrados {Count} posts para enviar notificações", postsForNotification.Count);
+                _logger.LogInformation("Enviando notificações para {Count} posts agendados", postsForNotification.Count);
                 
-                // Em uma implementação real, aqui enviaríamos notificações por email, push, etc.
+                // Enviar notificações (implementação real usaria um serviço de notificação)
                 foreach (var post in postsForNotification)
                 {
                     _logger.LogInformation("Notificação enviada para post {PostId} agendado para {ScheduledTime}", 
                         post.Id, post.ScheduledFor);
                 }
             }
+            else
+            {
+                _logger.LogDebug("Nenhum post encontrado para notificação");
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao enviar notificações para posts agendados");
+            _logger.LogError(ex, "Erro ao enviar notificações de posts agendados");
         }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await StartAsync();
-        
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            // O serviço já está sendo executado pelos timers
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            // Iniciar o serviço ao iniciar a aplicação
+            await StartAsync();
+            
+            // Esperar até que o cancelamento seja solicitado
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            }
         }
+        catch (Exception ex) when (ex is not TaskCanceledException)
+        {
+            _logger.LogError(ex, "Erro no serviço de agendamento");
+        }
+        finally
+        {
+            // Parar o serviço ao encerrar a aplicação
+            await StopAsync();
+        }
+    }
+
+    // Implementações adicionais para suportar a API
+    public async Task<ScheduledPostDto> SchedulePostAsync(CreateScheduledPostDto request)
+    {
+        if (request == null)
+            throw new ArgumentNullException(nameof(request));
+
+        // Criar uma entidade de domínio a partir do DTO
+        var post = new ContentPost
+        {
+            Id = Guid.NewGuid(),
+            CreatorId = request.CreatorId,
+            Title = request.Title,
+            Content = request.Content,
+            Platform = request.Platform,
+            ScheduledFor = request.ScheduledFor,
+            Status = PostStatus.Scheduled,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        // Salvar no repositório
+        using var scope = _serviceProvider.CreateScope();
+        var contentPostRepository = scope.ServiceProvider.GetRequiredService<IContentPostRepository>();
+        var savedPost = await contentPostRepository.AddAsync(post);
+
+        // Mapear de volta para DTO
+        return new ScheduledPostDto
+        {
+            Id = savedPost.Id,
+            CreatorId = savedPost.CreatorId,
+            Title = savedPost.Title,
+            Content = savedPost.Content,
+            ScheduledFor = savedPost.ScheduledFor ?? DateTime.UtcNow,
+            Platform = savedPost.Platform,
+            Status = savedPost.Status,
+            MediaUrls = savedPost.MediaUrl != null ? new List<string> { savedPost.MediaUrl } : new List<string>(),
+            Tags = new List<string>(),
+            CreatedAt = savedPost.CreatedAt,
+            UpdatedAt = savedPost.UpdatedAt
+        };
+    }
+
+    public async Task<ScheduledPostDto> GetScheduledPostAsync(Guid id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var contentPostRepository = scope.ServiceProvider.GetRequiredService<IContentPostRepository>();
+        var post = await contentPostRepository.GetByIdAsync(id);
+
+        if (post == null)
+            return null;
+
+        return new ScheduledPostDto
+        {
+            Id = post.Id,
+            CreatorId = post.CreatorId,
+            Title = post.Title,
+            Content = post.Content,
+            ScheduledFor = post.ScheduledFor ?? DateTime.UtcNow,
+            Platform = post.Platform,
+            Status = post.Status,
+            MediaUrls = post.MediaUrl != null ? new List<string> { post.MediaUrl } : new List<string>(),
+            Tags = new List<string>(),
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt
+        };
+    }
+
+    public async Task<ScheduledPostDto> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var contentPostRepository = scope.ServiceProvider.GetRequiredService<IContentPostRepository>();
+        var post = await contentPostRepository.GetByIdAsync(id);
+
+        if (post == null)
+            return null;
+
+        if (request.Title != null)
+            post.Title = request.Title;
+            
+        if (request.Content != null)
+            post.Content = request.Content;
+            
+        if (request.ScheduledFor.HasValue)
+            post.ScheduledFor = request.ScheduledFor.Value;
+            
+        if (request.MediaUrls != null && request.MediaUrls.Count > 0)
+            post.MediaUrl = request.MediaUrls[0];
+            
+        post.UpdatedAt = DateTime.UtcNow;
         
-        await StopAsync();
+        var updatedPost = await contentPostRepository.UpdateAsync(post);
+        
+        return new ScheduledPostDto
+        {
+            Id = updatedPost.Id,
+            CreatorId = updatedPost.CreatorId,
+            Title = updatedPost.Title,
+            Content = updatedPost.Content,
+            ScheduledFor = updatedPost.ScheduledFor ?? DateTime.UtcNow,
+            Platform = updatedPost.Platform,
+            Status = updatedPost.Status,
+            MediaUrls = updatedPost.MediaUrl != null ? new List<string> { updatedPost.MediaUrl } : new List<string>(),
+            Tags = new List<string>(),
+            CreatedAt = updatedPost.CreatedAt,
+            UpdatedAt = updatedPost.UpdatedAt
+        };
+    }
+
+    public async Task<List<ScheduledPostDto>> GetScheduledPostsInRangeDtoAsync(DateTime startDate, DateTime endDate)
+    {
+        var domainPosts = await ((ISchedulerService)this).GetScheduledPostsInRangeAsync(startDate, endDate);
+        
+        var dtoPosts = domainPosts.Select(post => new ScheduledPostDto
+        {
+            Id = post.Id,
+            CreatorId = post.CreatorId,
+            Title = post.Title,
+            Content = post.Content,
+            ScheduledFor = post.ScheduledFor ?? DateTime.UtcNow,
+            Platform = post.Platform,
+            Status = post.Status,
+            MediaUrls = post.MediaUrl != null ? new List<string> { post.MediaUrl } : new List<string>(),
+            Tags = new List<string>(),
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt
+        }).ToList();
+        
+        return dtoPosts;
     }
 } 

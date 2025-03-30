@@ -161,8 +161,9 @@ public class PublishingTests : IClassFixture<SimplifiedTestFactory>
         var republishRequest = new RepublishPostDto
         {
             PostId = postId,
-            IncludeOriginalComments = false,
-            AdditionalComment = "Republicando este conteúdo importante! #republicacao"
+            Platform = SocialMediaPlatform.Facebook,
+            AdditionalText = "Republicando este post com algumas atualizações",
+            AdditionalTags = new List<string> { "republicado", "atualizado" }
         };
 
         var json = JsonSerializer.Serialize(republishRequest);

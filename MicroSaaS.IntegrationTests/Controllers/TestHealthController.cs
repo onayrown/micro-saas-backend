@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MicroSaaS.IntegrationTests.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/test-health")]
     [ApiController]
-    public class HealthController : ControllerBase
+    public class TestHealthController : ControllerBase
     {
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok("Healthy");
+            return Ok("Test Health Check OK");
         }
     }
 } 

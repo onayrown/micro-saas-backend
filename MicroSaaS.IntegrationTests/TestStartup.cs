@@ -16,6 +16,8 @@ using System;
 using System.Reflection;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Routing;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -31,8 +33,8 @@ namespace MicroSaaS.IntegrationTests
         // Este método será chamado pelo runtime para adicionar serviços ao container
         public void ConfigureServices(IServiceCollection services)
         {
-            // Não vamos adicionar versionamento aqui - será feito na SharedTestFactory 
-            // para garantir apenas uma configuração
+            // Adicionar o suporte ao versionamento de API de forma simplificada
+            services.AddApiVersioning();
 
             // Adicionar mock services
             services.AddScoped<IAuthService, MockAuthService>();
@@ -78,7 +80,11 @@ namespace MicroSaaS.IntegrationTests
             if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).GetTypeInfo() ||
                 typeInfo == typeof(TestRecommendationController).GetTypeInfo() ||
                 typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAnalyticsController).GetTypeInfo() ||
-                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController).GetTypeInfo())
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentPostController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestSocialMediaAccountController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentChecklistController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestContentCreatorController).GetTypeInfo())
             {
                 return true;
             }

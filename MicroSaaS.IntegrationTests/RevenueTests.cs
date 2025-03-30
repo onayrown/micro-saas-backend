@@ -12,14 +12,14 @@ using Xunit;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class RevenueTests : IClassFixture<SharedTestFactory>
+    public class RevenueTests : IClassFixture<SimplifiedTestFactory>
     {
         private readonly HttpClient _client;
         private readonly string _validToken = "valid-token";
         private readonly string _invalidToken = "invalid-token";
         private readonly JsonSerializerOptions _jsonOptions;
 
-        public RevenueTests(SharedTestFactory factory)
+        public RevenueTests(SimplifiedTestFactory factory)
         {
             _client = factory.CreateClient();
             _jsonOptions = new JsonSerializerOptions

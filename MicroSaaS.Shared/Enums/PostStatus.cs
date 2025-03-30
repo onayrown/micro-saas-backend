@@ -7,5 +7,6 @@ public enum PostStatus
     Published,
     Failed,
     Deleted,
-    Cancelled
+    Cancelled,
+    Processing
 }

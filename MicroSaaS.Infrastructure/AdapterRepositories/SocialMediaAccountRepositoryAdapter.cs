@@ -84,5 +84,16 @@ namespace MicroSaaS.Infrastructure.AdapterRepositories
                 await _domainRepository.UpdateAsync(account);
             }
         }
+
+        /// <summary>
+        /// Verifica se um criador existe com base no ID fornecido
+        /// </summary>
+        /// <param name="creatorId">ID do criador a verificar</param>
+        /// <returns>True se o criador existir, False caso contrário</returns>
+        public async Task<bool> CreatorExistsAsync(Guid creatorId)
+        {
+            var accounts = await _domainRepository.GetByCreatorIdAsync(creatorId);
+            return accounts.Any();
+        }
     }
 } 
