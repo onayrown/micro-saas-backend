@@ -24,4 +24,5 @@ public class ContentInsight
     public TrendDirection Trend { get; set; }
     public string ComparisonPeriod { get; set; } = string.Empty;
     public double PercentageChange { get; set; }
+    public string RecommendedAction { get; set; } = string.Empty;
 } 

@@ -189,7 +189,7 @@ public class RecommendationService : IRecommendationService
                 SuggestedTopics = new List<string> { "Dicas práticas", "Tutoriais rápidos", "Histórias de sucesso" },
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 1,
+                Priority = RecommendationPriority.Low,
                 PotentialImpact = "Aumento potencial de 20% no alcance"
             }
         };
@@ -216,7 +216,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 2,
+                Priority = RecommendationPriority.Medium,
                 PotentialImpact = "Aumento potencial de 35% no engajamento"
             }
         };
@@ -414,7 +414,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.MonetizationStrategy,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 1,
+                Priority = RecommendationPriority.Low,
                 PotentialImpact = "Nova fonte de receita com potencial de crescimento"
             });
         }
@@ -431,7 +431,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.CrossPlatformPromotion,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 2,
+                Priority = RecommendationPriority.Medium,
                 PotentialImpact = "Aumento potencial de 40% na receita com múltiplas plataformas"
             });
         }
@@ -446,7 +446,7 @@ public class RecommendationService : IRecommendationService
             Type = MicroSaaS.Shared.Enums.RecommendationType.MonetizationStrategy,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Priority = 3,
+            Priority = RecommendationPriority.High,
             PotentialImpact = "Nova fonte de receita recorrente e previsível"
         });
         
@@ -503,7 +503,7 @@ public class RecommendationService : IRecommendationService
                     Platform = platform,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Priority = 1,
+                    Priority = RecommendationPriority.Low,
                     PotentialImpact = "Potencial para dobrar a taxa de crescimento de seguidores"
                 });
             }
@@ -520,7 +520,7 @@ public class RecommendationService : IRecommendationService
                     Platform = platform,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Priority = 2,
+                    Priority = RecommendationPriority.Medium,
                     PotentialImpact = "Crescimento sustentável da base de seguidores"
                 });
             }
@@ -536,7 +536,7 @@ public class RecommendationService : IRecommendationService
             Type = MicroSaaS.Shared.Enums.RecommendationType.CollaborationOpportunity,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Priority = 3,
+            Priority = RecommendationPriority.High,
             PotentialImpact = "Exposição a novas audiências e crescimento acelerado"
         });
         
@@ -584,7 +584,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.EngagementTactic,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 1,
+                Priority = RecommendationPriority.Low,
                 PotentialImpact = "Aumento potencial de 200% na taxa de engajamento"
             });
             
@@ -597,7 +597,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.EngagementTactic,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 2,
+                Priority = RecommendationPriority.Medium,
                 PotentialImpact = "Maior fidelização e aumento gradual do engajamento"
             });
         }
@@ -612,7 +612,7 @@ public class RecommendationService : IRecommendationService
                 Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Priority = 2,
+                Priority = RecommendationPriority.Medium,
                 PotentialImpact = "Aumento de 50% na retenção de audiência"
             });
         }
@@ -627,7 +627,7 @@ public class RecommendationService : IRecommendationService
             Type = MicroSaaS.Shared.Enums.RecommendationType.PostingTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Priority = 3,
+            Priority = RecommendationPriority.High,
             PotentialImpact = "Aumento de 30% no alcance inicial das postagens"
         });
         

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -398,7 +399,7 @@ namespace MicroSaaS.IntegrationTests
                     SuggestedTopics = new List<string> { "Dicas práticas", "Tutoriais rápidos", "Histórias de sucesso" },
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Priority = 1,
+                    Priority = RecommendationPriority.High,
                     PotentialImpact = "Aumento potencial de 20% no alcance"
                 },
                 new ContentRecommendation
@@ -410,7 +411,7 @@ namespace MicroSaaS.IntegrationTests
                     Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Priority = 2,
+                    Priority = RecommendationPriority.Medium,
                     PotentialImpact = "Aumento potencial de 35% no engajamento"
                 }
             };
@@ -678,6 +679,295 @@ namespace MicroSaaS.IntegrationTests
         Task IHostedService.StopAsync(CancellationToken cancellationToken)
         {
             return StopAsync();
+        }
+    }
+
+    public class MockDashboardService : IDashboardService
+    {
+        private readonly List<DashboardInsights> _insights = new List<DashboardInsights>();
+        private readonly List<PerformanceMetrics> _metrics = new List<PerformanceMetrics>();
+        private readonly List<ContentPost> _contentPosts = new List<ContentPost>();
+        private readonly List<ContentPerformance> _contentPerformances = new List<ContentPerformance>();
+        private readonly List<MicroSaaS.Domain.Entities.PostTimeRecommendation> _postTimeRecommendations = new List<MicroSaaS.Domain.Entities.PostTimeRecommendation>();
+
+        public MockDashboardService()
+        {
+            // Inicializa alguns dados de exemplo para testes
+            var creatorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+            // Adicionar métricas de exemplo
+            for (int i = 0; i < 10; i++)
+            {
+                _metrics.Add(new PerformanceMetrics
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Date = DateTime.UtcNow.AddDays(-i),
+                    Platform = i % 2 == 0 ? SocialMediaPlatform.Instagram : SocialMediaPlatform.YouTube,
+                    Followers = 5000 + (i * 50),
+                    FollowersGrowth = i * 10,
+                    TotalViews = 1500 + (i * 100),
+                    TotalLikes = 750 + (i * 50),
+                    TotalComments = 120 + (i * 10),
+                    TotalShares = 60 + (i * 5),
+                    EngagementRate = 4.8m - (i * 0.1m),
+                    EstimatedRevenue = 350.00m + (i * 25.00m),
+                    CreatedAt = DateTime.UtcNow.AddDays(-i),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-i)
+                });
+            }
+
+            // Adicionar posts de exemplo
+            for (int i = 0; i < 5; i++)
+            {
+                _contentPosts.Add(new ContentPost
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = $"Post de teste {i+1}",
+                    Content = $"Conteúdo do post de teste {i+1}",
+                    MediaUrl = $"https://example.com/media/{i+1}",
+                    Platform = i % 3 == 0 ? SocialMediaPlatform.Instagram : 
+                              i % 3 == 1 ? SocialMediaPlatform.YouTube : SocialMediaPlatform.TikTok,
+                    Status = PostStatus.Published,
+                    PublishedAt = DateTime.UtcNow.AddDays(-i),
+                    Views = 1000 - (i * 90),
+                    Likes = 500 - (i * 45),
+                    Comments = 100 - (i * 9),
+                    Shares = 50 - (i * 4),
+                    EngagementRate = 5.0m - (i * 0.3m),
+                    CreatedAt = DateTime.UtcNow.AddDays(-i - 1),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-i)
+                });
+            }
+
+            // Adicionar recomendações de horários
+            _postTimeRecommendations.Add(new MicroSaaS.Domain.Entities.PostTimeRecommendation
+            {
+                DayOfWeek = DayOfWeek.Monday,
+                TimeOfDay = new TimeSpan(18, 0, 0),
+                EngagementScore = 8.5
+            });
+            _postTimeRecommendations.Add(new MicroSaaS.Domain.Entities.PostTimeRecommendation
+            {
+                DayOfWeek = DayOfWeek.Wednesday,
+                TimeOfDay = new TimeSpan(12, 0, 0),
+                EngagementScore = 9.2
+            });
+            _postTimeRecommendations.Add(new MicroSaaS.Domain.Entities.PostTimeRecommendation
+            {
+                DayOfWeek = DayOfWeek.Friday,
+                TimeOfDay = new TimeSpan(20, 0, 0),
+                EngagementScore = 8.8
+            });
+        }
+
+        public Task<ContentPerformance> AddContentPerformanceAsync(ContentPerformance performance)
+        {
+            performance.Id = Guid.NewGuid();
+            performance.CollectedAt = DateTime.UtcNow;
+            performance.CreatedAt = DateTime.UtcNow;
+            performance.UpdatedAt = DateTime.UtcNow;
+            
+            _contentPerformances.Add(performance);
+            return Task.FromResult(performance);
+        }
+
+        public Task<PerformanceMetrics> AddMetricsAsync(PerformanceMetrics metrics)
+        {
+            metrics.Id = Guid.NewGuid();
+            metrics.CreatedAt = DateTime.UtcNow;
+            metrics.UpdatedAt = DateTime.UtcNow;
+            
+            _metrics.Add(metrics);
+            return Task.FromResult(metrics);
+        }
+
+        public Task<DashboardInsights> GenerateInsightsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var end = endDate ?? DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+            
+            var insight = new DashboardInsights
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                GeneratedDate = now,
+                Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram, SocialMediaPlatform.YouTube, SocialMediaPlatform.TikTok },
+                PeriodStart = start,
+                PeriodEnd = end,
+                GrowthRate = 4.2m,
+                TotalRevenueInPeriod = 2800.00m,
+                ComparisonWithPreviousPeriod = 15.2m,
+                TopContentInsights = new List<ContentInsight>
+                {
+                    new ContentInsight
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Vídeo de tutorial tem alto engajamento",
+                        Type = InsightType.HighEngagement,
+                        Description = "Seus tutoriais estão gerando 2x mais engajamento que outros conteúdos",
+                        RecommendedAction = "Postar mais vídeos tutoriais"
+                    }
+                },
+                Recommendations = new List<ContentRecommendation>
+                {
+                    new ContentRecommendation
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Aumentar frequência no Instagram",
+                        Description = "Aumente a frequência de publicações no Instagram para melhorar o alcance",
+                        Priority = RecommendationPriority.High,
+                        Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
+                    }
+                },
+                BestTimeToPost = _postTimeRecommendations,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Date = now.Date,
+                TotalFollowers = 5500,
+                TotalPosts = 140,
+                TotalViews = 75000,
+                TotalLikes = 22000,
+                TotalComments = 4500,
+                TotalShares = 2200,
+                AverageEngagementRate = 4.8m,
+                TotalRevenue = 3200.00m,
+                Type = InsightType.Normal
+            };
+            
+            _insights.Add(insight);
+            return Task.FromResult(insight);
+        }
+
+        public Task<decimal> GetAverageEngagementRateAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
+        {
+            var metrics = _metrics.Where(m => m.CreatorId == creatorId && m.Platform == platform).ToList();
+            if (!metrics.Any())
+            {
+                return Task.FromResult(4.5m); // Valor padrão para testes
+            }
+            
+            var avgEngagementRate = metrics.Average(m => m.EngagementRate);
+            return Task.FromResult(avgEngagementRate);
+        }
+
+        public Task<List<MicroSaaS.Domain.Entities.PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
+        {
+            // Retorna as recomendações pré-definidas
+            return Task.FromResult(_postTimeRecommendations);
+        }
+
+        public Task<PerformanceMetrics> GetDailyMetricsAsync(Guid creatorId, DateTime? date = null, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
+        {
+            var targetDate = date ?? DateTime.UtcNow.Date;
+            var metric = _metrics.FirstOrDefault(m => 
+                m.CreatorId == creatorId && 
+                m.Date.Date == targetDate.Date && 
+                m.Platform == platform);
+                
+            if (metric == null)
+            {
+                // Criar um exemplo se não encontrar
+                metric = new PerformanceMetrics
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Date = targetDate,
+                    Platform = platform,
+                    Followers = 5000,
+                    FollowersGrowth = 50,
+                    TotalViews = 1500,
+                    TotalLikes = 750,
+                    TotalComments = 120,
+                    TotalShares = 60,
+                    EngagementRate = 4.8m,
+                    EstimatedRevenue = 350.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _metrics.Add(metric);
+            }
+            
+            return Task.FromResult(metric);
+        }
+
+        public Task<int> GetFollowerGrowthAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            // Retornar um valor fixo para testes
+            return Task.FromResult(180);
+        }
+
+        public Task<DashboardInsights> GetLatestInsightsAsync(Guid creatorId)
+        {
+            var insight = _insights.FirstOrDefault(i => i.CreatorId == creatorId);
+            if (insight == null)
+            {
+                // Criar insights de exemplo se não existirem
+                return GenerateInsightsAsync(creatorId);
+            }
+            
+            return Task.FromResult(insight);
+        }
+
+        public Task<IEnumerable<PerformanceMetrics>> GetMetricsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null, SocialMediaPlatform? platform = null)
+        {
+            // Filtrando
+            var result = _metrics.Where(m => m.CreatorId == creatorId).AsEnumerable();
+            
+            if (startDate.HasValue)
+                result = result.Where(m => m.Date >= startDate.Value);
+                
+            if (endDate.HasValue)
+                result = result.Where(m => m.Date <= endDate.Value);
+                
+            if (platform.HasValue)
+                result = result.Where(m => m.Platform == platform.Value);
+            
+            return Task.FromResult(result);
+        }
+
+        public Task<List<ContentRecommendation>> GetRecommendationsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var recommendations = new List<ContentRecommendation>
+            {
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Aumentar frequência de postagem no Instagram",
+                    Description = "Análise mostra que aumentar a frequência de postagem em 30% pode melhorar seu alcance",
+                    Priority = RecommendationPriority.High,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
+                },
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Criar conteúdo em formato carrossel",
+                    Description = "Conteúdos em formato carrossel têm engajamento 25% maior",
+                    Priority = RecommendationPriority.Medium,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
+                }
+            };
+
+            return Task.FromResult(recommendations);
+        }
+
+        public Task<decimal> GetRevenueGrowthAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            // Retornar um valor fixo para testes
+            return Task.FromResult(15.2m);
+        }
+
+        public Task<List<ContentPost>> GetTopContentAsync(Guid creatorId, int limit = 5)
+        {
+            var topPosts = _contentPosts
+                .Where(p => p.CreatorId == creatorId)
+                .OrderByDescending(p => p.EngagementRate)
+                .Take(limit)
+                .ToList();
+                
+            return Task.FromResult(topPosts);
         }
     }
 } 

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Routing;
 using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using System.Reflection;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -53,7 +55,29 @@ namespace MicroSaaS.IntegrationTests
                 // Corrigindo o registro para usar factory com provedor de serviço
                 services.AddSingleton<IPostConfigureOptions<RouteOptions>>(
                     sp => new ApiVersionOverridePostConfigureOptions(false));
+                    
+                // Garante que os controladores de teste sejam encontrados
+                services.AddMvcCore().ConfigureApplicationPartManager(manager => 
+                {
+                    manager.FeatureProviders.Add(new TestControllerFeatureProvider());
+                });
             });
+        }
+
+        // Classe auxiliar para garantir que os nossos controladores de teste sejam encontrados
+        public class TestControllerFeatureProvider : ControllerFeatureProvider
+        {
+            protected override bool IsController(TypeInfo typeInfo)
+            {
+                if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAnalyticsController) ||
+                    typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController))
+                {
+                    return true;
+                }
+                
+                return base.IsController(typeInfo);
+            }
         }
     }
 } 

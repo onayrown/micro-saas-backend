@@ -1,5 +1,6 @@
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Infrastructure.Entities;
+using System;
 
 namespace MicroSaaS.Infrastructure.Mappers;
 
@@ -11,12 +12,19 @@ public static class ContentRecommendationMapper
 
         return new ContentRecommendation
         {
-            RecommendationType = entity.RecommendationType,
+            Id = entity.Id,
+            CreatorId = entity.CreatorId,
+            Title = entity.Title,
             Description = entity.Description,
+            Type = entity.Type,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            RecommendationType = entity.RecommendationType,
             SuggestedTopics = entity.SuggestedTopics,
             Platform = entity.Platform,
             Priority = entity.Priority,
-            PotentialImpact = entity.PotentialImpact
+            PotentialImpact = entity.PotentialImpact,
+            RecommendedAction = entity.RecommendedAction
         };
     }
 
@@ -26,14 +34,19 @@ public static class ContentRecommendationMapper
 
         return new ContentRecommendationEntity
         {
-            RecommendationType = domain.RecommendationType,
+            Id = domain.Id,
+            CreatorId = domain.CreatorId,
+            Title = domain.Title,
             Description = domain.Description,
+            Type = domain.Type,
+            CreatedAt = domain.CreatedAt != default ? domain.CreatedAt : DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            RecommendationType = domain.RecommendationType,
             SuggestedTopics = domain.SuggestedTopics,
             Platform = domain.Platform,
             Priority = domain.Priority,
             PotentialImpact = domain.PotentialImpact,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            RecommendedAction = domain.RecommendedAction
         };
     }
 } 

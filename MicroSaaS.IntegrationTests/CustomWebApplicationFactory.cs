@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -69,6 +70,14 @@ namespace MicroSaaS.IntegrationTests
             services.AddScoped<IRecommendationService, MockRecommendationService>();
             services.AddScoped<ISchedulerService, MockSchedulerService>();
 
+            // Adicionar configuração de autenticação para testes
+            services.AddAuthentication("Bearer")
+                .AddJwtBearer("Bearer", options => {
+                    // Configuração mínima para testes
+                    options.RequireHttpsMetadata = false;
+                    options.SaveToken = true;
+                });
+
             // Adicionar controladores sem qualquer configuração adicional
             services.AddControllers();
 
@@ -84,6 +93,11 @@ namespace MicroSaaS.IntegrationTests
         public void Configure(IApplicationBuilder app)
         {
             app.UseRouting();
+            
+            // Adicionar middleware de autenticação
+            app.UseAuthentication();
+            app.UseAuthorization();
+            
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();

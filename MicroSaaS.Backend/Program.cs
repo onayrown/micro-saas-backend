@@ -149,6 +149,7 @@ public partial class Program
             builder.Services.AddScoped<IDashboardInsightsService, DashboardInsightsService>();
             builder.Services.AddScoped<ISchedulerService, SchedulerService>();
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
 
             // Adicionar serviços hospedados
             builder.Services.AddHostedService<SchedulerService>();

@@ -85,8 +85,16 @@ namespace MicroSaaS.IntegrationTests
     {
         protected override bool IsController(TypeInfo typeInfo)
         {
-            // Após remover o TestAuthController duplicado, agora usamos apenas
-            // o do namespace MicroSaaS.IntegrationTests.Utils
+            // Verificamos explicitamente os controladores que queremos incluir
+            if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController) ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Controllers.HealthController) ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAnalyticsController) ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController))
+            {
+                return true;
+            }
+            
+            // Incluir outros controladores do namespace Utils e Controllers
             bool isInUtilsNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).Namespace;
             bool isInControllersNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Controllers.HealthController).Namespace;
             

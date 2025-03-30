@@ -24,8 +24,18 @@ namespace MicroSaaS.IntegrationTests
                 feature.Controllers.Remove(authControllerType);
             }
             
-            // Adiciona o nosso TestAuthController
+            // Remove o DashboardController original
+            var dashboardControllerType = feature.Controllers.FirstOrDefault(t => 
+                t.Name.Equals("DashboardController", StringComparison.OrdinalIgnoreCase));
+                
+            if (dashboardControllerType != null)
+            {
+                feature.Controllers.Remove(dashboardControllerType);
+            }
+            
+            // Adiciona os nossos controllers de teste
             feature.Controllers.Add(typeof(TestAuthController).GetTypeInfo());
+            feature.Controllers.Add(typeof(TestDashboardController).GetTypeInfo());
         }
     }
 } 

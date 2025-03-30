@@ -80,7 +80,7 @@ public class DashboardInsightsService : IDashboardInsightsService
             Description = "Recomendação de plataforma baseada no desempenho",
             SuggestedTopics = new List<string> { "Tecnologia", "Desenvolvimento", "Programação" },
             Platform = SocialMediaPlatform.All,
-            Priority = 1,
+            Priority = RecommendationPriority.Medium,
             PotentialImpact = "Alto impacto no engajamento"
         });
 

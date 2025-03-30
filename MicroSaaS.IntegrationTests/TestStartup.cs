@@ -43,12 +43,24 @@ namespace MicroSaaS.IntegrationTests
             services.AddScoped<ISchedulerService, MockSchedulerService>();
 
             // Configurar serviços MVC
-            services.AddControllers();
+            services.AddControllers()
+                .ConfigureApplicationPartManager(manager =>
+                {
+                    // Limpar todos os provedores existentes
+                    manager.FeatureProviders.Clear();
+                    // Adicionar apenas o provedor que considera os controladores do namespace de testes
+                    manager.FeatureProviders.Add(new FilteredControllersFeatureProvider());
+                });
         }
 
         // Este método será chamado pelo runtime para configurar o pipeline HTTP
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
             app.UseRouting();
 
             app.UseEndpoints(endpoints =>
@@ -64,7 +76,9 @@ namespace MicroSaaS.IntegrationTests
         {
             // Garantir que apenas nossos controladores de teste sejam reconhecidos
             if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).GetTypeInfo() ||
-                typeInfo == typeof(TestRecommendationController).GetTypeInfo())
+                typeInfo == typeof(TestRecommendationController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAnalyticsController).GetTypeInfo() ||
+                typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestRevenueController).GetTypeInfo())
             {
                 return true;
             }

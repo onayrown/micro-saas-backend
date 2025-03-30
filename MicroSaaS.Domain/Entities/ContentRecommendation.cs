@@ -16,6 +16,7 @@ public class ContentRecommendation
     public RecommendationType RecommendationType { get; set; }
     public List<string> SuggestedTopics { get; set; } = new();
     public SocialMediaPlatform Platform { get; set; }
-    public int Priority { get; set; }
+    public RecommendationPriority Priority { get; set; }
     public string PotentialImpact { get; set; } = string.Empty;
+    public string RecommendedAction { get; set; } = string.Empty;
 } 

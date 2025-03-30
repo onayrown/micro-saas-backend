@@ -41,8 +41,12 @@ public class ContentRecommendationEntity
     public SocialMediaPlatform Platform { get; set; }
 
     [BsonElement("priority")]
-    public int Priority { get; set; }
+    [BsonRepresentation(BsonType.Int32)]
+    public RecommendationPriority Priority { get; set; }
 
     [BsonElement("potentialImpact")]
     public string PotentialImpact { get; set; } = string.Empty;
+    
+    [BsonElement("recommendedAction")]
+    public string RecommendedAction { get; set; } = string.Empty;
 } 

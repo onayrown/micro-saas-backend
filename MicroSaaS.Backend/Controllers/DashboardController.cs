@@ -1,4 +1,3 @@
-using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
@@ -12,36 +11,34 @@ namespace MicroSaaS.Backend.Controllers;
 //[Authorize]
 public class DashboardController : ControllerBase
 {
-    private readonly IPerformanceAnalysisService _performanceService;
-    private readonly IDashboardInsightsRepository _insightsRepository;
-    private readonly IPerformanceMetricsRepository _metricsRepository;
-    private readonly IContentPerformanceRepository _contentPerformanceRepository;
+    private readonly IDashboardService _dashboardService;
+    private readonly ITokenService _tokenService;
 
     public DashboardController(
-        IPerformanceAnalysisService performanceService, 
-        IDashboardInsightsRepository insightsRepository,
-        IPerformanceMetricsRepository metricsRepository,
-        IContentPerformanceRepository contentPerformanceRepository)
+        IDashboardService dashboardService,
+        ITokenService tokenService)
     {
-        _performanceService = performanceService;
-        _insightsRepository = insightsRepository;
-        _metricsRepository = metricsRepository;
-        _contentPerformanceRepository = contentPerformanceRepository;
+        _dashboardService = dashboardService;
+        _tokenService = tokenService;
     }
 
     [HttpGet("insights/{creatorId}")]
     public async Task<ActionResult<DashboardInsights>> GetLatestInsights(Guid creatorId)
     {
-        var insights = await _insightsRepository.GetLatestByCreatorIdAsync(creatorId);
-        if (insights == null)
+        // Verificar autenticação
+        var authHeader = HttpContext.Request.Headers["Authorization"].ToString();
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
         {
-            // Se não existir insights, geramos para os últimos 30 dias
-            var endDate = DateTime.UtcNow;
-            var startDate = endDate.AddDays(-30);
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            var isValidToken = _tokenService.ValidateToken(token);
             
-            insights = await _performanceService.GenerateInsightsAsync(creatorId, startDate, endDate);
+            if (!isValidToken)
+            {
+                return Forbid();
+            }
         }
         
+        var insights = await _dashboardService.GetLatestInsightsAsync(creatorId);
         return Ok(insights);
     }
 
@@ -51,11 +48,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? startDate = null, 
         [FromQuery] DateTime? endDate = null)
     {
-        // Valores padrão se não fornecidos
-        var end = endDate ?? DateTime.UtcNow;
-        var start = startDate ?? end.AddDays(-30);
-        
-        var insights = await _performanceService.GenerateInsightsAsync(creatorId, start, end);
+        var insights = await _dashboardService.GenerateInsightsAsync(creatorId, startDate, endDate);
         return Ok(insights);
     }
 
@@ -66,11 +59,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? endDate = null,
         [FromQuery] SocialMediaPlatform? platform = null)
     {
-        // Valores padrão se não fornecidos
-        var end = endDate ?? DateTime.UtcNow;
-        var start = startDate ?? end.AddDays(-30);
-        
-        var metrics = await _performanceService.GetMetricsTimelineAsync(creatorId, start, end, platform);
+        var metrics = await _dashboardService.GetMetricsAsync(creatorId, startDate, endDate, platform);
         return Ok(metrics);
     }
 
@@ -80,8 +69,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? date = null,
         [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
     {
-        var targetDate = date ?? DateTime.UtcNow.Date;
-        var metrics = await _performanceService.GetDailyMetricsAsync(creatorId, platform, targetDate);
+        var metrics = await _dashboardService.GetDailyMetricsAsync(creatorId, date, platform);
         return Ok(metrics);
     }
 
@@ -90,7 +78,7 @@ public class DashboardController : ControllerBase
         Guid creatorId,
         [FromQuery] int limit = 5)
     {
-        var topContent = await _performanceService.GetTopPerformingContentAsync(creatorId, limit);
+        var topContent = await _dashboardService.GetTopContentAsync(creatorId, limit);
         return Ok(topContent);
     }
 
@@ -99,7 +87,7 @@ public class DashboardController : ControllerBase
         Guid creatorId,
         [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
     {
-        var recommendations = await _performanceService.GetBestTimeToPostAsync(creatorId, platform);
+        var recommendations = await _dashboardService.GetBestTimeToPostAsync(creatorId, platform);
         return Ok(recommendations);
     }
 
@@ -108,7 +96,7 @@ public class DashboardController : ControllerBase
         Guid creatorId,
         [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
     {
-        var engagementRate = await _performanceService.CalculateAverageEngagementRateAsync(creatorId, platform);
+        var engagementRate = await _dashboardService.GetAverageEngagementRateAsync(creatorId, platform);
         return Ok(engagementRate);
     }
 
@@ -118,11 +106,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        // Valores padrão se não fornecidos
-        var end = endDate ?? DateTime.UtcNow;
-        var start = startDate ?? end.AddDays(-30);
-        
-        var growth = await _performanceService.CalculateRevenueGrowthAsync(creatorId, start, end);
+        var growth = await _dashboardService.GetRevenueGrowthAsync(creatorId, startDate, endDate);
         return Ok(growth);
     }
 
@@ -133,33 +117,21 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        // Valores padrão se não fornecidos
-        var end = endDate ?? DateTime.UtcNow;
-        var start = startDate ?? end.AddDays(-30);
-        
-        var growth = await _performanceService.CalculateFollowerGrowthAsync(creatorId, platform, start, end);
+        var growth = await _dashboardService.GetFollowerGrowthAsync(creatorId, platform, startDate, endDate);
         return Ok(growth);
     }
 
-    // Endpoints para adicionar e atualizar métricas de desempenho (para simulação/testes)
     [HttpPost("metrics")]
     public async Task<ActionResult<PerformanceMetrics>> AddMetrics([FromBody] PerformanceMetrics metrics)
     {
-        metrics.Id = Guid.NewGuid();
-        metrics.CreatedAt = DateTime.UtcNow;
-        metrics.UpdatedAt = DateTime.UtcNow;
-        
-        var result = await _metricsRepository.AddAsync(metrics);
+        var result = await _dashboardService.AddMetricsAsync(metrics);
         return CreatedAtAction(nameof(GetDailyMetrics), new { creatorId = metrics.CreatorId, date = metrics.Date }, result);
     }
 
     [HttpPost("content-performance")]
     public async Task<ActionResult<ContentPerformance>> AddContentPerformance([FromBody] ContentPerformance performance)
     {
-        performance.Id = Guid.NewGuid();
-        performance.CollectedAt = DateTime.UtcNow;
-        
-        var result = await _contentPerformanceRepository.AddAsync(performance);
-        return CreatedAtAction(nameof(GetTopContent), new { creatorId = result.Id }, result);
+        var result = await _dashboardService.AddContentPerformanceAsync(performance);
+        return CreatedAtAction(nameof(GetTopContent), new { creatorId = performance.CreatorId }, result);
     }
 } 
