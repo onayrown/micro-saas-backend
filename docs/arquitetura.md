@@ -46,6 +46,39 @@ A arquitetura do projeto MicroSaaS segue os princípios da Clean Architecture, c
 - **Conteúdo**: Testes unitários e de integração
 - **Responsabilidade**: Verificar o comportamento do código
 
+## Arquitetura do Frontend
+
+### MicroSaaS.Frontend
+- **Tecnologia**: React (versão LTS mais recente)
+- **Arquitetura**: Totalmente independente do backend
+- **Comunicação**: Apenas via API RESTful
+- **Estrutura**: Arquitetura modular baseada em componentes
+- **Responsabilidade**: Interface de usuário e experiência do usuário
+
+### Princípios do Frontend
+
+1. **Independência Total**: O frontend deve funcionar de forma completamente independente do backend, comunicando-se exclusivamente via APIs RESTful.
+
+2. **Substituibilidade**: A arquitetura deve permitir a substituição completa do frontend por outra implementação (seja outra tecnologia web ou aplicativos móveis) sem impactar o backend.
+
+3. **Desacoplamento**: Não deve haver dependências diretas entre o código frontend e o código backend além dos contratos de API.
+
+4. **Estado Gerenciado no Cliente**: O estado da aplicação deve ser gerenciado no cliente, com armazenamento local quando apropriado.
+
+5. **Estrutura Modular**: Organização em módulos/componentes que reflitam os domínios funcionais da aplicação.
+
+### Organização do Código Frontend
+
+- **components/**: Componentes React reutilizáveis
+- **pages/**: Componentes de página completos
+- **hooks/**: Hooks personalizados do React
+- **services/**: Serviços de comunicação com o backend
+- **contexts/**: Contextos React para gerenciamento de estado
+- **utils/**: Utilitários e funções auxiliares
+- **types/**: Definições de tipos TypeScript
+- **assets/**: Recursos estáticos (imagens, ícones, etc.)
+- **styles/**: Estilos globais e temas
+
 ## Benefícios desta Estrutura
 
 Esta estrutura garante:
@@ -55,6 +88,7 @@ Esta estrutura garante:
 3. **Isolamento do domínio**: A lógica de negócio permanece isolada de detalhes técnicos
 4. **Facilidade de manutenção e evolução**: Alterações em uma camada não afetam outras
 5. **Testabilidade do código**: Facilita a escrita de testes unitários sem dependências externas
+6. **Flexibilidade de UI**: Permite substituir completamente a interface sem modificar o backend
 
 ## Diretrizes para Desenvolvimento
 
@@ -65,6 +99,17 @@ Ao desenvolver ou corrigir código no MicroSaaS:
 3. Interfaces devem ser definidas na camada de aplicação, implementações na infraestrutura
 4. Use DTOs para transferir dados entre as camadas, evitando expor entidades de domínio
 5. Não crie dependências circulares entre projetos
+6. Mantenha o frontend e o backend estritamente separados, comunicando-se apenas via API
+
+## Diretrizes para o Frontend
+
+1. **Responsividade**: Todas as interfaces devem ser responsivas, funcionando bem em dispositivos desktop e móveis
+2. **Acessibilidade**: Seguir padrões WCAG para garantir acessibilidade
+3. **Performance**: Otimizar carregamento e renderização, utilizando lazy loading e renderização condicional
+4. **Testes**: Implementar testes unitários para componentes e testes end-to-end para fluxos críticos
+5. **Estado**: Gerenciar estado de forma eficiente usando Context API e/ou Redux
+6. **API**: Isolar chamadas de API em serviços dedicados para facilitar manutenção e testes
+7. **Segurança**: Implementar autenticação JWT segura e proteção contra vulnerabilidades comuns
 
 ## Anotações sobre Implementações Específicas
 
