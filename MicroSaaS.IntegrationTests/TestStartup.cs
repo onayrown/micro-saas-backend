@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.IntegrationTests.Controllers;
+using MicroSaaS.IntegrationTests.Utils;
 using MongoDB.Driver;
 using Moq;
 using System;
@@ -62,7 +63,7 @@ namespace MicroSaaS.IntegrationTests
         protected override bool IsController(TypeInfo typeInfo)
         {
             // Garantir que apenas nossos controladores de teste sejam reconhecidos
-            if (typeInfo == typeof(TestAuthController).GetTypeInfo() ||
+            if (typeInfo == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).GetTypeInfo() ||
                 typeInfo == typeof(TestRecommendationController).GetTypeInfo())
             {
                 return true;

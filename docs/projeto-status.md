@@ -51,20 +51,20 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
 - [x] Implementação completa do YouTube
 - [x] Implementação completa do TikTok
 
-#### 🔄 Agendador de Conteúdo (90%)
+#### ✅ Agendador de Conteúdo (100%)
 - [x] Estrutura de dados para postagens
 - [x] Sistema de status de publicação
 - [x] API para gerenciar cronograma
 - [x] Mecanismo de agendamento e publicação automática
 - [x] Sistema de notificações
 
-#### 🔄 Checklists e Organização (90%)
+#### ✅ Checklists e Organização (100%)
 - [x] Modelo de dados para checklists
 - [x] Repositório de itens e tarefas
 - [x] API completa para gerenciamento de checklists
 - [x] Sistema de prazos e lembretes
 
-#### 🔄 Monetização (90%)
+#### ✅ Monetização (100%)
 - [x] Modelo de dados para receitas
 - [x] Cálculos básicos de estimativas
 - [x] Integração com Google AdSense
@@ -72,7 +72,7 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
 - [x] Obtenção de dados da conta 
 - [x] Processamento de relatórios de receita
 - [x] API de métricas de monetização
-- [ ] Dashboard visual de receitas
+- [x] Dashboard visual de receitas
 
 #### ✅ Sistema de Recomendações (100%)
 - [x] Análise de melhores horários de postagem
@@ -139,7 +139,7 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
    - [x] Adicionar endpoints REST para recomendações
    - [x] Corrigir avisos menos críticos
 
-2. **Aprimorar API RESTful** (90% ✅)
+2. **Aprimorar API RESTful** (100% ✅)
    - [x] Implementar versionamento de API (v1)
    - [x] Melhorar documentação com Swagger
    - [x] Adicionar testes de integração para endpoints principais
@@ -174,10 +174,10 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
    - [x] Implementar cache em repositórios críticos
    - [x] Estabelecer estratégias de invalidação de cache
 
-7. **Ampliar Cobertura de Testes** (40% 🔄)
+7. **Ampliar Cobertura de Testes** (65% 🔄)
    - [x] Implementar testes unitários para serviços críticos
    - [x] Adicionar testes para repositórios e mapeadores
-   - [ ] Criar testes de integração para fluxos principais
+   - [x] Criar testes de integração para fluxos principais
    - [ ] Verificar cenários de edge cases e tratamento de erros
    - [x] Implementar testes para casos de falha em serviços externos
    - [x] Garantir cobertura de testes para funcionalidades de cache
@@ -244,20 +244,23 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
 ### Backend
 - [x] Sistema de Recomendações (100%)
 - [x] Aprimorar Análise de Conteúdo (100%)
-- [x] Aprimorar API RESTful (85%)
-- [x] Otimizações de Performance (90%)
-- [ ] Ampliar Cobertura de Testes (75%)
+- [x] Aprimorar API RESTful (100%)
+- [x] Otimizações de Performance (100%)
+- [ ] Ampliar Cobertura de Testes (65%)
   - [x] Implementação de testes unitários para serviços críticos (ContentAnalysisService, AuthenticationService, TokenService)
   - [x] Testes unitários para repositórios principais (UserRepository, ContentPerformanceRepository)
   - [x] Testes para funcionalidades de cache
   - [x] Testes de integração para o sistema de agendamento
   - [x] Testes de integração para fluxos de publicação
+  - [x] Testes de integração para controladores (AuthController, RecommendationController)
+  - [x] Adicionados novos testes de integração para ContentCreatorController, PerformanceController e ContentChecklistController
   - [ ] Testes para cenários de edge cases e validações
+  - [ ] Testes de integração para os controladores restantes
 
 **Resumo de Cobertura de Testes**:
 - Testes Unitários: Implementados para serviços críticos (RecommendationService, ContentAnalysisService, AuthenticationService, TokenService, PerformanceAnalysisService) e para os principais repositórios (UserRepository, ContentPerformanceRepository, SocialMediaAccountRepository).
-- Testes de Integração: Implementados para autenticação, agendamento de publicações, fluxos de publicação e operações básicas de API.
-- Próximos passos: Implementar testes para algoritmos de análise de conteúdo, cenários de edge cases e validações.
+- Testes de Integração: Implementados para autenticação, agendamento de publicações, fluxos de publicação, operações básicas de API e recentemente adicionados para ContentCreatorController, PerformanceController e ContentChecklistController.
+- Próximos passos: Implementar testes para algoritmos de análise de conteúdo, cenários de edge cases e validações, além de completar os testes de integração para os controladores restantes.
 
 ### Frontend
 
@@ -276,7 +279,8 @@ O objetivo do MVP é criar uma plataforma funcional para gestão de conteúdo pa
 
 ### Backend
 1. **Completar Testes**
-   - Implementar testes para validações e edge cases
+   - Implementar testes para os controladores restantes (DashboardController, RevenueController, etc.)
+   - Adicionar testes para validações e edge cases
    - Adicionar testes para algoritmos de análise de conteúdo
    - Atingir cobertura de 85% no backend
 

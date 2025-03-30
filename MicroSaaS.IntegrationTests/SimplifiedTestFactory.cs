@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using MicroSaaS.IntegrationTests.Controllers;
+using MicroSaaS.IntegrationTests.Utils;
 
 namespace MicroSaaS.IntegrationTests
 {
@@ -84,9 +85,12 @@ namespace MicroSaaS.IntegrationTests
     {
         protected override bool IsController(TypeInfo typeInfo)
         {
-            // Apenas controladores no namespace MicroSaaS.IntegrationTests.Controllers
-            return typeInfo.Namespace == typeof(HealthController).Namespace &&
-                   base.IsController(typeInfo);
+            // Após remover o TestAuthController duplicado, agora usamos apenas
+            // o do namespace MicroSaaS.IntegrationTests.Utils
+            bool isInUtilsNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Utils.TestAuthController).Namespace;
+            bool isInControllersNamespace = typeInfo.Namespace == typeof(MicroSaaS.IntegrationTests.Controllers.HealthController).Namespace;
+            
+            return (isInUtilsNamespace || isInControllersNamespace) && base.IsController(typeInfo);
         }
     }
 } 

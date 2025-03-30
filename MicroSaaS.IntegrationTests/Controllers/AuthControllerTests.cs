@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using MicroSaaS.Application.DTOs.Auth;
+using MicroSaaS.IntegrationTests.Utils;
 using Xunit;
 using Xunit.Abstractions;
 using FluentAssertions;
