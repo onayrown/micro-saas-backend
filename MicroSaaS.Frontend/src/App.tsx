@@ -19,6 +19,7 @@ import SocialAccountsPage from './pages/social/SocialAccountsPage';
 import ContentPage from './pages/content/ContentPage';
 import SchedulePage from './pages/schedule/SchedulePage';
 import ProfilePage from './pages/profile/ProfilePage';
+import RecommendationsPage from './pages/recommendations/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Protected Route Component
@@ -49,24 +50,67 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
-        
+
         {/* Protected Routes */}
-        <Route element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/social-accounts" element={<SocialAccountsPage />} />
-          <Route path="/content" element={<ContentPage />} />
-          <Route path="/schedule" element={<SchedulePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+        <Route element={<MainLayout />}>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <ProtectedRoute>
+                <RecommendationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/content"
+            element={
+              <ProtectedRoute>
+                <ContentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/schedule"
+            element={
+              <ProtectedRoute>
+                <SchedulePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/social-accounts"
+            element={
+              <ProtectedRoute>
+                <SocialAccountsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
-        
-        {/* 404 Page */}
-        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </MuiThemeProvider>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   Box,
   CssBaseline,
@@ -32,8 +32,10 @@ import {
   Logout as LogoutIcon,
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
+  Assessment as AssessmentIcon,
+  Lightbulb as LightbulbIcon,
 } from '@mui/icons-material';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
 
@@ -96,11 +98,13 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
 );
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Analytics', icon: <BarChartIcon />, path: '/analytics' },
-  { text: 'Social Accounts', icon: <ShareIcon />, path: '/social-accounts' },
-  { text: 'Content', icon: <ArticleIcon />, path: '/content' },
-  { text: 'Schedule', icon: <ScheduleIcon />, path: '/schedule' },
+  { text: 'Recomendações', icon: <LightbulbIcon />, path: '/recommendations' },
+  { text: 'Conteúdo', icon: <ArticleIcon />, path: '/content' },
+  { text: 'Agendamento', icon: <ScheduleIcon />, path: '/schedule' },
+  { text: 'Contas Sociais', icon: <ShareIcon />, path: '/social-accounts' },
+  { text: 'Perfil', icon: <PersonIcon />, path: '/profile' },
 ];
 
 const MainLayout = () => {
@@ -281,15 +285,13 @@ const MainLayout = () => {
           <ListItem 
             disablePadding 
             sx={{ display: 'block' }}
-            component={Link}
-            to="/profile"
+            onClick={handleLogout}
           >
             <ListItemButton
               sx={{
                 minHeight: 48,
                 justifyContent: open ? 'initial' : 'center',
                 px: 2.5,
-                bgcolor: location.pathname === '/profile' ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
               }}
             >
               <ListItemIcon
@@ -299,9 +301,9 @@ const MainLayout = () => {
                   justifyContent: 'center',
                 }}
               >
-                <PersonIcon />
+                <LogoutIcon />
               </ListItemIcon>
-              <ListItemText primary="Perfil" sx={{ opacity: open ? 1 : 0 }} />
+              <ListItemText primary="Sair" sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
