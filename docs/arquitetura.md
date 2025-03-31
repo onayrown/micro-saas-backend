@@ -110,16 +110,145 @@ Ao desenvolver ou corrigir código no MicroSaaS:
 5. **Estado**: Gerenciar estado de forma eficiente usando Context API e/ou Redux
 6. **API**: Isolar chamadas de API em serviços dedicados para facilitar manutenção e testes
 7. **Segurança**: Implementar autenticação JWT segura e proteção contra vulnerabilidades comuns
+8. **Dados Simulados (Mock)**: Implementar dados simulados para todas as APIs para permitir desenvolvimento independente do backend
 
-## Anotações sobre Implementações Específicas
+## Abordagem de Resiliência Frontend
 
-### Análise de Performance/Dashboard
+Para garantir uma experiência de usuário consistente e facilitar o desenvolvimento paralelo do frontend e backend, estabelecemos uma abordagem padronizada para todas as páginas:
 
-Os modelos e serviços para análise de performance seguem a mesma estrutura:
+### 1. Estrutura de Serviços
 
-- `PerformanceMetrics`, `DashboardInsights`, `ContentPerformance`: Definidos como entidades no Domain
-- Interfaces de repositório: Definidas em Application
-- Implementações: Armazenadas na camada de Infrastructure
-- Controllers: Expostos na camada Backend
+Todos os serviços de API devem:
 
-Sempre mantenha esta estrutura ao implementar novas funcionalidades. 
+- Ser organizados por domínio funcional (ex: RecommendationService, AnalyticsService, etc.)
+- Utilizar o serviço `api.ts` centralizado para chamadas HTTP
+- Incluir tipagem completa para requisições e respostas
+- Implementar tratamento de erros abrangente
+
+### 2. Dados Simulados (Mock)
+
+Cada serviço deve incluir:
+
+- Um objeto `mockData` com dados simulados realistas
+- Implementação de fallback para dados simulados quando a API não estiver disponível
+- Estrutura de dados simulados correspondente à estrutura esperada da API
+
+Exemplo de estrutura para serviços:
+
+```typescript
+// NomeServiço.ts
+import api from './api';
+import { TiposNecessários } from '../types/common';
+
+// Dados simulados para quando a API não estiver disponível
+const mockData = {
+  // Estrutura de dados simulados...
+};
+
+class NomeServiço {
+  async métodoServiço(): Promise<TipoRetorno> {
+    try {
+      const response = await api.get('/endpoint');
+      return response.data;
+    } catch (error) {
+      console.warn('Erro ao chamar API, usando dados simulados:', error);
+      return mockData.dadosSimulados;
+    }
+  }
+}
+```
+
+### 3. Componentes de Interface
+
+Todas as páginas devem:
+
+- Indicar visualmente quando dados simulados estão sendo usados (ex: badge "Dados de Demonstração")
+- Implementar estados de loading, erro e dados vazios
+- Usar degradação elegante quando serviços estão indisponíveis
+- Priorizar experiência do usuário, evitando telas de erro
+
+### 4. Tratamento de Estado
+
+Para gerenciar o estado dos dados da API:
+
+- Utilizar estados React para armazenar dados carregados da API
+- Implementar lógica para detectar quando dados simulados estão sendo usados
+- Fornecer feedback visual ao usuário sobre o estado da conexão com backend
+- Manter mensagens de erro técnicas no console, evitando mostrar detalhes técnicos ao usuário final
+
+### 5. Estratégia de Atualização de Dados
+
+Para garantir consistência:
+
+- Implementar mecanismo de refresh manual para o usuário atualizar dados
+- Considerar uso de polling ou websockets para atualizações automáticas quando apropriado
+- Armazenar em cache dados que não mudam frequentemente
+- Utilizar estratégias optimistic UI para ações do usuário
+
+### Benefícios Desta Abordagem
+
+Esta estratégia proporciona:
+
+1. **Desenvolvimento Paralelo**: Frontend e backend podem ser desenvolvidos simultaneamente
+2. **Capacidade de Demonstração**: O aplicativo pode ser demonstrado mesmo sem um backend funcional
+3. **Resiliência**: A aplicação permanece utilizável mesmo quando o backend apresenta problemas
+4. **Melhor UX**: Usuários recebem feedback claro sobre o estado do sistema
+5. **Testes Facilitados**: Componentes podem ser testados sem dependências externas
+
+Todas as novas páginas e funcionalidades devem seguir esta abordagem para garantir consistência e qualidade em toda a aplicação.
+
+## Recomendações para o Frontend
+
+Após experiências anteriores, as seguintes diretrizes são OBRIGATÓRIAS para o desenvolvimento do frontend:
+
+Antes de tudo ler esse artigo sobre boas praticas com React https://medium.com/front-end-weekly/top-react-best-practices-in-2025-a06cb92def81#id_token=eyJhbGciOiJSUzI1NiIsImtpZCI6IjgyMWYzYmM2NmYwNzUxZjc4NDA2MDY3OTliMWFkZjllOWZiNjBkZmIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyMTYyOTYwMzU4MzQtazFrNnFlMDYwczJ0cDJhMmphbTRsamRjbXMwMHN0dGcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyMTYyOTYwMzU4MzQtazFrNnFlMDYwczJ0cDJhMmphbTRsamRjbXMwMHN0dGcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMzEwNDcyOTA3MjY3MzM0ODMiLCJlbWFpbCI6ImZlbGlwZXNnbWFjaGFkb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmJmIjoxNzQzNDU0NzE5LCJuYW1lIjoiRmVsaXBlIE1hY2hhZG8iLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jS1BnZnB3VHpRRGFBT19PQjMxVUtDbnBndDFORE81S2ppNXFobG5fMzdHOVU1bjZ4OXQ9czk2LWMiLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJNYWNoYWRvIiwiaWF0IjoxNzQzNDU1MDE5LCJleHAiOjE3NDM0NTg2MTksImp0aSI6ImNjNjUzZDcwNmRmYjVjZDQxNjk1M2FiMWZjNTQwOTU0ZjUzZTIzY2MifQ.HPMHObnLlZjrMecH_SqZuwVWD5NT5VUzZ5PZi_p-PFBIgQzqlVOTGVl2-ln76rwgboLnhGI7G94T6HYKIIdu7-bSXghmh-7RBBC3Rg4SMTIOGeEhhw4OYyF6dfWQ5uGFkbUQYfLcOPETy-J7aG_jTA5uZ7yLWow4LjagdhDRwNtY2Au7GZGbTegPGeHXr8YonN6ziB86miQ-DjTcjeXqTeCTWtaYPpRGBvKCmJ50bXCGXhvWhHbe-Med27rxcV-nx8h3-ixL3Z_irK9kfOci-RxjEXKdKGv4go53nKQChh7nWq0_sgvcmjd_0zpp19xkE6TLehAXhCy-bM5jHK36HQ
+ e aplicar sempre essas boas praticas no nosso desenvolvimento.
+
+1. **Planejamento cuidadoso da arquitetura**:
+   - Definir claramente a estrutura, padrões de código e convenções antes de começar
+   - Documentar decisões arquiteturais importantes
+   - Revisar a arquitetura em equipe antes de implementar
+   - Criar templates e exemplos para os principais padrões de componentes
+
+2. **Gerenciamento rigoroso de dependências**:
+   - Utilizar versões fixas (não ranges) para todas as bibliotecas principais
+   - Verificar compatibilidade entre bibliotecas antes de adicioná-las
+   - Documentar propósito e escopo de cada dependência
+   - Limitar número de dependências, preferindo funcionalidades nativas quando possível
+   - Usar yarn.lock ou package-lock.json para garantir instalações consistentes
+
+3. **Implementação de testes desde o início**:
+   - Implementar testes unitários para componentes compartilhados
+   - Criar testes de integração para fluxos principais
+   - Usar testes como documentação viva do comportamento esperado
+   - Implementar pipeline de CI que execute os testes a cada commit
+
+4. **Documentação do código**:
+   - Documentar todos os componentes públicos com props e exemplos
+   - Criar storybook para visualizar e testar componentes isoladamente
+   - Documentar padrões de design e convenções de código
+   - Registrar decisões arquiteturais importantes e suas justificativas
+   - Sempre que precisar criar um novo documento salvar em micro-saas-backend\docs
+
+5. **Abordagem incremental**:
+   - Desenvolver e testar funcionalidades completas de forma incremental
+   - Validar cada componente antes de integrá-lo ao sistema
+   - Implementar primeiro o "caminho feliz", depois tratar casos de erro
+   - Obter feedback frequente sobre componentes e fluxos
+   - Fazer revisões de código regulares para garantir consistência
+
+6. **Isolamento de lógica de negócio**:
+   - Separar lógica de negócio da lógica de apresentação (hooks vs componentes)
+   - Centralizar lógica de chamadas de API em serviços dedicados
+   - Usar Context API ou bibliotecas como Redux para gerenciar estado compartilhado
+   - Evitar lógica de negócio complexa em componentes de UI
+
+7. **Práticas para evitar problemas comuns**:
+   - Evitar aninhamento profundo de componentes e rotas
+   - Padronizar tratamento de erros e loading states em toda a aplicação
+   - Nunca ter mais de um Router na mesma árvore de componentes
+   - Definir claramente a estrutura de rotas em um único lugar
+   - Consistência estrita na nomeação de props, funções e componentes
+   - Evitar efeitos colaterais em componentes de renderização
+
+Estas recomendações não são opcionais e devem ser seguidas rigorosamente para garantir a estabilidade, manutenibilidade e qualidade do código frontend.

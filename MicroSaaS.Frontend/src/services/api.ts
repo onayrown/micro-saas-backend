@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api'
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  timeout: 5000, // Adicionando timeout para evitar esperas longas
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 // Interceptor para adicionar o token de autenticação nas requisições
@@ -20,6 +24,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Se não houver resposta (servidor indisponível), apenas rejeita a promessa
+    if (!error.response) {
+      console.warn('API não disponível:', error.message);
+      return Promise.reject(error);
+    }
+    
     const originalRequest = error.config;
     
     // Se o erro for 401 (Unauthorized) e não for uma tentativa de refresh token
@@ -49,8 +59,13 @@ api.interceptors.response.use(
         return axios(originalRequest);
       } catch (refreshError) {
         // Se não conseguir atualizar o token, redirecionar para o login
+        console.error('Erro ao atualizar token:', refreshError);
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        
+        // Apenas redireciona para login se estiver em ambiente de produção
+        if (process.env.NODE_ENV === 'production') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }

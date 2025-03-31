@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { getTheme } from './theme';
+import { UserProvider } from './contexts/UserContext';
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
@@ -42,77 +43,79 @@ function App() {
   const theme = getTheme(isDarkMode ? 'dark' : 'light');
 
   return (
-    <MuiThemeProvider theme={theme}>
-      <CssBaseline />
-      <Routes>
-        {/* Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+    <UserProvider>
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline />
+        <Routes>
+          {/* Auth Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
-        {/* Protected Routes */}
-        <Route element={<MainLayout />}>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <AnalyticsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/recommendations"
-            element={
-              <ProtectedRoute>
-                <RecommendationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/content"
-            element={
-              <ProtectedRoute>
-                <ContentPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/schedule"
-            element={
-              <ProtectedRoute>
-                <SchedulePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/social-accounts"
-            element={
-              <ProtectedRoute>
-                <SocialAccountsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
-    </MuiThemeProvider>
+          {/* Protected Routes */}
+          <Route element={<MainLayout />}>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <AnalyticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/recommendations"
+              element={
+                <ProtectedRoute>
+                  <RecommendationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/content"
+              element={
+                <ProtectedRoute>
+                  <ContentPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/schedule"
+              element={
+                <ProtectedRoute>
+                  <SchedulePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/social-accounts"
+              element={
+                <ProtectedRoute>
+                  <SocialAccountsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </MuiThemeProvider>
+    </UserProvider>
   );
 }
 
