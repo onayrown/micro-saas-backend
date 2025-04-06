@@ -9,6 +9,7 @@ using MicroSaaS.Infrastructure.Services;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
+using MicroSaaS.Shared.Results;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -306,9 +307,9 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
     private void SetupAuthServiceMock(Mock<IAuthService> mockAuthService)
     {
         mockAuthService.Setup(x => x.ValidateUserCredentialsAsync("test@example.com", "Test@123"))
-            .ReturnsAsync(true);
+            .Returns(Task.FromResult(Result<bool>.Ok(true)));
             
         mockAuthService.Setup(x => x.ValidateUserCredentialsAsync("invalid@example.com", It.IsAny<string>()))
-            .ReturnsAsync(false);
+            .Returns(Task.FromResult(Result<bool>.Ok(false)));
     }
 } 

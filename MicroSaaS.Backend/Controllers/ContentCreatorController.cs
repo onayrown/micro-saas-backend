@@ -10,6 +10,7 @@ using MicroSaaS.Shared.Enums;
 using MicroSaaS.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -122,38 +123,69 @@ public class ContentCreatorController : ControllerBase
     {
         try
         {
-            // Em uma implementação real, obteríamos o ID do usuário a partir do token
-            // Para testes, retornamos um creator simulado
-            var creator = new ContentCreatorDto
+            // Log 1: Tentando obter a claim
+            _loggingService.LogInformation("GetCurrentCreator: Tentando obter ClaimTypes.NameIdentifier.");
+            var userIdClaim = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            _loggingService.LogInformation("GetCurrentCreator: Valor da claim NameIdentifier obtido: '{UserIdClaim}'", userIdClaim); // Logar o valor bruto
+
+            // Log 2: Verificando e parseando a claim
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             {
-                Id = Guid.NewGuid(),
-                Name = "Creator Teste",
-                Email = "teste@microsaas.com",
-                Bio = "Criador de conteúdo para testes",
-                ProfileImageUrl = "https://example.com/avatar.jpg",
-                WebsiteUrl = "https://example.com/creator",
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1),
-                TotalFollowers = 5000,
-                TotalPosts = 120,
-                Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram, SocialMediaPlatform.Twitter },
-                SocialMediaAccounts = new List<SocialMediaAccountDto>
+                // Log 2a: Falha na obtenção/parse
+                _loggingService.LogWarning("GetCurrentCreator: Não foi possível encontrar ou parsear o ID do usuário da claim NameIdentifier. Valor bruto: '{UserIdClaim}'", userIdClaim);
+                return Unauthorized(new ApiResponse<ContentCreatorDto> { Success = false, Message = "Usuário não autenticado ou token inválido." });
+            }
+
+            // Log 3: Sucesso no parse, logando o Guid
+            _loggingService.LogInformation("GetCurrentCreator: UserId parseado com sucesso: {UserId}. Buscando no repositório...", userId);
+
+            // Buscar o ContentCreator pelo UserId
+            // Assumindo que o repositório tem um método como GetByUserIdAsync ou similar.
+            // Se não tiver, precisaremos adaptar ou buscar pelo ID principal se UserId == CreatorId.
+            // Vamos assumir por enquanto que o ID do Claim é o ID do ContentCreator.
+            var creator = await _repository.GetByIdAsync(userId); 
+
+            // Log 4: Resultado da busca no repositório
+            if (creator == null)
+            {
+                // Log 4a: Não encontrado
+                _loggingService.LogWarning("GetCurrentCreator: ContentCreator NÃO encontrado no repositório para UserId: {UserId}", userId);
+                return NotFound(new ApiResponse<ContentCreatorDto> { Success = false, Message = "Perfil do criador de conteúdo não encontrado." });
+            }
+
+             // Log 5: Encontrado (implícito ao não entrar no if acima)
+             _loggingService.LogInformation("GetCurrentCreator: ContentCreator ENCONTRADO no repositório para UserId: {UserId}. Mapeando para DTO.", userId);
+
+            // Converter a entidade real para DTO
+            var creatorDto = new ContentCreatorDto
+            {
+                Id = creator.Id,
+                Name = creator.Name,
+                Email = creator.Email, // Certifique-se de que o Email está na entidade ContentCreator
+                Username = creator.Username, // Certifique-se de que o Username está na entidade ContentCreator
+                Bio = creator.Bio,
+                ProfileImageUrl = creator.ProfileImageUrl,
+                WebsiteUrl = creator.WebsiteUrl,
+                CreatedAt = creator.CreatedAt,
+                UpdatedAt = creator.UpdatedAt,
+                TotalFollowers = creator.TotalFollowers, // Adicionar se existir na entidade
+                TotalPosts = creator.TotalPosts,       // Adicionar se existir na entidade
+                SocialMediaAccounts = creator.SocialMediaAccounts?.Select(a => new SocialMediaAccountDto
                 {
-                    new SocialMediaAccountDto
-                    {
-                        Id = Guid.NewGuid(),
-                        Platform = SocialMediaPlatform.Instagram,
-                        Username = "testecreator",
-                        Followers = 1000,
-                        IsVerified = true
-                    }
-                }
+                    Id = a.Id,
+                    Platform = a.Platform,
+                    Username = a.Username,
+                    Followers = a.FollowersCount,
+                    IsVerified = false // Ajustar se a entidade tiver essa informação
+                }).ToList() ?? new List<SocialMediaAccountDto>()
+                // Platforms = ??? // Mapear se necessário e se existir na entidade
             };
 
+            _loggingService.LogInformation("GetCurrentCreator: Dados do criador encontrados para UserId: {UserId}", userId);
             return Ok(new ApiResponse<ContentCreatorDto>
             {
                 Success = true,
-                Data = creator
+                Data = creatorDto // Retornar o DTO real
             });
         }
         catch (Exception ex)
@@ -162,7 +194,7 @@ public class ContentCreatorController : ControllerBase
             return StatusCode(500, new ApiResponse<ContentCreatorDto>
             {
                 Success = false,
-                Message = "Erro ao obter criador de conteúdo atual"
+                Message = "Erro interno ao obter perfil do criador de conteúdo atual"
             });
         }
     }

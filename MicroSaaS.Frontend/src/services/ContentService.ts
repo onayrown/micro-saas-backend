@@ -1,26 +1,28 @@
 import api from './api';
 import { SocialMediaPlatform } from '../types/common';
+import { ApiResponse } from '../types/common';
+
+export interface Tag {
+  id?: string;
+  name: string;
+}
 
 export interface ContentPost {
   id: string;
   title: string;
   description: string;
   contentType: string;
-  status: 'draft' | 'scheduled' | 'published' | 'failed';
-  mediaUrls: string[];
-  platforms: SocialMediaPlatform[];
+  contentUrl?: string;
+  mediaUrls?: string[];
+  platforms: string[];
+  tags?: Tag[];
+  categories?: string[];
   scheduledDate?: string;
   publishedDate?: string;
-  tags: string[];
-  categories: string[];
-  engagementMetrics?: {
-    likes: number;
-    comments: number;
-    shares: number;
-    views: number;
-    clicks: number;
-  };
-  authorId: string;
+  status: string;
+  userId: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ContentCategory {
@@ -59,25 +61,26 @@ export interface CreatePostRequest {
   title: string;
   description: string;
   contentType: string;
-  mediaUrls: string[];
-  platforms: SocialMediaPlatform[];
+  contentUrl?: string;
+  mediaUrls?: string[];
+  platforms: string[];
+  tags?: Tag[];
+  categories?: string[];
   scheduledDate?: string;
-  tags: string[];
-  categories: string[];
-  authorId: string;
+  userId: string;
 }
 
 export interface UpdatePostRequest {
   id: string;
-  title?: string;
-  description?: string;
-  contentType?: string;
+  title: string;
+  description: string;
+  contentType: string;
+  contentUrl?: string;
   mediaUrls?: string[];
-  platforms?: SocialMediaPlatform[];
-  scheduledDate?: string;
-  tags?: string[];
+  platforms: string[];
+  tags?: Tag[];
   categories?: string[];
-  status?: 'draft' | 'scheduled' | 'published' | 'failed';
+  scheduledDate?: string;
 }
 
 // Dados simulados para quando a API não estiver disponível
@@ -93,18 +96,11 @@ const mockData = {
         'https://via.placeholder.com/800x600.png?text=AI+Marketing',
         'https://via.placeholder.com/800x600.png?text=Tech+Innovation'
       ],
-      platforms: [SocialMediaPlatform.Instagram, SocialMediaPlatform.LinkedIn],
+      platforms: ['Instagram', 'LinkedIn'],
       publishedDate: '2024-03-12T15:30:00Z',
-      tags: ['AI', 'MarketingDigital', 'Tecnologia'],
+      tags: [{ id: '1', name: 'AI' }, { id: '2', name: 'MarketingDigital' }, { id: '3', name: 'Tecnologia' }],
       categories: ['Tecnologia', 'Marketing'],
-      engagementMetrics: {
-        likes: 542,
-        comments: 78,
-        shares: 125,
-        views: 3250,
-        clicks: 820
-      },
-      authorId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
+      userId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
     },
     {
       id: '2',
@@ -115,11 +111,11 @@ const mockData = {
       mediaUrls: [
         'https://via.placeholder.com/800x600.png?text=TikTok+Engagement'
       ],
-      platforms: [SocialMediaPlatform.TikTok, SocialMediaPlatform.Instagram],
+      platforms: ['TikTok', 'Instagram'],
       scheduledDate: '2024-04-05T12:00:00Z',
-      tags: ['TikTok', 'Engajamento', 'RedesSociais'],
+      tags: [{ id: '4', name: 'TikTok' }, { id: '5', name: 'Engajamento' }, { id: '6', name: 'RedesSociais' }],
       categories: ['Estratégia', 'Redes Sociais'],
-      authorId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
+      userId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
     },
     {
       id: '3',
@@ -130,10 +126,10 @@ const mockData = {
       mediaUrls: [
         'https://via.placeholder.com/800x600.png?text=Content+Monetization'
       ],
-      platforms: [SocialMediaPlatform.YouTube, SocialMediaPlatform.LinkedIn],
-      tags: ['Monetização', 'CriadoresDeConteúdo', 'Receita'],
+      platforms: ['YouTube', 'LinkedIn'],
+      tags: [{ id: '7', name: 'Monetização' }, { id: '8', name: 'CriadoresDeConteúdo' }, { id: '9', name: 'Receita' }],
       categories: ['Monetização', 'Negócios'],
-      authorId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
+      userId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
     },
     {
       id: '4',
@@ -146,18 +142,11 @@ const mockData = {
         'https://via.placeholder.com/800x600.png?text=Ecommerce+Trends+2',
         'https://via.placeholder.com/800x600.png?text=Ecommerce+Trends+3'
       ],
-      platforms: [SocialMediaPlatform.Instagram, SocialMediaPlatform.Facebook],
+      platforms: ['Instagram', 'Facebook'],
       publishedDate: '2024-03-18T10:15:00Z',
-      tags: ['Ecommerce', 'Tendências', 'Vendas'],
+      tags: [{ id: '10', name: 'Ecommerce' }, { id: '11', name: 'Tendências' }, { id: '12', name: 'Vendas' }],
       categories: ['E-commerce', 'Negócios'],
-      engagementMetrics: {
-        likes: 328,
-        comments: 42,
-        shares: 87,
-        views: 2180,
-        clicks: 540
-      },
-      authorId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
+      userId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
     },
     {
       id: '5',
@@ -168,18 +157,11 @@ const mockData = {
       mediaUrls: [
         'https://via.placeholder.com/800x600.png?text=Podcast+Guide'
       ],
-      platforms: [SocialMediaPlatform.LinkedIn, SocialMediaPlatform.Twitter],
+      platforms: ['LinkedIn', 'Twitter'],
       publishedDate: '2024-03-05T08:45:00Z',
-      tags: ['Podcast', 'Áudio', 'Conteúdo'],
+      tags: [{ id: '13', name: 'Podcast' }, { id: '14', name: 'Áudio' }, { id: '15', name: 'Conteúdo' }],
       categories: ['Podcast', 'Produção de Conteúdo'],
-      engagementMetrics: {
-        likes: 215,
-        comments: 38,
-        shares: 65,
-        views: 1850,
-        clicks: 370
-      },
-      authorId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
+      userId: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d'
     }
   ] as ContentPost[],
 
@@ -334,187 +316,214 @@ const mockData = {
 class ContentService {
   async getPosts(creatorId: string, status?: string): Promise<ContentPost[]> {
     try {
-      const response = await api.get(`/content/posts/${creatorId}`, {
-        params: { status }
+      const response = await api.get<ApiResponse<ContentPost[]>>(`/v1/ContentPost`, {
+        params: { creatorId, status }
       });
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter posts, usando dados simulados:', error);
       
-      // Filtrar os posts simulados com base no status, se fornecido
-      if (status) {
-        return mockData.posts.filter(post => post.status === status);
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
       }
       
+      console.warn('API retornou dados vazios ou erro', response.data);
+      return [];
+    } catch (error) {
+      console.error('Erro ao obter posts:', error);
+      // Fallback para dados simulados em caso de erro
       return mockData.posts;
     }
   }
 
   async getPostById(postId: string): Promise<ContentPost> {
     try {
-      const response = await api.get(`/content/post/${postId}`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter post por ID, usando dados simulados:', error);
-      const post = mockData.posts.find(p => p.id === postId);
+      const response = await api.get<ApiResponse<ContentPost>>(`/v1/ContentPost/${postId}`);
       
-      if (!post) {
-        throw new Error('Post não encontrado');
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
       }
       
-      return post;
+      throw new Error(response.data?.message || 'Post não encontrado');
+    } catch (error: any) {
+      console.error('Erro ao obter post por ID:', error);
+      
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao buscar post por ID');
+      }
+      
+      throw error;
     }
   }
 
-  async createPost(data: CreatePostRequest): Promise<ContentPost> {
+  async createPost(postData: CreatePostRequest): Promise<ContentPost> {
     try {
-      const response = await api.post('/content/posts', data);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao criar post, usando resposta simulada:', error);
+      const response = await api.post<ApiResponse<ContentPost>>('/v1/ContentPost', postData);
       
-      // Simular a resposta de criação com dados simulados
-      const newPost: ContentPost = {
-        id: `sim-${Date.now()}`,
-        ...data,
-        status: 'draft',
-        engagementMetrics: {
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          views: 0,
-          clicks: 0
-        }
-      };
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
+      }
       
-      return newPost;
+      throw new Error(response.data?.message || 'Erro ao criar post');
+    } catch (error: any) {
+      console.error('Erro ao criar post:', error);
+      
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao criar post');
+      }
+      
+      throw error;
     }
   }
 
-  async updatePost(data: UpdatePostRequest): Promise<ContentPost> {
+  async updatePost(postId: string, postData: UpdatePostRequest): Promise<ContentPost> {
     try {
-      const response = await api.put(`/content/posts/${data.id}`, data);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao atualizar post, usando resposta simulada:', error);
+      const response = await api.put<ApiResponse<ContentPost>>(`/v1/ContentPost/${postId}`, postData);
       
-      // Encontrar o post simulado para atualizar
-      const existingPost = mockData.posts.find(p => p.id === data.id);
-      
-      if (!existingPost) {
-        throw new Error('Post não encontrado');
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
       }
       
-      // Simular a resposta com os dados atualizados
-      const updatedPost: ContentPost = {
-        ...existingPost,
-        ...data
-      };
+      throw new Error(response.data?.message || 'Erro ao atualizar post');
+    } catch (error: any) {
+      console.error('Erro ao atualizar post:', error);
       
-      return updatedPost;
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao atualizar post');
+      }
+      
+      throw error;
     }
   }
 
   async deletePost(postId: string): Promise<boolean> {
     try {
-      await api.delete(`/content/posts/${postId}`);
-      return true;
-    } catch (error) {
-      console.warn('Erro ao excluir post, usando resposta simulada:', error);
-      return true; // Simular exclusão bem-sucedida
+      const response = await api.delete<ApiResponse<boolean>>(`/v1/ContentPost/${postId}`);
+      return response.data?.success ?? false;
+    } catch (error: any) {
+      console.error('Erro ao excluir post:', error);
+      
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao excluir post');
+      }
+      
+      throw error;
     }
   }
 
   async publishPost(postId: string): Promise<ContentPost> {
     try {
-      const response = await api.post(`/content/posts/${postId}/publish`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao publicar post, usando resposta simulada:', error);
+      const response = await api.post<ApiResponse<ContentPost>>(`/v1/ContentPost/${postId}/publish`);
       
-      // Encontrar o post simulado para publicar
-      const existingPost = mockData.posts.find(p => p.id === postId);
-      
-      if (!existingPost) {
-        throw new Error('Post não encontrado');
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
       }
       
-      // Simular a resposta com os dados atualizados
-      const publishedPost: ContentPost = {
-        ...existingPost,
-        status: 'published',
-        publishedDate: new Date().toISOString()
-      };
+      throw new Error(response.data?.message || 'Falha ao publicar post');
+    } catch (error: any) {
+      console.error('Erro ao publicar post:', error);
       
-      return publishedPost;
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao publicar post');
+      }
+      
+      throw error;
     }
   }
 
-  async getCategories(creatorId: string): Promise<ContentCategory[]> {
+  async schedulePost(postId: string, scheduledDate: string): Promise<ContentPost> {
     try {
-      const response = await api.get(`/content/categories/${creatorId}`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter categorias, usando dados simulados:', error);
-      return mockData.categories;
-    }
-  }
-
-  async getTags(creatorId: string): Promise<ContentTag[]> {
-    try {
-      const response = await api.get(`/content/tags/${creatorId}`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter tags, usando dados simulados:', error);
-      return mockData.tags;
+      const response = await api.post<ApiResponse<ContentPost>>(`/v1/ContentPost/${postId}/schedule`, {
+        scheduledDate
+      });
+      
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data?.message || 'Falha ao agendar post');
+    } catch (error: any) {
+      console.error('Erro ao agendar post:', error);
+      
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao agendar post');
+      }
+      
+      throw error;
     }
   }
 
   async getChecklist(postId: string): Promise<ContentChecklistItem[]> {
     try {
-      const response = await api.get(`/content/checklist/${postId}`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter checklist, usando dados simulados:', error);
-      return mockData.checklists;
+      // Rota parece incorreta, o controller é ContentChecklist e não está relacionado a postId
+      // Assumindo que queremos o checklist por ID do checklist, não do post?
+      // TODO: Confirmar a lógica correta para buscar o checklist.
+      // Por agora, manteremos a busca por ID, mas usando a rota correta do controller.
+      const checklistId = postId; // Supondo que o ID passado é o do checklist
+      const response = await api.get<ApiResponse<ContentChecklistItem[]>>(`/api/v1/ContentChecklist/${checklistId}`);
+
+      if (response.data?.success && response.data.data) {
+         return response.data.data;
+      } else {
+         throw new Error(response.data?.message || 'Checklist não encontrado ou falha na API');
+      }
+    } catch (error: any) {
+      console.error('Erro ao obter checklist:', error);
+      // Propagar erro
+      if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao buscar checklist');
+      } else if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Erro desconhecido ao buscar checklist');
+      }
     }
   }
 
-  async updateChecklistItem(postId: string, itemId: string, isCompleted: boolean): Promise<ContentChecklistItem> {
+  async updateChecklistItem(checklistId: string, itemId: string, isCompleted: boolean): Promise<ContentChecklistItem> {
     try {
-      const response = await api.put(`/content/checklist/${postId}/items/${itemId}`, {
+      // Usar a rota correta do backend: /api/v1/ContentChecklist/{checklistId}/items/{itemId}
+      const response = await api.put<ApiResponse<ContentChecklistItem>>(`/api/v1/ContentChecklist/${checklistId}/items/${itemId}`, {
         isCompleted
       });
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao atualizar item do checklist, usando resposta simulada:', error);
-      
-      // Encontrar o item do checklist simulado para atualizar
-      const item = mockData.checklists.find(c => c.id === itemId);
-      
-      if (!item) {
-        throw new Error('Item do checklist não encontrado');
+
+      if (response.data?.success && response.data.data) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data?.message || 'Falha ao atualizar item do checklist');
       }
-      
-      // Simular a resposta com os dados atualizados
-      const updatedItem: ContentChecklistItem = {
-        ...item,
-        isCompleted
-      };
-      
-      return updatedItem;
+    } catch (error: any) {
+      console.error('Erro ao atualizar item do checklist:', error);
+      // Propagar erro
+       if (error.response && error.response.data) {
+        const apiError = error.response.data as ApiResponse<any>;
+        throw new Error(apiError.message || 'Erro ao atualizar item do checklist');
+      } else if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Erro desconhecido ao atualizar item do checklist');
+      }
     }
+  }
+
+  // Remover funções sem backend correspondente
+  /*
+  async getCategories(creatorId: string): Promise<ContentCategory[]> {
+    ...
+  }
+
+  async getTags(creatorId: string): Promise<ContentTag[]> {
+    ...
   }
 
   async getTemplates(creatorId: string): Promise<ContentTemplate[]> {
-    try {
-      const response = await api.get(`/content/templates/${creatorId}`);
-      return response.data;
-    } catch (error) {
-      console.warn('Erro ao obter templates, usando dados simulados:', error);
-      return mockData.templates;
-    }
+    ...
   }
+  */
 }
 
 export default new ContentService(); 

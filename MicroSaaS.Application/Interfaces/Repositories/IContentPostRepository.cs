@@ -17,4 +17,5 @@ public interface IContentPostRepository
     Task<IEnumerable<ContentPost>> GetScheduledByCreatorIdAsync(Guid creatorId);
     Task<int> CountAsync();
     Task<int> CountByCreatorAsync(Guid creatorId);
+    Task<IEnumerable<ContentPost>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate);
 } 

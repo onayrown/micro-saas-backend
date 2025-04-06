@@ -1,0 +1,71 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Rules - CreatorHub: Plataforma de Gestão para Criadores de Conteúdo
+
+## 📚 Gestão de Documentação
+- **Todos os documentos devem ser salvos e consultados exclusivamente na pasta `/docs`**
+- **Sempre consulte `/docs/planning.md`** no início de uma nova conversa para entender a arquitetura, objetivos, estilo e restrições do projeto
+- **Mantenha a documentação sincronizada com as mudanças de código**
+- **Use o formato Markdown (.md) para toda documentação**
+- **Organize a documentação por categorias** (ex: /docs/api, /docs/setup)
+
+## 🏗️ Arquitetura e Estrutura
+- **Siga os princípios da Clean Architecture** conforme documentado em `planning.md`
+- **Respeite a separação de camadas**:
+  - CreatorHub.Shared: Elementos compartilhados
+  - CreatorHub.Domain: Entidades de negócio e regras de domínio
+  - CreatorHub.Application: Casos de uso e serviços
+  - CreatorHub.Infrastructure: Implementações concretas
+  - CreatorHub.Backend: Controllers e configuração API
+- **Mantenha as dependências unidirecionais** conforme o diagrama de arquitetura
+- **Organize o frontend por funcionalidades** seguindo a estrutura definida
+
+## 💻 Padrões de Código
+- **Backend**: Use .NET 8.0 com C# e padrões RESTful
+- **Frontend**: Utilize React com TypeScript e Tailwind CSS
+- **Banco de Dados**: Implemente schemas conforme as collections MongoDB definidas
+- **Nunca crie um arquivo com mais de 500 linhas de código**
+- **Siga convenções de nomenclatura consistentes**:
+  - PascalCase para classes, interfaces e componentes
+  - camelCase para variáveis, funções e propriedades
+  - Use nomes descritivos e significativos
+
+## 🧪 Testes e Qualidade
+- **Mantenha cobertura mínima de 80% em testes unitários**
+- **Implemente testes de integração para fluxos principais**
+- **Crie testes E2E para cenários críticos**
+- **Atualize testes existentes após modificar a lógica**
+- **Realize testes de performance para endpoints críticos**
+
+## 🔒 Segurança e Conformidade
+- **Utilize HTTPS em todos os ambientes**
+- **Implemente autenticação JWT** com expiração curta (1 hora)
+- **Aplique validação e sanitização de todas as entradas**
+- **Siga as diretrizes LGPD/GDPR** para dados pessoais
+- **Garanta proteção contra ataques comuns** (CSRF, XSS, injection)
+
+## 🚀 Fluxo de Desenvolvimento
+- **Verifique `tasks.md`** antes de iniciar uma nova tarefa. Se a tarefa não estiver listada, adicione-a com uma breve descrição e a data atual
+- **Siga o roadmap definido** nas 5 fases de desenvolvimento
+- **Documente novos requisitos** descobertos durante o desenvolvimento
+- **Respeite os prazos estimados** para cada fase
+- **Reporte impedimentos** o mais cedo possível
+- **Atualize a documentação** junto com as implementações
+
+## 📊 Monitoramento e Métricas
+- **Implemente logs** para ações importantes usando Serilog
+- **Configure métricas de produto** conforme definido na seção 8.1
+- **Garanta métricas técnicas** conforme definido na seção 8.2
+- **Monitore o desempenho** da aplicação em todos os ambientes
+
+## 🧠 Regras de Comportamento
+- **Não assuma contexto ausente** - pergunte se estiver incerto
+- **Verifique a existência de caminhos e módulos** antes de referenciá-los
+- **Não exclua ou sobrescreva código existente** sem instrução explícita
+- **Evite soluções que contradigam** a arquitetura e padrões definidos
+- **Sempre considere as restrições técnicas** listadas na seção 9.1
+
+

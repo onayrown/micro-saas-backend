@@ -19,13 +19,34 @@ export enum SocialMediaPlatform {
 }
 
 /**
+ * Enum para os status de um post
+ */
+export enum PostStatus {
+  Draft = 'draft',
+  Scheduled = 'scheduled',
+  Processing = 'processing',
+  Published = 'published',
+  Failed = 'failed'
+}
+
+/**
+ * Enum para os tipos de conteúdo
+ */
+export enum ContentType {
+  Text = 'text',
+  Image = 'image',
+  Video = 'video',
+  Link = 'link'
+}
+
+/**
  * Interface para dados do usuário
  */
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  username: string;
 }
 
 /**
@@ -48,4 +69,9 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   errors?: string[];
+}
+
+export interface Tag {
+  id: string;
+  name: string;
 } 

@@ -1,7 +1,7 @@
 /**
  * Formata uma data para o formato dd/MM/yyyy
  */
-export const formatDate = (date: Date | string): string => {
+export const formatSimpleDate = (date: Date | string): string => {
   const d = new Date(date);
   return d.toLocaleDateString('pt-BR');
 };
@@ -92,4 +92,69 @@ export const daysBetween = (date1: Date | string, date2: Date | string): number 
   
   // Convert to days
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Formata uma data para exibição com data e hora
+ * Formato: dd/MM/yyyy HH:mm
+ */
+export const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  
+  // Verifica se a data é válida
+  if (isNaN(date.getTime())) {
+    return 'Data inválida';
+  }
+  
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
+/**
+ * Formata apenas a data sem a hora
+ * Formato: dd/MM/yyyy
+ */
+export const formatDateOnly = (dateString: string): string => {
+  const date = new Date(dateString);
+  
+  // Verifica se a data é válida
+  if (isNaN(date.getTime())) {
+    return 'Data inválida';
+  }
+  
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date);
+};
+
+/**
+ * Formata apenas a hora
+ * Formato: HH:mm
+ */
+export const formatTimeOnly = (dateString: string): string => {
+  const date = new Date(dateString);
+  
+  // Verifica se a data é válida
+  if (isNaN(date.getTime())) {
+    return 'Hora inválida';
+  }
+  
+  return new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
+/**
+ * Converte uma data para o formato ISO 8601 para envio ao backend
+ */
+export const toISOString = (date: Date): string => {
+  return date.toISOString();
 }; 

@@ -2,7 +2,10 @@ using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Shared.Exceptions;
+using MicroSaaS.Shared.Results;
+using System;
+using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace MicroSaaS.Infrastructure.Services;
 
@@ -22,37 +25,45 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email);
         if (user == null)
-            throw new AuthenticationException("Email ou senha inválidos");
+            return Result<AuthResponse>.Fail("Email ou senha inválidos");
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
-            throw new AuthenticationException("Email ou senha inválidos");
+            return Result<AuthResponse>.Fail("Email ou senha inválidos");
 
         if (!user.IsActive)
-            throw new AuthenticationException("Usuário inativo");
+            return Result<AuthResponse>.Fail("Usuário inativo");
 
         var token = _tokenService.GenerateToken(user);
 
-        return new AuthResponse
+        var response = new AuthResponse
         {
+            Success = true,
             Token = token,
             User = new UserDto
             {
                 Id = user.Id,
                 Username = user.Username,
-                Email = user.Email
+                Email = user.Email,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
             }
         };
+
+        return Result<AuthResponse>.Ok(response);
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         var existingUser = await _userRepository.GetByEmailAsync(request.Email);
         if (existingUser != null)
-            throw new AuthenticationException("Email já cadastrado");
+        {
+            return Result<AuthResponse>.Fail("Email já cadastrado");
+        }
 
         var passwordHash = _passwordHasher.HashPassword(request.Password);
 
@@ -71,50 +82,121 @@ public class AuthService : IAuthService
 
         var token = _tokenService.GenerateToken(user);
 
-        return new AuthResponse
+        var response = new AuthResponse
         {
+            Success = true,
             Token = token,
             User = new UserDto
             {
                 Id = user.Id,
                 Username = user.Username,
-                Email = user.Email
+                Email = user.Email,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
             }
         };
+
+        return Result<AuthResponse>.Ok(response);
     }
 
-    public async Task<AuthResponse> RefreshTokenAsync(string token)
+    public async Task<Result<AuthResponse>> RefreshTokenAsync(string token)
     {
-        var newToken = await _tokenService.RefreshTokenAsync(token);
-
-        var userId = _tokenService.GetUserIdFromToken(newToken);
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            throw new AuthenticationException("Usuário não encontrado");
-
-        return new AuthResponse
+        try
         {
-            Token = newToken,
-            User = new UserDto
+            var newToken = await _tokenService.RefreshTokenAsync(token);
+
+            var userId = _tokenService.GetUserIdFromToken(newToken);
+            var user = await _userRepository.GetByIdAsync(userId);
+            
+            if (user == null)
+                return Result<AuthResponse>.Fail("Usuário não encontrado");
+
+            var response = new AuthResponse
             {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email
-            }
-        };
+                Success = true,
+                Token = newToken,
+                User = new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    IsActive = user.IsActive,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt
+                }
+            };
+
+            return Result<AuthResponse>.Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Result<AuthResponse>.Fail($"Erro ao renovar token: {ex.Message}");
+        }
     }
 
-    public async Task RevokeTokenAsync(string token)
+    public async Task<Result<bool>> RevokeTokenAsync(string token)
     {
-        await _tokenService.RevokeTokenAsync(token);
+        try
+        {
+            await _tokenService.RevokeTokenAsync(token);
+            return Result<bool>.Ok(true);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Fail($"Erro ao revogar token: {ex.Message}");
+        }
     }
     
-    public async Task<bool> ValidateUserCredentialsAsync(string email, string password)
+    public async Task<Result<bool>> ValidateUserCredentialsAsync(string email, string password)
     {
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null || !user.IsActive)
-            return false;
+            return Result<bool>.Fail("Credenciais inválidas");
 
-        return _passwordHasher.VerifyPassword(password, user.PasswordHash);
+        var isValid = _passwordHasher.VerifyPassword(password, user.PasswordHash);
+        if (!isValid)
+            return Result<bool>.Fail("Credenciais inválidas");
+
+        return Result<bool>.Ok(true);
+    }
+
+    public async Task<Result<UserProfileResponse>> GetUserProfileAsync(ClaimsPrincipal claimsPrincipal)
+    {
+        try
+        {
+            var userId = claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Result<UserProfileResponse>.Fail("Usuário não autenticado");
+            }
+
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            
+            if (user == null)
+            {
+                return Result<UserProfileResponse>.Fail("Usuário não encontrado");
+            }
+            
+            var userProfileData = new UserProfileData
+            {
+                Id = user.Id.ToString(),
+                Name = user.Username,
+                Email = user.Email,
+                Role = "user",
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                ProfileImageUrl = null
+            };
+            
+            var response = UserProfileResponse.SuccessResponse(userProfileData);
+            
+            return Result<UserProfileResponse>.Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Result<UserProfileResponse>.Fail($"Erro ao obter perfil: {ex.Message}");
+        }
     }
 } 

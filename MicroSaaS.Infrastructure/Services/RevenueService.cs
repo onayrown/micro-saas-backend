@@ -72,7 +72,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -217,7 +217,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -231,7 +231,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -253,7 +253,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -275,7 +275,7 @@ public class RevenueService : IRevenueService
             Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -362,7 +362,7 @@ public class RevenueService : IRevenueService
     public async Task<decimal> CalculateContentRevenueAsync(Guid contentId)
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq("PostId", contentId.ToString());
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(filter)
             .ToListAsync();
             
@@ -372,14 +372,14 @@ public class RevenueService : IRevenueService
     public async Task<decimal> CalculateCreatorRevenueAsync(Guid creatorId)
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Eq(x => x.CreatorId, creatorId);
-        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>("content_posts")
+        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>(CollectionNames.ContentPosts)
             .Find(filter)
             .ToListAsync();
             
         var postIds = posts.Select(p => p.Id).ToList();
         
         var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.In(x => x.PostId, postIds);
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
             .Find(performanceFilter)
             .ToListAsync();
             
@@ -389,14 +389,14 @@ public class RevenueService : IRevenueService
     public async Task RefreshRevenueMetricsAsync()
     {
         var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Empty;
-        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>("content_posts")
+        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>(CollectionNames.ContentPosts)
             .Find(filter)
             .ToListAsync();
             
         foreach (var post in posts)
         {
             var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq(p => p.PostId, post.Id);
-            var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+            var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
                 .Find(performanceFilter)
                 .ToListAsync();
                 
@@ -408,7 +408,7 @@ public class RevenueService : IRevenueService
                 var update = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Update
                     .Set(p => p.CollectedAt, DateTime.UtcNow);
                     
-                await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>("content_performances")
+                await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
                     .UpdateOneAsync(
                         p => p.Id == performance.Id,
                         update);

@@ -4,7 +4,7 @@ Este é o backend de um projeto Micro SaaS para gerenciar o conteúdo de criador
 
 ## Estado Atual do Projeto
 
-O projeto está em desenvolvimento ativo com as principais funcionalidades já implementadas. Para ver o estado detalhado do projeto e o checklist de funcionalidades, consulte o arquivo [docs/projeto-status.md](docs/projeto-status.md).
+O projeto está em desenvolvimento ativo com as principais funcionalidades já implementadas. Para ver o estado detalhado do projeto e o checklist de funcionalidades, consulte o arquivo [docs/tasks.md](docs/tasks.md).
 
 ### Destaques
 - ✅ Estrutura de arquitetura limpa implementada
@@ -76,12 +76,12 @@ Esta é a forma mais fácil de executar o projeto, pois configura automaticament
    ```
 
 2. Execute o script de inicialização:
-   
+
    No Windows:
    ```
    .\start-docker.bat
    ```
-   
+
    No Linux/Mac:
    ```
    chmod +x start-docker.sh
@@ -156,7 +156,7 @@ dotnet test MicroSaaS.IntegrationTests
 
 ## Próximos Passos
 
-Confira o arquivo [docs/projeto-status.md](docs/projeto-status.md) para ver a lista completa de funcionalidades pendentes e as prioridades de desenvolvimento.
+Confira o arquivo [docs/tasks.md](docs/tasks.md) para ver a lista completa de funcionalidades pendentes e as prioridades de desenvolvimento.
 
 ## Contribuição
 

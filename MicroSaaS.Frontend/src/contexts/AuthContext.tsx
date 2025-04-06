@@ -1,171 +1,195 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../services/AuthService';
+import api from '../services/api';
 
-type User = {
+export interface AuthUser {
   id: string;
-  email: string;
   name: string;
-  avatar?: string;
-};
+  email: string;
+  role: string;
+}
 
-type AuthContextType = {
-  user: User | null;
+export interface AuthContextType {
   isAuthenticated: boolean;
-  isLoading: boolean;
+  isInitialized: boolean;
+  user: AuthUser | null;
+  loading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-};
+  logout: () => Promise<void>;
+  clearError: () => void;
+}
 
-export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-});
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-type AuthProviderProps = {
+interface AuthProviderProps {
   children: ReactNode;
-};
+}
 
-// Token simulado para desenvolvimento
-const MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IlVzdcOhcmlvIFRlc3RlIiwiaWF0IjoxNjE2MjM5MDIyLCJleHAiOjE2NDYyMzkwMjJ9.qMcqfHze2jJUz6O3GrfC2bXivLM71WLbEYDlrUNt8AI';
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          // Em produção, validar o token com o backend
-          const decoded: any = jwtDecode(token);
-          setUser({
-            id: decoded.sub || decoded.id || 'user-id',
-            email: decoded.email || 'user@example.com',
-            name: decoded.name || 'Usuário',
-            avatar: decoded.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(decoded.name || 'Usuário')}&background=random`,
-          });
-        } catch (error) {
-          console.error('Erro ao decodificar token:', error);
-          localStorage.removeItem('token');
-        }
-      }
-      setIsLoading(false);
-    };
-
-    checkAuth();
+  // Função para limpar mensagens de erro
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
+  // Função para carregar o perfil do usuário usando AuthService
+  const loadUserProfile = useCallback(async () => {
     try {
-      // Em ambiente de desenvolvimento, permitir login simulado
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta do servidor
-        localStorage.setItem('token', MOCK_TOKEN);
+      const response = await AuthService.getProfile();
+      
+      if (response.success && response.data) {
+        setUser({
+          id: response.data.id,
+          name: response.data.name || response.data.username,
+          email: response.data.email,
+          role: 'user' // Ajustar se a API fornecer informações de papel/role
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Erro ao carregar perfil:', err);
+      return false;
+    }
+  }, []);
+
+  // Inicialização do contexto de autenticação
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
         
-        const mockUser = {
-          id: 'user123',
-          email: email,
-          name: 'Usuário Teste',
-          avatar: 'https://ui-avatars.com/api/?name=Usuario+Teste&background=random',
-        };
-        
-        setUser(mockUser);
-        setIsLoading(false);
-        
-        // Redirecionar para o dashboard após login bem-sucedido
-        navigate('/dashboard');
-        return;
+        if (token) {
+          // Configura o token nas requisições
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Tenta carregar o perfil do usuário
+          const profileLoaded = await loadUserProfile();
+          
+          if (!profileLoaded) {
+            // Se falhar ao carregar o perfil, tenta renovar o token
+            const newToken = await AuthService.refreshToken();
+            
+            if (newToken) {
+              // Se conseguir renovar o token, tenta carregar o perfil novamente
+              await loadUserProfile();
+            } else {
+              // Se não conseguir renovar o token, limpa a autenticação
+              AuthService.logout();
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Falha ao inicializar autenticação:', err);
+        localStorage.removeItem('token');
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initAuth();
+  }, [loadUserProfile]);
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await AuthService.login({ email, password });
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Falha ao fazer login');
       }
       
-      // Código para produção - conectar com o backend real
-      const response = await AuthService.login(email, password);
-      localStorage.setItem('token', response.token);
+      // Se chegou aqui, o login foi bem-sucedido
+      // O token já foi salvo pelo AuthService
       
-      const decoded: any = jwtDecode(response.token);
-      setUser({
-        id: decoded.sub || decoded.id,
-        email: decoded.email,
-        name: decoded.name,
-        avatar: decoded.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(decoded.name)}&background=random`,
-      });
+      // Carrega o perfil do usuário
+      await loadUserProfile();
       
+      // Redireciona para o dashboard
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Erro durante login:', error);
-      throw error;
+    } catch (err: any) {
+      console.error('Erro de login:', err);
+      setError(err.message || 'Falha ao fazer login. Verifique suas credenciais.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password: string) => {
-    setIsLoading(true);
+    setLoading(true);
+    setError(null);
+
     try {
-      // Em ambiente de desenvolvimento, permitir registro simulado
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta do servidor
-        localStorage.setItem('token', MOCK_TOKEN);
-        
-        const mockUser = {
-          id: 'user123',
-          email: email,
-          name: name,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
-        };
-        
-        setUser(mockUser);
-        setIsLoading(false);
-        
-        // Redirecionar para o dashboard após registro bem-sucedido
-        navigate('/dashboard');
-        return;
-      }
-      
-      // Código para produção - conectar com o backend real
-      const response = await AuthService.register(name, email, password);
-      localStorage.setItem('token', response.token);
-      
-      const decoded: any = jwtDecode(response.token);
-      setUser({
-        id: decoded.sub || decoded.id,
-        email: decoded.email,
-        name: decoded.name,
-        avatar: decoded.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(decoded.name)}&background=random`,
+      const response = await AuthService.register({ 
+        name, 
+        email, 
+        password,
+        username: name // Usando o mesmo valor para name e username conforme esperado pela API
       });
       
+      if (!response.success) {
+        throw new Error(response.message || 'Falha ao registrar');
+      }
+      
+      // Se chegou aqui, o registro foi bem-sucedido
+      // O token já foi salvo pelo AuthService
+      
+      // Carrega o perfil do usuário
+      await loadUserProfile();
+      
+      // Redireciona para o dashboard
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Erro durante registro:', error);
-      throw error;
+    } catch (err: any) {
+      console.error('Erro de registro:', err);
+      setError(err.message || 'Falha ao registrar. Verifique os dados informados.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/login');
+  const logout = async () => {
+    try {
+      // Utiliza o AuthService para fazer logout de forma segura
+      await AuthService.logout();
+      
+      // Limpa o estado do usuário
+      setUser(null);
+      
+      // Redireciona para a página de login
+      navigate('/login');
+    } catch (err) {
+      console.error('Erro durante logout:', err);
+      // Mesmo com erro, limpa o estado e redireciona
+      setUser(null);
+      navigate('/login');
+    }
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    register,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: !!user,
+        isInitialized,
+        user,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+        clearError
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }; 

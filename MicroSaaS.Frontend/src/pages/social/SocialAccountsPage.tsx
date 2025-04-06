@@ -51,42 +51,53 @@ const SocialAccountsPage = () => {
 
   // Simula carregamento de dados
   useEffect(() => {
+    console.log('🔄 Carregando contas de redes sociais...');
+    setLoading(true);
+    setError(null);
+    
     const timer = setTimeout(() => {
-      // Dados de exemplo
-      setAccounts([
-        {
-          id: '1',
-          creatorId: 'user1',
-          platform: SocialMediaPlatform.Instagram,
-          handle: '@creador_oficial',
-          followers: 125000,
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          creatorId: 'user1',
-          platform: SocialMediaPlatform.YouTube,
-          handle: 'Canal Criador',
-          followers: 450000,
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          creatorId: 'user1',
-          platform: SocialMediaPlatform.TikTok,
-          handle: '@creador',
-          followers: 350000,
-          isVerified: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ]);
-      setLoading(false);
-    }, 1500);
+      try {
+        // Dados de exemplo
+        setAccounts([
+          {
+            id: '1',
+            creatorId: 'user1',
+            platform: SocialMediaPlatform.Instagram,
+            handle: '@creador_oficial',
+            followers: 125000,
+            isVerified: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '2',
+            creatorId: 'user1',
+            platform: SocialMediaPlatform.YouTube,
+            handle: 'Canal Criador',
+            followers: 450000,
+            isVerified: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '3',
+            creatorId: 'user1',
+            platform: SocialMediaPlatform.TikTok,
+            handle: '@creador',
+            followers: 350000,
+            isVerified: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ]);
+        console.log('✅ Contas carregadas com sucesso');
+      } catch (err) {
+        console.error('❌ Erro ao carregar contas:', err);
+        setError('Erro ao carregar contas. Por favor, tente novamente mais tarde.');
+      } finally {
+        setLoading(false);
+      }
+    }, 1000); // Reduzido para 1 segundo para melhor experiência do usuário
     
     return () => clearTimeout(timer);
   }, []);
@@ -192,9 +203,14 @@ const SocialAccountsPage = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Box>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <CircularProgress size={60} thickness={4} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Carregando suas contas...
+          </Typography>
+        </Box>
+      </Container>
     );
   }
 

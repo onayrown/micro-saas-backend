@@ -4,6 +4,7 @@ using MicroSaaS.Domain.Repositories;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MicroSaaS.Infrastructure.AdapterRepositories
@@ -78,6 +79,37 @@ namespace MicroSaaS.Infrastructure.AdapterRepositories
         {
             var posts = await _domainRepository.GetByCreatorIdAsync(creatorId);
             return posts.Count();
+        }
+
+        public async Task<IEnumerable<ContentPost>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+        {
+            // Verificar se o repositório de domínio tem implementação equivalente
+            try
+            {
+                // Se o repositório de domínio implementa o método, usar diretamente
+                if (_domainRepository is Domain.Repositories.IContentPostRepository domainRepo 
+                    && domainRepo.GetType().GetMethod("GetByCreatorIdBetweenDatesAsync") != null)
+                {
+                    // Usar reflexão para invocar de forma segura
+                    var method = domainRepo.GetType().GetMethod("GetByCreatorIdBetweenDatesAsync");
+                    if (method != null)
+                    {
+                        return await (Task<IEnumerable<ContentPost>>)method.Invoke(domainRepo, new object[] { creatorId, startDate, endDate });
+                    }
+                }
+                
+                // Caso contrário, buscar todos os posts do criador e filtrar por datas
+                var posts = await _domainRepository.GetByCreatorIdAsync(creatorId);
+                return posts.Where(p => p.PublishedAt.HasValue && 
+                                      p.PublishedAt.Value >= startDate && 
+                                      p.PublishedAt.Value <= endDate);
+            }
+            catch (Exception ex)
+            {
+                // Log do erro e retorno de lista vazia
+                Console.WriteLine($"Erro ao buscar posts do criador {creatorId} entre {startDate} e {endDate}: {ex.Message}");
+                return Enumerable.Empty<ContentPost>();
+            }
         }
     }
 } 

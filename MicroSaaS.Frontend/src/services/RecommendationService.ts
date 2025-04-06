@@ -145,12 +145,21 @@ const mockData = {
 };
 
 class RecommendationService {
+  // Padrão para processar respostas da API
+  private processApiResponse<T>(response: any): T {
+    // Verificar se a resposta segue o padrão { success: boolean, data: T, message: string }
+    if (response.success && response.data) {
+      return response.data;
+    }
+    return response; // Se não seguir o padrão, retorna a resposta direta
+  }
+
   async getBestTimeToPost(creatorId: string, platform: SocialMediaPlatform): Promise<PostTimeRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/best-times/${creatorId}`, {
+      const response = await api.get(`/v1/Recommendation/best-times/${creatorId}`, {
         params: { platform }
       });
-      return response.data;
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter melhores horários para postagem, usando dados simulados:', error);
       // Retornar dados simulados em caso de erro
@@ -160,8 +169,8 @@ class RecommendationService {
 
   async getBestTimeToPostAllPlatforms(creatorId: string): Promise<Record<SocialMediaPlatform, PostTimeRecommendation[]>> {
     try {
-      const response = await api.get(`/recommendation/best-times/${creatorId}/all-platforms`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/best-times/${creatorId}/all-platforms`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter melhores horários para todas plataformas, usando dados simulados:', error);
       // Criar dados simulados para todas as plataformas
@@ -178,8 +187,8 @@ class RecommendationService {
 
   async getContentRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/content/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/content-recommendations/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de conteúdo, usando dados simulados:', error);
       return mockData.contentRecommendations;
@@ -188,8 +197,8 @@ class RecommendationService {
 
   async getTopicRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/topics/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/topic-suggestions/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de tópicos, usando dados simulados:', error);
       return mockData.contentRecommendations.filter(rec => rec.recommendationType === 'TOPIC');
@@ -198,8 +207,8 @@ class RecommendationService {
 
   async getFormatRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/formats/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/format-suggestions/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de formatos, usando dados simulados:', error);
       return mockData.contentRecommendations.filter(rec => rec.recommendationType === 'FORMAT');
@@ -212,10 +221,10 @@ class RecommendationService {
     platform: SocialMediaPlatform
   ): Promise<string[]> {
     try {
-      const response = await api.get(`/recommendation/hashtags/${creatorId}`, {
+      const response = await api.get(`/v1/Recommendation/hashtags/${creatorId}`, {
         params: { contentDescription, platform }
       });
-      return response.data;
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de hashtags, usando dados simulados:', error);
       return ['#ConteúdoDigital', '#CriadorDeConteúdo', '#MarketingDigital', 
@@ -225,10 +234,10 @@ class RecommendationService {
 
   async getTrendingTopics(platform: SocialMediaPlatform): Promise<TrendTopic[]> {
     try {
-      const response = await api.get('/recommendation/trends', {
+      const response = await api.get('/v1/Recommendation/trends', {
         params: { platform }
       });
-      return response.data;
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter tópicos em tendência, usando dados simulados:', error);
       return mockData.trendingTopics;
@@ -237,8 +246,8 @@ class RecommendationService {
 
   async getNicheTrendingTopics(creatorId: string): Promise<TrendTopic[]> {
     try {
-      const response = await api.get(`/recommendation/trends/${creatorId}/niche`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/trends/${creatorId}/niche`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter tópicos em tendência para o nicho, usando dados simulados:', error);
       return mockData.trendingTopics;
@@ -247,16 +256,16 @@ class RecommendationService {
 
   async getMonetizationRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/monetization/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/monetization/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de monetização, usando dados simulados:', error);
       return [
         {
           id: '4',
-          title: 'Parcerias com Marcas',
-          description: 'Seu perfil tem potencial para parcerias pagas com marcas do setor',
-          score: 90,
+          title: 'Produtos Digitais',
+          description: 'Crie um kit de edição para seus seguidores',
+          score: 85,
           category: 'Monetização',
           recommendationType: 'MONETIZATION',
           implementationDifficulty: 'Médio',
@@ -264,12 +273,12 @@ class RecommendationService {
         },
         {
           id: '5',
-          title: 'Produtos Digitais',
-          description: 'Crie um e-book ou curso online baseado no seu conteúdo mais popular',
-          score: 85,
+          title: 'Parcerias com Marcas',
+          description: 'Identifique 3-5 marcas alinhadas com seu conteúdo',
+          score: 90,
           category: 'Monetização',
           recommendationType: 'MONETIZATION',
-          implementationDifficulty: 'Alto',
+          implementationDifficulty: 'Médio',
           potentialImpact: 'Alto'
         }
       ];
@@ -278,16 +287,16 @@ class RecommendationService {
 
   async getAudienceGrowthRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/audience-growth/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/audience-growth/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de crescimento de audiência, usando dados simulados:', error);
       return [
         {
           id: '6',
-          title: 'Colaborações Cruzadas',
-          description: 'Colabore com outros criadores para expandir seu alcance',
-          score: 88,
+          title: 'Consistência no Instagram',
+          description: 'Poste 4-5 vezes por semana para maximizar alcance',
+          score: 90,
           category: 'Crescimento',
           recommendationType: 'GROWTH',
           implementationDifficulty: 'Médio',
@@ -295,13 +304,13 @@ class RecommendationService {
         },
         {
           id: '7',
-          title: 'Constância de Publicação',
-          description: 'Aumente para 3-4 publicações semanais para melhorar alcance',
-          score: 92,
+          title: 'Colaborações Estratégicas',
+          description: 'Parcerias com criadores similares podem trazer 30% de novos seguidores',
+          score: 85,
           category: 'Crescimento',
           recommendationType: 'GROWTH',
-          implementationDifficulty: 'Baixo',
-          potentialImpact: 'Médio'
+          implementationDifficulty: 'Difícil',
+          potentialImpact: 'Alto'
         }
       ];
     }
@@ -309,19 +318,29 @@ class RecommendationService {
 
   async getEngagementRecommendations(creatorId: string): Promise<ContentRecommendation[]> {
     try {
-      const response = await api.get(`/recommendation/engagement/${creatorId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/engagement/${creatorId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao obter recomendações de engajamento, usando dados simulados:', error);
       return [
         {
           id: '8',
-          title: 'Enquetes e Perguntas',
-          description: 'Use recursos interativos para aumentar o tempo de visualização',
-          score: 84,
+          title: 'Perguntas Estratégicas',
+          description: 'Inclua uma pergunta no final dos seus posts para aumentar 60% de comentários',
+          score: 85,
           category: 'Engajamento',
           recommendationType: 'ENGAGEMENT',
-          implementationDifficulty: 'Baixo',
+          implementationDifficulty: 'Fácil',
+          potentialImpact: 'Médio'
+        },
+        {
+          id: '9',
+          title: 'Stories Interativos',
+          description: 'Use enquetes e caixas de perguntas para aumentar interações',
+          score: 80,
+          category: 'Engajamento',
+          recommendationType: 'ENGAGEMENT',
+          implementationDifficulty: 'Fácil',
           potentialImpact: 'Médio'
         }
       ];
@@ -330,19 +349,19 @@ class RecommendationService {
 
   async analyzeContent(contentId: string): Promise<ContentAnalysis> {
     try {
-      const response = await api.get(`/recommendation/analyze/${contentId}`);
-      return response.data;
+      const response = await api.get(`/v1/Recommendation/analyze/${contentId}`);
+      return this.processApiResponse(response.data);
     } catch (error) {
       console.warn('Erro ao analisar conteúdo, usando dados simulados:', error);
       return {
-        id: '1',
-        contentId: contentId,
-        strengths: ['Boa narrativa', 'Edição de qualidade', 'Tema relevante'],
-        weaknesses: ['Duração muito longa', 'Call to action fraco'],
-        improvementSuggestions: ['Reduzir para 2-3 minutos', 'Adicionar call to action mais claro'],
-        performanceScore: 75,
-        engagementPrediction: 68,
-        reachPrediction: 82,
+        id: 'analysis-1',
+        contentId,
+        strengths: ['Título atrativo', 'Imagens de alta qualidade', 'Mensagem clara'],
+        weaknesses: ['Call-to-action fraco', 'Pouca originalidade'],
+        improvementSuggestions: ['Adicione um CTA mais forte', 'Inclua uma história pessoal'],
+        performanceScore: 78,
+        engagementPrediction: 4.2,
+        reachPrediction: 2800,
         viralityPotential: 65
       };
     }
@@ -350,11 +369,11 @@ class RecommendationService {
 
   async refreshRecommendations(creatorId: string): Promise<void> {
     try {
-      await api.post(`/recommendation/refresh/${creatorId}`);
+      await api.post(`/v1/Recommendation/refresh/${creatorId}`);
+      console.log('Recomendações atualizadas com sucesso');
     } catch (error) {
-      console.warn('Erro ao atualizar recomendações:', error);
-      // Simulando um atraso para dar feedback ao usuário
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.error('Erro ao atualizar recomendações:', error);
+      throw error;
     }
   }
 }

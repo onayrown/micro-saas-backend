@@ -9,6 +9,39 @@
     }
   },
   "profiles": {
+    "Docker": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
+      "publishAllPorts": true,
+      "useSSL": true,
+      "httpPort": 7170,
+      "sslPort": 7171,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MongoDB__ConnectionString": "mongodb://mongodb:27017",
+        "MongoDB__DatabaseName": "microsaas",
+        "MongoDB__ServerSelectionTimeout": "60000",
+        "MongoDB__ConnectTimeout": "60000",
+        "ConnectionStrings__Redis": "redis:6379,abortConnect=false"
+      },
+      "dockerfile": "Dockerfile",
+      "dockerServiceName": "backend"
+    },
+    "MicroSaaS.Backend": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:7171;http://localhost:7170",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MongoDB__ConnectionString": "mongodb://localhost:27017/?directConnection=true&serverSelectionTimeoutMS=120000&connectTimeoutMS=120000&socketTimeoutMS=120000",
+        "MongoDB__DatabaseName": "microsaas",
+        "MongoDB__ConnectTimeout": "120000",
+        "MongoDB__ServerSelectionTimeout": "120000"
+      }
+    },
     "Development": {
       "commandName": "Project",
       "dotnetRunMessages": true,

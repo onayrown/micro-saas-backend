@@ -17,7 +17,7 @@ namespace MicroSaaS.Infrastructure.Repositories
 
         public ContentCreatorRepository(IMongoDbContext context)
         {
-            _creators = context.GetCollection<ContentCreatorEntity>("ContentCreators");
+            _creators = context.GetCollection<ContentCreatorEntity>(CollectionNames.ContentCreators);
         }
 
         public async Task<ContentCreator> GetByIdAsync(Guid id)

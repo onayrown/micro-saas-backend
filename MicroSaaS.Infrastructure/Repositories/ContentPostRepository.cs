@@ -9,16 +9,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace MicroSaaS.Infrastructure.Repositories;
 
 public class ContentPostRepository : IContentPostRepository
 {
     private readonly IMongoCollection<ContentPostEntity> _contentPosts;
+    private readonly ILogger<ContentPostRepository>? _logger;
 
-    public ContentPostRepository(IMongoDbContext context)
+    public ContentPostRepository(IMongoDbContext context, ILogger<ContentPostRepository>? logger = null)
     {
-        _contentPosts = context.GetCollection<ContentPostEntity>("ContentPosts");
+        _contentPosts = context.GetCollection<ContentPostEntity>(CollectionNames.ContentPosts);
+        _logger = logger;
     }
 
     public async Task<ContentPost> GetByIdAsync(Guid id)
@@ -118,5 +121,25 @@ public class ContentPostRepository : IContentPostRepository
             update);
 
         return result.IsAcknowledged && result.ModifiedCount > 0;
+    }
+
+    public async Task<IEnumerable<ContentPost>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    {
+        try
+        {
+            var filter = Builders<ContentPostEntity>.Filter.And(
+                Builders<ContentPostEntity>.Filter.Eq(p => p.CreatorId, creatorId),
+                Builders<ContentPostEntity>.Filter.Gte(p => p.PublishedAt, startDate),
+                Builders<ContentPostEntity>.Filter.Lte(p => p.PublishedAt, endDate)
+            );
+
+            var entities = await _contentPosts.Find(filter).ToListAsync();
+            return entities.Select(ContentPostMapper.ToDomain);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Erro ao buscar posts do criador {creatorId} entre {startDate} e {endDate}");
+            return Enumerable.Empty<ContentPost>();
+        }
     }
 }

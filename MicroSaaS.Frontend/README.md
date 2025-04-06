@@ -50,15 +50,75 @@ src/
 
 ## Autenticação
 
-O sistema de autenticação utiliza JWT (JSON Web Tokens), com gerenciamento de tokens de acesso e refresh, e rotas protegidas.
+O sistema de autenticação utiliza JWT (JSON Web Tokens), com gerenciamento de tokens de acesso e refresh, e rotas protegidas. A autenticação é integrada com a API backend através do serviço `AuthService`.
 
 ## Comunicação com API
 
-A comunicação com o backend é feita através de serviços utilizando Axios, com interceptors para gerenciar tokens de autenticação e tratamento de erros.
+A comunicação com o backend é feita através de serviços utilizando Axios, com interceptors para gerenciar tokens de autenticação e tratamento de erros. Cada área funcional da aplicação possui um serviço dedicado:
+
+- **AuthService**: Gerencia autenticação e autorização
+- **RecommendationService**: Fornece recomendações personalizadas
+- **AnalyticsService**: Acesso a métricas e análise de desempenho
+- **ContentService**: Gerenciamento de posts e conteúdo
+
+## Arquitetura Resiliente
+
+O frontend implementa uma arquitetura resiliente que permite:
+
+1. **Desenvolvimento Paralelo**: Frontend e backend podem ser desenvolvidos independentemente
+2. **Fallback para Dados Simulados**: Quando o backend está indisponível, exibe dados simulados
+3. **Feedback Visual**: Indica claramente ao usuário quando dados simulados estão sendo usados
+4. **Degradação Elegante**: Mantém a aplicação funcional mesmo em cenários de erro
+
+Para mais detalhes sobre a implementação desta abordagem, consulte o arquivo `docs/arquitetura.md`.
 
 ## Temas e Estilos
 
 A aplicação utiliza o sistema de temas do Material UI, permitindo personalização e suporte para modo claro/escuro.
+
+## Configuração do Ambiente
+
+### Configuração da API
+
+O frontend se comunica com o backend através da API REST. A URL base da API é configurada através de variáveis de ambiente:
+
+1. **Variáveis de ambiente principais**:
+   - `REACT_APP_API_URL`: Define a URL base da API (ex: `https://localhost:7170/api`)
+   
+2. **Arquivos de configuração**:
+   - `.env`: Configurações padrão válidas para todos os ambientes
+   - `.env.local`: Configurações locais que substituem as padrão (não versionado)
+   - `.env.development`: Configurações específicas para ambiente de desenvolvimento
+   - `.env.production`: Configurações específicas para ambiente de produção
+
+3. **Configuração do Proxy de Desenvolvimento**:
+   O arquivo `setupProxy.js` configura um proxy para redirecionar chamadas da API durante o desenvolvimento,
+   evitando problemas de CORS. O proxy é configurado automaticamente usando as mesmas variáveis de ambiente.
+
+### Exemplo de Configuração
+
+Para configurar o frontend para acessar um backend em execução na porta 7171:
+
+1. Crie um arquivo `.env.local` na raiz do projeto frontend:
+   ```
+   REACT_APP_API_URL=https://localhost:7171/api
+   PORT=3000
+   ```
+
+2. Reinicie o servidor de desenvolvimento:
+   ```
+   npm start
+   ```
+
+**Importante**: Ao alterar arquivos de variáveis de ambiente, é necessário reiniciar o servidor de desenvolvimento para que as mudanças tenham efeito.
+
+## Integração com Backend
+
+O frontend está configurado para se conectar ao backend em:
+- API: https://localhost:7171/api
+- Swagger (documentação da API): https://localhost:7171/swagger/index.html
+- MongoDB Admin: http://localhost:8081
+- Redis Admin: http://localhost:8082
 
 ## Instalação e Execução
 

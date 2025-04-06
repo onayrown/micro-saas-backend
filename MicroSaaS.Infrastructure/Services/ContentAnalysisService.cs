@@ -2,6 +2,7 @@ using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
+using MicroSaaS.Shared.Results;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,21 +39,21 @@ namespace MicroSaaS.Infrastructure.Services
         }
 
         // Método implementado com algoritmos avançados
-        public async Task<ContentInsightsDto> GetContentInsightsAsync(Guid contentId)
+        public async Task<Result<ContentInsightsDto>> GetContentInsightsAsync(Guid contentId)
         {
             try
             {
                 var contentPost = await _contentRepository.GetByIdAsync(contentId);
                 if (contentPost == null)
-                    throw new ArgumentException($"Conteúdo com ID {contentId} não encontrado");
+                    return Result<ContentInsightsDto>.Fail($"Conteúdo com ID {contentId} não encontrado");
 
                 var performances = await _performanceRepository.GetByPostIdAsync(contentId.ToString());
                 if (!performances.Any())
-                    throw new InvalidOperationException($"Não há dados de performance para o conteúdo {contentId}");
+                    return Result<ContentInsightsDto>.Fail($"Não há dados de performance para o conteúdo {contentId}");
 
                 var creator = await _creatorRepository.GetByIdAsync(contentPost.CreatorId);
                 if (creator == null)
-                    throw new ArgumentException($"Criador com ID {contentPost.CreatorId} não encontrado");
+                    return Result<ContentInsightsDto>.Fail($"Criador com ID {contentPost.CreatorId} não encontrado");
 
                 // Inicializa o objeto de insights
                 var insights = new ContentInsightsDto
@@ -76,12 +77,12 @@ namespace MicroSaaS.Infrastructure.Services
                 // Identifica pontos fortes e sugestões de melhoria
                 IdentifyStrengthsAndSuggestions(insights, contentPost.Platform);
 
-                return insights;
+                return Result<ContentInsightsDto>.Ok(insights);
             }
             catch (Exception ex)
             {
                 _loggingService.LogError(ex, $"Erro ao analisar conteúdo {contentId}: {ex.Message}");
-                throw;
+                return Result<ContentInsightsDto>.Fail($"Erro interno ao analisar conteúdo: {ex.Message}");
             }
         }
 
@@ -398,70 +399,66 @@ namespace MicroSaaS.Infrastructure.Services
         }
 
         // Método implementado com algoritmos avançados
-        public async Task<HighPerformancePatternDto> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20)
+        public virtual async Task<Result<HighPerformancePatternDto>> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20)
         {
             try
             {
                 var creator = await _creatorRepository.GetByIdAsync(creatorId);
                 if (creator == null)
-                    throw new ArgumentException($"Criador com ID {creatorId} não encontrado");
-            
-                // Buscar posts do criador
+                    return Result<HighPerformancePatternDto>.Fail($"Criador com ID {creatorId} não encontrado");
+
                 var posts = await _contentRepository.GetByCreatorIdAsync(creatorId);
                 if (!posts.Any())
-                    throw new InvalidOperationException($"Não há conteúdos para o criador {creatorId}");
-            
-                // Buscar dados de performance para cada post individualmente e consolidar
-                var allPerformances = new List<ContentPerformance>();
+                    return Result<HighPerformancePatternDto>.Fail($"Nenhum conteúdo encontrado para o criador {creatorId}");
+
+                // Obtém as métricas de performance para cada post
+                var postsWithPerformance = new List<dynamic>();
                 foreach (var post in posts)
                 {
-                    var postPerformances = await _performanceRepository.GetByPostIdAsync(post.Id.ToString());
-                    if (postPerformances.Any())
+                    var performances = await _performanceRepository.GetByPostIdAsync(post.Id.ToString());
+                    if (performances.Any())
                     {
-                        allPerformances.AddRange(postPerformances);
+                        postsWithPerformance.Add(new 
+                        {
+                            Post = post,
+                            Performances = performances,
+                            EngagementScore = CalculateEngagementScore(performances),
+                            Date = post.CreatedAt
+                        });
                     }
                 }
-            
-                // Ordenar posts por engajamento e pegar os top N
-                var postsWithPerformance = posts
-                    .Select(post => new 
-                    {
-                        Post = post,
-                        Performances = allPerformances.Where(p => p.PostId.ToString() == post.Id.ToString()).ToList()
-                    })
-                    .Where(x => x.Performances.Any()) // Filtrar apenas posts com dados de performance
-                    .OrderByDescending(x => CalculateEngagementScore(x.Performances))
+
+                // Ordena por engajamento e seleciona os melhores
+                var topPosts = postsWithPerformance
+                    .OrderByDescending(p => p.EngagementScore)
                     .Take(topPostsCount)
                     .ToList();
-            
-                if (!postsWithPerformance.Any())
-                    throw new InvalidOperationException($"Não há dados de performance suficientes para analisar padrões");
-            
-                // Converter para List<dynamic> para compatibilidade com os métodos de análise
-                List<dynamic> dynamicPosts = postsWithPerformance.Cast<dynamic>().ToList();
-            
-                // Inicializar o objeto de resultado
-                var result = new HighPerformancePatternDto
+
+                if (!topPosts.Any())
+                    return Result<HighPerformancePatternDto>.Fail("Não há dados de performance suficientes para análise");
+
+                // Cria o objeto de retorno
+                var patterns = new HighPerformancePatternDto
                 {
                     CreatorId = creatorId,
                     IdentifiedPatterns = new List<ContentPatternDto>(),
-                    TimingPatterns = AnalyzeTimingPatterns(dynamicPosts),
-                    TopicPatterns = AnalyzeTopicPatterns(dynamicPosts),
-                    FormatPatterns = AnalyzeFormatPatterns(dynamicPosts),
-                    StylePatterns = AnalyzeStylePatterns(dynamicPosts),
-                    AttributeCorrelations = CalculateAttributeCorrelations(dynamicPosts),
-                    HighPerformingFormats = IdentifyHighPerformingFormats(dynamicPosts)
+                    TimingPatterns = AnalyzeTimingPatterns(topPosts),
+                    TopicPatterns = AnalyzeTopicPatterns(topPosts),
+                    FormatPatterns = AnalyzeFormatPatterns(topPosts),
+                    StylePatterns = AnalyzeStylePatterns(topPosts),
+                    AttributeCorrelations = CalculateAttributeCorrelations(topPosts),
+                    HighPerformingFormats = IdentifyHighPerformingFormats(topPosts)
                 };
-            
-                // Identificar padrões principais de conteúdo
-                IdentifyMainContentPatterns(dynamicPosts, result);
-            
-                return result;
+
+                // Identifica os principais padrões de conteúdo
+                IdentifyMainContentPatterns(topPosts, patterns);
+
+                return Result<HighPerformancePatternDto>.Ok(patterns);
             }
             catch (Exception ex)
             {
-                _loggingService.LogError(ex, $"Erro ao analisar padrões de alto desempenho para {creatorId}: {ex.Message}");
-                throw;
+                _loggingService.LogError(ex, $"Erro ao analisar padrões de alto desempenho para criador {creatorId}: {ex.Message}");
+                return Result<HighPerformancePatternDto>.Fail($"Erro interno ao analisar padrões: {ex.Message}");
             }
         }
 
@@ -1140,18 +1137,18 @@ namespace MicroSaaS.Infrastructure.Services
         }
 
         // Método implementado com algoritmos avançados de recomendação baseados em histórico
-        public async Task<ContentRecommendationsDto> GenerateContentRecommendationsAsync(Guid creatorId)
+        public async Task<Result<ContentRecommendationsDto>> GenerateContentRecommendationsAsync(Guid creatorId)
         {
             try
             {
                 var creator = await _creatorRepository.GetByIdAsync(creatorId);
                 if (creator == null)
-                    throw new ArgumentException($"Criador com ID {creatorId} não encontrado");
+                    return Result<ContentRecommendationsDto>.Fail($"Criador com ID {creatorId} não encontrado");
                 
                 // Buscar dados históricos para análise
                 var posts = await _contentRepository.GetByCreatorIdAsync(creatorId);
                 if (!posts.Any())
-                    throw new InvalidOperationException($"Não há conteúdos para o criador {creatorId}");
+                    return Result<ContentRecommendationsDto>.Fail($"Não há conteúdos para o criador {creatorId}");
                 
                 // Buscar métricas de performance para todos os posts
                 var allPerformances = new List<ContentPerformance>();
@@ -1175,7 +1172,7 @@ namespace MicroSaaS.Infrastructure.Services
                     .ToList();
                 
                 if (!postsWithPerformance.Any())
-                    throw new InvalidOperationException($"Não há dados de performance suficientes para gerar recomendações");
+                    return Result<ContentRecommendationsDto>.Fail($"Não há dados de performance suficientes para gerar recomendações");
                 
                 var recommendations = new ContentRecommendationsDto();
                 
@@ -1197,12 +1194,12 @@ namespace MicroSaaS.Infrastructure.Services
                 // Gerar oportunidades de monetização baseadas no histórico
                 recommendations.MonetizationOpportunities = GenerateMonetizationOpportunities(creator, dynamicPostsWithPerformance);
                 
-                return recommendations;
+                return Result<ContentRecommendationsDto>.Ok(recommendations);
             }
             catch (Exception ex)
             {
                 _loggingService.LogError(ex, $"Erro ao gerar recomendações de conteúdo para {creatorId}: {ex.Message}");
-                throw;
+                return Result<ContentRecommendationsDto>.Fail($"Erro interno ao gerar recomendações: {ex.Message}");
             }
         }
 
@@ -1604,751 +1601,491 @@ namespace MicroSaaS.Infrastructure.Services
             return opportunities;
         }
 
-        public virtual async Task<AudienceInsightsDto> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate)
-        {
-            _loggingService.LogWarning($"Método GetAudienceInsightsAsync implementado parcialmente para {creatorId}");
-            
-            return new AudienceInsightsDto
-            {
-                CreatorId = creatorId,
-                TotalAudienceSize = 0,
-                GrowthRate = 0,
-                DemographicBreakdown = new Dictionary<string, double>(),
-                KeySegments = new List<AudienceSegmentDto>(),
-                InterestDistribution = new Dictionary<string, double>(),
-                PlatformEngagement = new Dictionary<SocialMediaPlatform, double>(),
-                EngagementPatterns = new List<string>(),
-                ContentPreferences = new Dictionary<string, double>(),
-                LoyaltyMetrics = new LoyaltyMetricsDto()
-            };
-        }
-
-        public virtual async Task<ContentComparisonDto> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
-        {
-            _loggingService.LogWarning($"Método CompareContentTypesAsync implementado parcialmente para {creatorId}");
-            
-            return new ContentComparisonDto
-            {
-                CreatorId = creatorId,
-                StartDate = startDate,
-                EndDate = endDate,
-                ContentTypePerformance = new Dictionary<string, ContentTypePerformanceDto>(),
-                PlatformSpecificPerformance = new Dictionary<SocialMediaPlatform, List<ContentTypePerformanceDto>>(),
-                CrossPlatformInsights = new List<CrossPlatformInsightDto>(),
-                AttributePerformance = new Dictionary<string, double>()
-            };
-        }
-
-        public virtual async Task<ContentPredictionDto> PredictContentPerformanceAsync(ContentPredictionRequestDto request)
-        {
-            try
-            {
-                var creator = await _creatorRepository.GetByIdAsync(request.CreatorId);
-                if (creator == null)
-                    throw new ArgumentException($"Criador com ID {request.CreatorId} não encontrado");
-                
-                // Buscar histórico de posts e performance do criador
-                var creatorPosts = await _contentRepository.GetByCreatorIdAsync(request.CreatorId);
-                if (!creatorPosts.Any())
-                    throw new InvalidOperationException($"Não há conteúdos históricos suficientes para predizer performance");
-                
-                // Buscar dados de performance para todos os posts
-                var allPerformances = new List<ContentPerformance>();
-                foreach (var post in creatorPosts)
-                {
-                    var postPerformances = await _performanceRepository.GetByPostIdAsync(post.Id.ToString());
-                    if (postPerformances.Any())
-                    {
-                        allPerformances.AddRange(postPerformances);
-                    }
-                }
-                
-                // Construir dataset de treinamento com pares de post + performance
-                var trainingData = creatorPosts
-                    .Select(post => new 
-                    {
-                        Post = post,
-                        Performances = allPerformances.Where(p => p.PostId.ToString() == post.Id.ToString()).ToList()
-                    })
-                    .Where(x => x.Performances.Any())
-                    .ToList();
-                    
-                if (trainingData.Count < 5)
-                    throw new InvalidOperationException("Dados históricos insuficientes para fazer previsões precisas");
-                
-                // Converter para dynamic para compatibilidade com o restante do código
-                List<dynamic> dynamicTrainingData = trainingData.Cast<dynamic>().ToList();
-                
-                // Inicializar resultado da previsão
-                var prediction = new ContentPredictionDto
-                {
-                    RequestId = Guid.NewGuid(),
-                    Request = request,
-                    MetricPredictions = new Dictionary<string, double>(),
-                    FactorConfidenceScores = new Dictionary<string, double>(),
-                    OptimizationSuggestions = new List<string>(),
-                    PredictedAudience = new PredictedAudienceResponseDto
-                    {
-                        DemographicAppeal = new Dictionary<string, double>(),
-                        SentimentDistribution = new Dictionary<string, double>(),
-                        LikelyFeedback = new List<string>()
-                    }
-                };
-                
-                // Predizer engajamento base usando análise de posts similares
-                var similarPosts = FindSimilarPosts(request, dynamicTrainingData);
-                if (similarPosts.Any())
-                {
-                    // Calcular métricas básicas
-                    prediction.PredictedEngagementScore = CalculatePredictedEngagementScore(request, similarPosts);
-                    prediction.PredictedReachScore = CalculatePredictedReachScore(request, similarPosts);
-                    prediction.PredictedViralPotential = CalculatePredictedViralPotential(request, similarPosts);
-                    
-                    // Prever métricas detalhadas
-                    prediction.MetricPredictions = PredictDetailedMetrics(request, similarPosts);
-                    
-                    // Calcular scores de confiança dos fatores
-                    prediction.FactorConfidenceScores = CalculateFactorConfidence(request, similarPosts);
-                    
-                    // Gerar sugestões de otimização
-                    prediction.OptimizationSuggestions = GenerateOptimizationSuggestions(request, prediction);
-                    
-                    // Prever resposta da audiência
-                    prediction.PredictedAudience = PredictAudienceResponse(request, similarPosts);
-                    
-                    // Calcular score geral de confiança
-                    prediction.ConfidenceScore = CalculatePredictionConfidence(request, similarPosts);
-                }
-                else
-                {
-                    // Se não houver posts similares, usar médias gerais
-                    prediction.PredictedEngagementScore = CalculateAverageEngagementFromTraining(dynamicTrainingData);
-                    prediction.PredictedReachScore = CalculateAverageViews(dynamicTrainingData) * 0.8;
-                    prediction.PredictedViralPotential = 0.3; // valor conservador
-                    prediction.ConfidenceScore = 0.4; // confiança reduzida
-                    
-                    prediction.OptimizationSuggestions.Add("Adicionar mais elementos visuais para aumentar engajamento");
-                    prediction.OptimizationSuggestions.Add("Utilizar hashtags mais relevantes para seu nicho");
-                }
-                
-                return prediction;
-            }
-            catch (Exception ex)
-            {
-                _loggingService.LogError(ex, $"Erro ao prever performance de conteúdo para {request.CreatorId}: {ex.Message}");
-                throw;
-            }
-        }
-
-        // Método para encontrar posts similares ao solicitado
-        private List<dynamic> FindSimilarPosts(ContentPredictionRequestDto request, List<dynamic> trainingData)
-        {
-            // Implementação de similaridade usando múltiplos critérios ponderados
-            // Versão sem LINQ para evitar problemas com dynamic
-            var scoredPosts = new List<(dynamic Post, double SimilarityScore)>();
-            
-            foreach (var post in trainingData)
-            {
-                double similarityScore = CalculateSimilarityScore(request, post);
-                scoredPosts.Add((post, similarityScore));
-            }
-            
-            // Ordenar manualmente por similaridade
-            scoredPosts.Sort((a, b) => b.SimilarityScore.CompareTo(a.SimilarityScore));
-            
-            // Filtrar e obter apenas os posts com similaridade acima do threshold
-            var result = new List<dynamic>();
-            foreach (var scoredPost in scoredPosts)
-            {
-                if (scoredPost.SimilarityScore > 0.4 && result.Count < 5)
-                {
-                    result.Add(scoredPost.Post);
-                }
-            }
-            
-            return result;
-        }
-
-        // Calcula a similaridade entre o conteúdo solicitado e um post histórico
-        private double CalculateSimilarityScore(ContentPredictionRequestDto request, dynamic historicPost)
-        {
-            double score = 0.0;
-            double totalWeight = 0.0;
-            
-            // Similaridade de plataforma (peso alto)
-            double platformWeight = 0.3;
-            if (request.TargetPlatform == historicPost.Post.Platform)
-            {
-                score += platformWeight;
-            }
-            totalWeight += platformWeight;
-            
-            // Similaridade de título (se houver)
-            double titleWeight = 0.15;
-            if (!string.IsNullOrEmpty(request.Title) && !string.IsNullOrEmpty(historicPost.Post.Title))
-            {
-                // Comparação simples por palavras-chave - correção para o uso de Intersect
-                var requestWords = request.Title.ToLowerInvariant().Split(' ');
-                string historicTitle = historicPost.Post.Title;
-                var historicWords = historicTitle.ToLowerInvariant().Split(' ');
-                
-                int matchingWords = requestWords.Intersect(historicWords.Cast<string>()).Count();
-                double titleSimilarity = (double)matchingWords / Math.Max(requestWords.Length, 1);
-                
-                score += titleWeight * titleSimilarity;
-            }
-            totalWeight += titleWeight;
-            
-            // Similaridade de conteúdo (se houver descrição)
-            double contentWeight = 0.2;
-            if (!string.IsNullOrEmpty(request.Description) && !string.IsNullOrEmpty(historicPost.Post.Content))
-            {
-                // Comparação simples por palavras-chave - correção para o uso de Intersect
-                var requestWords = request.Description.ToLowerInvariant().Split(' ');
-                string historicContent = historicPost.Post.Content;
-                var historicWords = historicContent.ToLowerInvariant().Split(' ');
-                
-                int matchingWords = requestWords.Intersect(historicWords.Cast<string>()).Count();
-                double contentSimilarity = (double)matchingWords / Math.Max(requestWords.Length, 1);
-                
-                score += contentWeight * contentSimilarity;
-            }
-            totalWeight += contentWeight;
-            
-            // Similaridade de tags (se houver)
-            double tagsWeight = 0.15;
-            if (request.Tags != null && request.Tags.Any())
-            {
-                // Assumindo que não temos tags no modelo histórico, então verificamos no conteúdo
-                string historicTitle = historicPost.Post.Title;
-                string historicContent = historicPost.Post.Content;
-                
-                int matchingTags = request.Tags.Count(tag => 
-                    historicTitle.Contains(tag, StringComparison.OrdinalIgnoreCase) || 
-                    historicContent.Contains(tag, StringComparison.OrdinalIgnoreCase));
-                
-                double tagSimilarity = (double)matchingTags / Math.Max(request.Tags.Count, 1);
-                score += tagsWeight * tagSimilarity;
-            }
-            totalWeight += tagsWeight;
-            
-            // Normalizar score pelo peso total considerado
-            return totalWeight > 0 ? score / totalWeight : 0;
-        }
-
-        // Calcula a pontuação de engajamento prevista com base em posts similares
-        private double CalculatePredictedEngagementScore(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            // Média ponderada do engajamento dos posts similares
-            double totalScore = 0;
-            double totalWeight = 0;
-            
-            foreach (var post in similarPosts)
-            {
-                double similarity = CalculateSimilarityScore(request, post);
-                double engagementScore = CalculateEngagementScore(post.Performances);
-                
-                totalScore += engagementScore * similarity;
-                totalWeight += similarity;
-            }
-            
-            // Aplicar ajustes baseados nos atributos específicos do pedido
-            double baseScore = totalWeight > 0 ? totalScore / totalWeight : 0;
-            
-            // Ajuste para presença de call-to-action
-            if (request.IncludesCallToAction)
-            {
-                baseScore *= 1.15; // +15% de engajamento
-            }
-            
-            // Ajuste para horário de postagem
-            double timeMultiplier = GetTimeOfDayMultiplier(request.PostTime);
-            double dayMultiplier = GetDayOfWeekMultiplier(request.PostDay);
-            
-            return baseScore * timeMultiplier * dayMultiplier;
-        }
-
-        // Calcula a pontuação de alcance prevista
-        private double CalculatePredictedReachScore(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            // Média de visualizações dos posts similares
-            double totalViews = 0;
-            foreach (var post in similarPosts)
-            {
-                double viewsSum = 0;
-                foreach (var perf in post.Performances)
-                {
-                    viewsSum += perf.Views;
-                }
-                totalViews += viewsSum;
-            }
-            double avgViews = totalViews / similarPosts.Count;
-            
-            // Ajustes baseados na plataforma
-            double platformMultiplier = GetPlatformReachMultiplier(request.TargetPlatform);
-            
-            // Ajuste para tipo de conteúdo
-            double typeMultiplier = GetContentTypeReachMultiplier(request.Type);
-            
-            return avgViews * platformMultiplier * typeMultiplier;
-        }
-
-        // Calcula potencial viral previsto
-        private double CalculatePredictedViralPotential(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            // Analisar indicadores de viralidade dos posts similares
-            double totalShareRate = 0;
-            int validPostCount = 0;
-            
-            foreach (var post in similarPosts)
-            {
-                double views = 0;
-                double shares = 0;
-                
-                foreach (var perf in post.Performances)
-                {
-                    views += perf.Views;
-                    shares += perf.Shares;
-                }
-                
-                if (views > 0)
-                {
-                    totalShareRate += shares / views;
-                    validPostCount++;
-                }
-            }
-            
-            double avgShareRate = validPostCount > 0 ? totalShareRate / validPostCount : 0;
-            
-            // Maior potencial para certos tipos de conteúdo
-            double baseViralScore = avgShareRate * 10; // normalizar para escala 0-10
-            
-            // Ajustes por plataforma
-            if (request.TargetPlatform == SocialMediaPlatform.TikTok)
-                baseViralScore *= 1.3; // TikTok tem maior potencial viral
-            else if (request.TargetPlatform == SocialMediaPlatform.Instagram)
-                baseViralScore *= 1.2; // Instagram tem bom potencial viral
-            
-            // Ajustes por tipo de conteúdo
-            if (request.Type == ContentType.Video)
-                baseViralScore *= 1.25; // Vídeos têm maior potencial viral
-            
-            // Normalizar para escala 0-1
-            return Math.Min(1.0, baseViralScore / 10.0);
-        }
-
-        // Método para prever métricas detalhadas
-        private Dictionary<string, double> PredictDetailedMetrics(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            var metrics = new Dictionary<string, double>();
-            
-            // Calcular médias das métricas dos posts similares
-            double totalViews = 0, totalLikes = 0, totalComments = 0, totalShares = 0, totalRevenue = 0;
-            
-            foreach (var post in similarPosts)
-            {
-                double postViews = 0, postLikes = 0, postComments = 0, postShares = 0, postRevenue = 0;
-                
-                foreach (var perf in post.Performances)
-                {
-                    postViews += perf.Views;
-                    postLikes += perf.Likes;
-                    postComments += perf.Comments;
-                    postShares += perf.Shares;
-                    postRevenue += (double)perf.EstimatedRevenue;
-                }
-                
-                totalViews += postViews;
-                totalLikes += postLikes;
-                totalComments += postComments;
-                totalShares += postShares;
-                totalRevenue += postRevenue;
-            }
-            
-            int postCount = similarPosts.Count;
-            double avgViews = postCount > 0 ? totalViews / postCount : 0;
-            double avgLikes = postCount > 0 ? totalLikes / postCount : 0;
-            double avgComments = postCount > 0 ? totalComments / postCount : 0;
-            double avgShares = postCount > 0 ? totalShares / postCount : 0;
-            double avgRevenue = postCount > 0 ? totalRevenue / postCount : 0;
-            
-            // Aplicar multiplicadores específicos
-            double platformMultiplier = GetPlatformReachMultiplier(request.TargetPlatform);
-            double timeMultiplier = GetTimeOfDayMultiplier(request.PostTime) * GetDayOfWeekMultiplier(request.PostDay);
-            
-            // Adicionar previsões
-            metrics["Visualizações"] = avgViews * platformMultiplier * timeMultiplier;
-            metrics["Likes"] = avgLikes * platformMultiplier * timeMultiplier;
-            metrics["Comentários"] = avgComments * platformMultiplier * timeMultiplier;
-            metrics["Compartilhamentos"] = avgShares * platformMultiplier * timeMultiplier;
-            metrics["Receita Estimada"] = avgRevenue * platformMultiplier * timeMultiplier;
-            metrics["Taxa de Cliques"] = avgViews > 0 ? avgLikes / avgViews : 0;
-            
-            return metrics;
-        }
-
-        // Método para calcular confiança nos fatores
-        private Dictionary<string, double> CalculateFactorConfidence(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            var confidenceScores = new Dictionary<string, double>();
-            
-            // Confiança baseada na quantidade de dados similares
-            int postsWithMatchingPlatform = 0;
-            foreach (var post in similarPosts)
-            {
-                if (post.Post.Platform.Equals(request.TargetPlatform))
-                {
-                    postsWithMatchingPlatform++;
-                }
-            }
-            confidenceScores["Plataforma"] = (double)postsWithMatchingPlatform / Math.Max(1, similarPosts.Count);
-            
-            // Confiança no tipo de conteúdo
-            confidenceScores["Tipo de Conteúdo"] = 0.7; // valor padrão, pois não temos ContentType no modelo atual
-            
-            // Confiança no horário
-            int postsInSimilarTime = CountPostsWithSimilarTime(similarPosts, request.PostTime);
-            confidenceScores["Horário"] = (double)postsInSimilarTime / Math.Max(1, similarPosts.Count);
-            
-            // Confiança no dia da semana
-            int postsOnSameDay = CountPostsOnSameDay(similarPosts, request.PostDay);
-            confidenceScores["Dia da Semana"] = (double)postsOnSameDay / Math.Max(1, similarPosts.Count);
-            
-            return confidenceScores;
-        }
-
-        // Método auxiliar usado no método CalculateFactorConfidence
-        private int CountPostsWithSimilarTime(List<dynamic> similarPosts, TimeSpan requestTime, int hourThreshold = 2)
-        {
-            int count = 0;
-            foreach (var post in similarPosts)
-            {
-                DateTime? publishedAt = post.Post.PublishedAt;
-                if (publishedAt != null)
-                {
-                    TimeSpan postTime = publishedAt.Value.TimeOfDay;
-                    if (Math.Abs((postTime - requestTime).TotalHours) < hourThreshold)
-                    {
-                        count++;
-                    }
-                }
-            }
-            return count;
-        }
-
-        // Método auxiliar usado no método CalculateFactorConfidence
-        private int CountPostsOnSameDay(List<dynamic> similarPosts, DayOfWeek requestDay)
-        {
-            int count = 0;
-            foreach (var post in similarPosts)
-            {
-                DateTime? publishedAt = post.Post.PublishedAt;
-                if (publishedAt != null && publishedAt.Value.DayOfWeek == requestDay)
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        // Método para gerar sugestões de otimização
-        private List<string> GenerateOptimizationSuggestions(ContentPredictionRequestDto request, ContentPredictionDto prediction)
-        {
-            var suggestions = new List<string>();
-            
-            // Sugestões baseadas nas métricas previstas
-            if (prediction.PredictedEngagementScore < 0.03)
-            {
-                suggestions.Add("Adicione perguntas diretas para estimular comentários");
-                suggestions.Add("Inclua um call-to-action claro e específico");
-            }
-            
-            if (prediction.PredictedReachScore < 500)
-            {
-                suggestions.Add("Utilize hashtags mais populares relacionadas ao seu nicho");
-                suggestions.Add("Publique em horários de maior atividade da sua audiência");
-            }
-            
-            // Sugestões específicas por plataforma
-            switch (request.TargetPlatform)
-            {
-                case SocialMediaPlatform.YouTube:
-                    suggestions.Add("Otimize o título e descrição com palavras-chave relevantes");
-                    suggestions.Add("Adicione miniaturas personalizadas com textos chamativos");
-                    break;
-                    
-                case SocialMediaPlatform.Instagram:
-                    suggestions.Add("Utilize entre 5-10 hashtags relevantes para maximizar descoberta");
-                    suggestions.Add("Adicione um call-to-action na primeira parte da legenda");
-                    break;
-                    
-                case SocialMediaPlatform.TikTok:
-                    suggestions.Add("Mantenha o vídeo curto e dinâmico (15-30 segundos)");
-                    suggestions.Add("Aproveite tendências e músicas populares");
-                    break;
-                    
-                case SocialMediaPlatform.Twitter:
-                    suggestions.Add("Inclua uma imagem ou GIF para aumentar engajamento");
-                    suggestions.Add("Faça uma pergunta para estimular respostas");
-                    break;
-            }
-            
-            // Limitar para as 5 sugestões mais importantes
-            return suggestions.Take(5).ToList();
-        }
-
-        // Método para prever resposta da audiência
-        private PredictedAudienceResponseDto PredictAudienceResponse(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            var audienceResponse = new PredictedAudienceResponseDto
-            {
-                DemographicAppeal = new Dictionary<string, double>(),
-                SentimentDistribution = new Dictionary<string, double>(),
-                LikelyFeedback = new List<string>()
-            };
-            
-            // Distribuição demográfica simulada
-            audienceResponse.DemographicAppeal["18-24"] = 0.35;
-            audienceResponse.DemographicAppeal["25-34"] = 0.40;
-            audienceResponse.DemographicAppeal["35-44"] = 0.15;
-            audienceResponse.DemographicAppeal["45+"] = 0.10;
-            
-            // Distribuição de sentimento baseada na taxa de likes
-            double totalLikeRate = 0;
-            int validPostCount = 0;
-            
-            foreach (var post in similarPosts)
-            {
-                double views = 0;
-                double likes = 0;
-                
-                foreach (var perf in post.Performances)
-                {
-                    views += perf.Views;
-                    likes += perf.Likes;
-                }
-                
-                if (views > 0)
-                {
-                    totalLikeRate += likes / views;
-                    validPostCount++;
-                }
-            }
-            
-            double avgLikeRate = validPostCount > 0 ? totalLikeRate / validPostCount : 0;
-            
-            audienceResponse.SentimentDistribution["Positivo"] = Math.Min(0.8, avgLikeRate * 2 + 0.5);
-            audienceResponse.SentimentDistribution["Neutro"] = 0.9 - audienceResponse.SentimentDistribution["Positivo"];
-            audienceResponse.SentimentDistribution["Negativo"] = 0.1;
-            
-            // Prováveis feedbacks baseados no tipo de conteúdo
-            audienceResponse.LikelyFeedback.Add("Conteúdo relevante e útil");
-            
-            if (request.Type == ContentType.Video)
-            {
-                audienceResponse.LikelyFeedback.Add("Boa qualidade de produção");
-                audienceResponse.LikelyFeedback.Add("Informações apresentadas de forma clara");
-            }
-            else
-            {
-                audienceResponse.LikelyFeedback.Add("Conteúdo bem escrito");
-                audienceResponse.LikelyFeedback.Add("Informações valiosas para o nicho");
-            }
-            
-            // Calcular retenção com base nos dados históricos
-            audienceResponse.RetentionProbability = CalculatePredictedRetention(request, similarPosts);
-            
-            return audienceResponse;
-        }
-
-        // Método para calcular taxa de retenção prevista
-        private double CalculatePredictedRetention(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            // Na falta de métricas reais de retenção, estimamos com base no engajamento
-            double avgEngagement = similarPosts.Average(p => CalculateEngagementScore(p.Performances));
-            
-            // Ajustes baseados na duração/tamanho do conteúdo
-            double retentionBase = Math.Min(0.9, 0.4 + avgEngagement * 2);
-            
-            if (request.Type == ContentType.Video && request.EstimatedDurationSeconds > 0)
-            {
-                // Vídeos mais longos tendem a ter menor retenção
-                if (request.EstimatedDurationSeconds > 600) // > 10 minutos
-                    retentionBase *= 0.8;
-                else if (request.EstimatedDurationSeconds > 300) // > 5 minutos
-                    retentionBase *= 0.9;
-            }
-            
-            return retentionBase;
-        }
-
-        // Método para calcular confiança geral da previsão
-        private double CalculatePredictionConfidence(ContentPredictionRequestDto request, List<dynamic> similarPosts)
-        {
-            // Base de confiança dependendo do número de posts similares
-            double baseConfidence = Math.Min(0.9, 0.3 + (similarPosts.Count * 0.1));
-            
-            // Ajuste baseado na similaridade média
-            double avgSimilarity = 0;
-            foreach (var post in similarPosts)
-            {
-                avgSimilarity += CalculateSimilarityScore(request, post);
-            }
-            avgSimilarity = avgSimilarity / Math.Max(1, similarPosts.Count);
-            
-            // Ajuste baseado na consistência das métricas
-            // Convertendo explicitamente para uma lista de double
-            List<double> engagementScores = new List<double>();
-            foreach (var post in similarPosts)
-            {
-                engagementScores.Add(CalculateEngagementScore(post.Performances));
-            }
-            
-            double engagementStdDev = CalculateStandardDeviation(engagementScores);
-            
-            double consistencyFactor = 1.0 - Math.Min(0.5, engagementStdDev);
-            
-            return baseConfidence * avgSimilarity * consistencyFactor;
-        }
-
-        // Métodos auxiliares
-
-        private double GetTimeOfDayMultiplier(TimeSpan postTime)
-        {
-            // Horários de pico aproximados
-            if (postTime.Hours >= 17 && postTime.Hours <= 21) // Horário nobre
-                return 1.2;
-            else if (postTime.Hours >= 7 && postTime.Hours <= 9) // Manhã
-                return 1.1;
-            else if (postTime.Hours >= 12 && postTime.Hours <= 14) // Almoço
-                return 1.15;
-            else if (postTime.Hours >= 22 || postTime.Hours <= 5) // Madrugada
-                return 0.8;
-            else
-                return 1.0; // Horário normal
-        }
-
-        private double GetDayOfWeekMultiplier(DayOfWeek day)
-        {
-            switch (day)
-            {
-                case DayOfWeek.Saturday:
-                case DayOfWeek.Sunday:
-                    return 1.15; // Fim de semana
-                case DayOfWeek.Monday:
-                case DayOfWeek.Friday:
-                    return 1.1; // Início/fim da semana útil
-                default:
-                    return 1.0; // Dias úteis normais
-            }
-        }
-
-        private double GetPlatformReachMultiplier(SocialMediaPlatform platform)
-        {
-            switch (platform)
-            {
-                case SocialMediaPlatform.YouTube:
-                    return 1.2; // Maior alcance potencial
-                case SocialMediaPlatform.TikTok:
-                    return 1.3; // Algoritmo favorece conteúdo novo
-                case SocialMediaPlatform.Instagram:
-                    return 1.1;
-                case SocialMediaPlatform.Twitter:
-                    return 0.9; // Menor alcance orgânico
-                default:
-                    return 1.0;
-            }
-        }
-
-        private double GetContentTypeReachMultiplier(ContentType type)
-        {
-            switch (type)
-            {
-                case ContentType.Video:
-                    return 1.3; // Vídeos tendem a ter maior alcance
-                case ContentType.SocialMedia:
-                    return 1.1; // Corrigido de Image para SocialMedia
-                case ContentType.Blog:
-                    return 0.9; // Corrigido de Text para Blog
-                default:
-                    return 1.0;
-            }
-        }
-
-        private double CalculateStandardDeviation(List<double> values)
-        {
-            if (values == null || values.Count <= 1)
-                return 0;
-            
-            // Calcular média
-            double sum = 0;
-            foreach (var val in values)
-            {
-                sum += val;
-            }
-            double avg = sum / values.Count;
-            
-            // Calcular soma dos quadrados das diferenças
-            double sumOfSquaresOfDifferences = 0;
-            foreach (var val in values)
-            {
-                sumOfSquaresOfDifferences += Math.Pow(val - avg, 2);
-            }
-            
-            double standardDeviation = Math.Sqrt(sumOfSquaresOfDifferences / values.Count);
-            
-            return standardDeviation;
-        }
-
-        public async Task<AudienceSensitivityDto> AnalyzeAudienceSensitivityAsync(Guid creatorId)
-        {
-            _loggingService.LogWarning($"Método AnalyzeAudienceSensitivityAsync implementado parcialmente para {creatorId}");
-            
-            return new AudienceSensitivityDto
-            {
-                CreatorId = creatorId,
-                ContentTypeSensitivity = new Dictionary<string, double>
-                {
-                    { "Vídeo", 0.8 },
-                    { "Imagem", 0.7 },
-                    { "Texto", 0.5 }
-                },
-                TopicSensitivity = new Dictionary<string, double>
-                {
-                    { "Tutorial", 0.9 },
-                    { "Notícia", 0.6 },
-                    { "Opinião", 0.5 }
-                },
-                StyleSensitivity = new Dictionary<string, double>
-                {
-                    { "Informal", 0.8 },
-                    { "Técnico", 0.6 },
-                    { "Humorístico", 0.7 }
-                },
-                TimingSensitivity = new Dictionary<string, double>
-                {
-                    { "Manhã", 0.7 },
-                    { "Tarde", 0.8 },
-                    { "Noite", 0.6 }
-                },
-                TopPreferences = new List<AudiencePreferenceDto>(),
-                TopAversions = new List<AudienceAversion>(),
-                OverallSensitivityScore = 0.7
-            };
-        }
-
-        public virtual async Task<List<EngagementFactorDto>> IdentifyEngagementFactorsAsync(Guid creatorId)
+        // Implementação do método para obter insights da audiência
+        public virtual async Task<Result<AudienceInsightsDto>> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate)
         {
             try
             {
                 var creator = await _creatorRepository.GetByIdAsync(creatorId);
                 if (creator == null)
-                    throw new ArgumentException($"Criador com ID {creatorId} não encontrado");
+                    return Result<AudienceInsightsDto>.Fail($"Criador com ID {creatorId} não encontrado");
+
+                // Verificar período de datas
+                if (startDate >= endDate)
+                    return Result<AudienceInsightsDto>.Fail("A data inicial deve ser anterior à data final");
+
+                // Buscar conteúdos do criador no período
+                var posts = await _contentRepository.GetByCreatorIdBetweenDatesAsync(creatorId, startDate, endDate);
+                if (!posts.Any())
+                    return Result<AudienceInsightsDto>.Fail($"Nenhum conteúdo encontrado para o criador {creatorId} no período especificado");
+
+                // Buscar contas de mídia social associadas
+                var accounts = await _accountRepository.GetByCreatorIdAsync(creatorId);
+                if (!accounts.Any())
+                    return Result<AudienceInsightsDto>.Fail($"Nenhuma conta de mídia social encontrada para o criador {creatorId}");
+
+                // Buscar métricas de performance
+                var metrics = await _metricsRepository.GetByCreatorIdBetweenDatesAsync(creatorId, startDate, endDate);
+                if (!metrics.Any())
+                    return Result<AudienceInsightsDto>.Fail($"Nenhuma métrica de performance encontrada para o criador {creatorId} no período especificado");
+
+                // Criar objeto de insights
+                var insights = new AudienceInsightsDto
+                {
+                    CreatorId = creatorId,
+                    TotalAudienceSize = CalculateTotalAudienceSize(accounts),
+                    GrowthRate = CalculateAudienceGrowthRate(metrics),
+                    DemographicBreakdown = AnalyzeDemographics(metrics),
+                    KeySegments = IdentifyKeySegments(metrics),
+                    InterestDistribution = AnalyzeInterests(metrics),
+                    PlatformEngagement = AnalyzePlatformEngagement(metrics),
+                    EngagementPatterns = IdentifyEngagementPatterns(metrics),
+                    ContentPreferences = AnalyzeContentPreferences(posts, metrics),
+                    LoyaltyMetrics = CalculateLoyaltyMetrics(metrics)
+                };
+
+                return Result<AudienceInsightsDto>.Ok(insights);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogError(ex, $"Erro ao obter insights da audiência para o criador {creatorId}: {ex.Message}");
+                return Result<AudienceInsightsDto>.Fail($"Erro interno ao obter insights da audiência: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<ContentComparisonDto>> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var creator = await _creatorRepository.GetByIdAsync(creatorId);
+                if (creator == null)
+                    return Result<ContentComparisonDto>.Fail($"Criador com ID {creatorId} não encontrado");
+
+                // Verificar período de datas
+                if (startDate >= endDate)
+                    return Result<ContentComparisonDto>.Fail("A data inicial deve ser anterior à data final");
+
+                // Buscar conteúdos do criador no período
+                var posts = await _contentRepository.GetByCreatorIdBetweenDatesAsync(creatorId, startDate, endDate);
+                if (!posts.Any())
+                    return Result<ContentComparisonDto>.Fail($"Nenhum conteúdo encontrado para o criador {creatorId} no período especificado");
+
+                // Buscar métricas de performance para todos os posts
+                var allPerformances = new List<ContentPerformance>();
+                foreach (var post in posts)
+                {
+                    var postPerformances = await _performanceRepository.GetByPostIdAsync(post.Id.ToString());
+                    allPerformances.AddRange(postPerformances);
+                }
+
+                if (!allPerformances.Any())
+                    return Result<ContentComparisonDto>.Fail($"Não há dados de performance disponíveis para análise no período especificado");
+
+                // Agrupar posts por tipo de conteúdo
+                var contentTypeGroups = posts.GroupBy(p => GetContentTypeByPlatform(p.Platform));
+                
+                // Inicializar o DTO de comparação
+                var comparison = new ContentComparisonDto
+                {
+                    CreatorId = creatorId,
+                    PeriodStart = startDate,
+                    PeriodEnd = endDate,
+                    TypeComparisons = new List<ContentTypeComparisonDto>(),
+                    PerformanceTrends = new List<PerformanceTrendDto>(),
+                    CrossPlatformInsights = new List<string>(),
+                    RecommendedStrategies = new List<string>()
+                };
+
+                // Analisar cada tipo de conteúdo
+                foreach (var group in contentTypeGroups)
+                {
+                    var contentIds = group.Select(p => p.Id.ToString()).ToList();
+                    var typePerformances = allPerformances
+                        .Where(p => contentIds.Contains(p.PostId.ToString()))
+                        .ToList();
+
+                    if (typePerformances.Any())
+                    {
+                        var typeComparison = new ContentTypeComparisonDto
+                        {
+                            ContentType = group.Key,
+                            MetricsComparison = CalculateTypeMetrics(typePerformances),
+                            PerformanceScore = CalculateTypePerformanceScore(typePerformances),
+                            SampleSize = group.Count(),
+                            TopPerformers = IdentifyTopPerformers(group.ToList(), typePerformances),
+                            KeyInsights = GenerateTypeInsights(group.Key, typePerformances),
+                            PerformanceRatio = CalculatePerformanceRatio(group.Key, typePerformances, allPerformances)
+                        };
+
+                        comparison.TypeComparisons.Add(typeComparison);
+                    }
+                }
+
+                // Identificar tendências de performance ao longo do tempo
+                comparison.PerformanceTrends = IdentifyPerformanceTrends(posts, allPerformances);
+
+                // Gerar insights entre plataformas
+                comparison.CrossPlatformInsights = GenerateCrossPlatformInsights(comparison.TypeComparisons);
+
+                // Recomendar estratégias baseadas nas comparações
+                comparison.RecommendedStrategies = GenerateRecommendedStrategies(comparison.TypeComparisons);
+
+                return Result<ContentComparisonDto>.Ok(comparison);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogError(ex, $"Erro ao comparar tipos de conteúdo para o criador {creatorId}: {ex.Message}");
+                return Result<ContentComparisonDto>.Fail($"Erro interno ao comparar tipos de conteúdo: {ex.Message}");
+            }
+        }
+
+        #region Métodos de suporte para CompareContentTypes
+
+        private Dictionary<string, double> CalculateTypeMetrics(List<ContentPerformance> performances)
+        {
+            var metrics = new Dictionary<string, double>();
+            
+            int totalPosts = performances.GroupBy(p => p.PostId).Count();
+            if (totalPosts == 0) return metrics;
+            
+            // Calcular médias por post
+            double totalViews = performances.Sum(p => p.Views);
+            double totalLikes = performances.Sum(p => p.Likes);
+            double totalComments = performances.Sum(p => p.Comments);
+            double totalShares = performances.Sum(p => p.Shares);
+            
+            metrics["Visualizações Médias"] = totalViews / totalPosts;
+            metrics["Likes Médios"] = totalLikes / totalPosts;
+            metrics["Comentários Médios"] = totalComments / totalPosts;
+            metrics["Compartilhamentos Médios"] = totalShares / totalPosts;
+            
+            // Calcular taxas de engajamento
+            if (totalViews > 0)
+            {
+                metrics["Taxa de Likes"] = totalLikes / totalViews;
+                metrics["Taxa de Comentários"] = totalComments / totalViews;
+                metrics["Taxa de Compartilhamentos"] = totalShares / totalViews;
+                metrics["Taxa de Engajamento Total"] = (totalLikes + totalComments + totalShares) / totalViews;
+            }
+            
+            return metrics;
+        }
+        
+        private double CalculateTypePerformanceScore(List<ContentPerformance> performances)
+        {
+            // Implementação simplificada - em produção usaríamos um algoritmo mais sofisticado
+            double avgEngagement = 0;
+            
+            if (performances.Any())
+            {
+                double totalViews = performances.Sum(p => p.Views);
+                double totalEngagements = performances.Sum(p => p.Likes + p.Comments + p.Shares);
+                
+                if (totalViews > 0)
+                {
+                    avgEngagement = totalEngagements / totalViews;
+                }
+            }
+            
+            return Math.Min(1.0, avgEngagement * 20); // Normalizado entre 0 e 1
+        }
+        
+        private List<ContentBriefDto> IdentifyTopPerformers(List<ContentPost> posts, List<ContentPerformance> performances)
+        {
+            var result = new List<ContentBriefDto>();
+            
+            // Agrupar performances por post (convertendo PostId para string para consistência)
+            var postPerformanceGroups = performances.GroupBy(p => p.PostId.ToString());
+            
+            // Calcular score para cada post
+            var postScores = new List<(string PostId, double Score, ContentPost Post)>();
+            
+            foreach (var group in postPerformanceGroups)
+            {
+                double score = CalculateTypePerformanceScore(group.ToList());
+                
+                // Encontrar o post correspondente comparando IDs como strings
+                var post = posts.FirstOrDefault(p => p.Id.ToString() == group.Key);
+                
+                if (post != null)
+                {
+                    postScores.Add((group.Key, score, post));
+                }
+            }
+            
+            // Selecionar os top 3 performers
+            var topScores = postScores.OrderByDescending(p => p.Score).Take(3);
+            
+            foreach (var scoreData in topScores)
+            {
+                var postId = scoreData.PostId;
+                var score = scoreData.Score;
+                var post = scoreData.Post;
+                
+                // Filtrar performances pelo ID do post como string
+                var postPerformances = performances.Where(p => p.PostId.ToString() == postId).ToList();
+                
+                result.Add(new ContentBriefDto
+                {
+                    ContentId = Guid.Parse(postId),
+                    Title = post.Title,
+                    PublishDate = post.PublishedAt ?? post.CreatedAt,
+                    EngagementScore = score,
+                    KeyMetrics = new Dictionary<string, long>
+                    {
+                        { "Visualizações", postPerformances.Sum(p => p.Views) },
+                        { "Likes", postPerformances.Sum(p => p.Likes) },
+                        { "Comentários", postPerformances.Sum(p => p.Comments) },
+                        { "Compartilhamentos", postPerformances.Sum(p => p.Shares) }
+                    }
+                });
+            }
+            
+            return result;
+        }
+        
+        private List<string> GenerateTypeInsights(string contentType, List<ContentPerformance> performances)
+        {
+            var insights = new List<string>();
+            
+            // Avaliar engajamento relativo
+            double engagementRate = CalculateTypePerformanceScore(performances);
+            
+            if (engagementRate > 0.6)
+                insights.Add($"{contentType} gera engajamento muito acima da média");
+            else if (engagementRate > 0.4)
+                insights.Add($"{contentType} tem bom desempenho em engajamento");
+            else if (engagementRate < 0.2)
+                insights.Add($"{contentType} tem desempenho abaixo da média em engajamento");
+            
+            // Avaliar tipo de engajamento predominante
+            double likes = performances.Sum(p => p.Likes);
+            double comments = performances.Sum(p => p.Comments);
+            double shares = performances.Sum(p => p.Shares);
+            
+            if (likes > comments && likes > shares)
+                insights.Add($"{contentType} gera principalmente likes, mas poucos comentários e compartilhamentos");
+            else if (comments > likes && comments > shares)
+                insights.Add($"{contentType} estimula discussão com alta taxa de comentários");
+            else if (shares > likes && shares > comments)
+                insights.Add($"{contentType} tem alto potencial de alcance por compartilhamentos");
+            
+            return insights;
+        }
+        
+        private double CalculatePerformanceRatio(string contentType, List<ContentPerformance> typePerformances, List<ContentPerformance> allPerformances)
+        {
+            double typeScore = CalculateTypePerformanceScore(typePerformances);
+            
+            // Converter IDs para string para comparação consistente
+            var typePerformanceIds = typePerformances.Select(tp => tp.Id.ToString()).ToList();
+            
+            // Obter performances de outros tipos (excluindo as do tipo atual)
+            var otherPerformances = allPerformances
+                .Where(p => !typePerformanceIds.Contains(p.Id.ToString()))
+                .ToList();
+                
+            double otherScore = CalculateTypePerformanceScore(otherPerformances);
+            
+            return otherScore > 0 ? typeScore / otherScore : 1.0;
+        }
+        
+        private List<PerformanceTrendDto> IdentifyPerformanceTrends(IEnumerable<ContentPost> posts, List<ContentPerformance> performances)
+        {
+            var trends = new List<PerformanceTrendDto>();
+            
+            // Agrupar por mês
+            var monthlyPerformance = performances
+                .GroupBy(p => new { Year = p.Date.Year, Month = p.Date.Month })
+                .Select(g => new
+                {
+                    Period = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    Views = g.Sum(p => p.Views),
+                    Engagements = g.Sum(p => p.Likes + p.Comments + p.Shares),
+                    ContentCount = g.Select(p => p.PostId).Distinct().Count()
+                })
+                .OrderBy(x => x.Period)
+                .ToList();
+                
+            if (monthlyPerformance.Count >= 2)
+            {
+                var engagementTrend = new PerformanceTrendDto
+                {
+                    TrendName = "Engajamento Mensal",
+                    TrendType = "engagement",
+                    DataPoints = new Dictionary<string, double>()
+                };
+                
+                var viewsTrend = new PerformanceTrendDto
+                {
+                    TrendName = "Visualizações Mensais",
+                    TrendType = "views",
+                    DataPoints = new Dictionary<string, double>()
+                };
+                
+                foreach (var month in monthlyPerformance)
+                {
+                    string periodLabel = month.Period.ToString("MMM yyyy");
+                    double engagementPerPost = month.ContentCount > 0 ? 
+                        (double)month.Engagements / month.ContentCount : 0;
+                    double viewsPerPost = month.ContentCount > 0 ? 
+                        (double)month.Views / month.ContentCount : 0;
+                    
+                    engagementTrend.DataPoints[periodLabel] = engagementPerPost;
+                    viewsTrend.DataPoints[periodLabel] = viewsPerPost;
+                }
+                
+                trends.Add(engagementTrend);
+                trends.Add(viewsTrend);
+            }
+            
+            return trends;
+        }
+        
+        private List<string> GenerateCrossPlatformInsights(List<ContentTypeComparisonDto> comparisons)
+        {
+            var insights = new List<string>();
+            
+            if (comparisons.Count <= 1)
+                return insights;
+                
+            // Encontrar o tipo de maior performance
+            var bestType = comparisons.OrderByDescending(c => c.PerformanceScore).First();
+            var worstType = comparisons.OrderBy(c => c.PerformanceScore).First();
+            
+            insights.Add($"{bestType.ContentType} tem o melhor desempenho geral dentre os tipos analisados");
+            
+            if (worstType.PerformanceScore < bestType.PerformanceScore * 0.5)
+            {
+                insights.Add($"{worstType.ContentType} tem desempenho significativamente inferior aos outros tipos");
+            }
+            
+            // Analisar desempenho relativo entre tipos
+            foreach (var type1 in comparisons)
+            {
+                foreach (var type2 in comparisons.Where(c => c != type1))
+                {
+                    // Comparar métricas específicas entre tipos
+                    if (type1.MetricsComparison.TryGetValue("Taxa de Engajamento Total", out double eng1) &&
+                        type2.MetricsComparison.TryGetValue("Taxa de Engajamento Total", out double eng2))
+                    {
+                        if (eng1 > eng2 * 1.5)
+                        {
+                            insights.Add($"{type1.ContentType} gera {Math.Round((eng1/eng2 - 1) * 100)}% mais engajamento que {type2.ContentType}");
+                        }
+                    }
+                }
+            }
+            
+            return insights;
+        }
+        
+        private List<string> GenerateRecommendedStrategies(List<ContentTypeComparisonDto> comparisons)
+        {
+            var strategies = new List<string>();
+            
+            if (!comparisons.Any())
+                return strategies;
+                
+            // Ordenar por performance
+            var orderedTypes = comparisons.OrderByDescending(c => c.PerformanceScore).ToList();
+            
+            // Recomendar foco nos tipos de maior performance
+            strategies.Add($"Priorize a criação de conteúdo do tipo {orderedTypes.First().ContentType} para maximizar engajamento");
+            
+            // Recomendar balanceamento se houver múltiplos tipos com bom desempenho
+            if (orderedTypes.Count >= 2 && 
+                orderedTypes[1].PerformanceScore > orderedTypes[0].PerformanceScore * 0.8)
+            {
+                strategies.Add($"Mantenha uma estratégia balanceada entre {orderedTypes[0].ContentType} e {orderedTypes[1].ContentType}");
+            }
+            
+            // Recomendar abandono ou reformulação de tipos com baixo desempenho
+            if (orderedTypes.Last().PerformanceScore < orderedTypes.First().PerformanceScore * 0.4)
+            {
+                strategies.Add($"Considere reformular sua estratégia para {orderedTypes.Last().ContentType} ou reduzir sua frequência");
+            }
+            
+            // Estratégia cross-platform
+            strategies.Add("Adapte conteúdos de alto desempenho para múltiplas plataformas, mantendo a essência que gera engajamento");
+            
+            return strategies;
+        }
+        
+        #endregion
+
+        public virtual async Task<Result<ContentPredictionDto>> PredictContentPerformanceAsync(ContentPredictionRequestDto request)
+        {
+            try
+            {
+                _loggingService.LogWarning($"Método PredictContentPerformanceAsync implementado parcialmente para {request?.CreatorId}");
+                
+                if (request == null)
+                    return Result<ContentPredictionDto>.Fail("Requisição de previsão não pode ser nula");
+                    
+                if (request.CreatorId == Guid.Empty)
+                    return Result<ContentPredictionDto>.Fail("ID do criador é obrigatório");
+                
+                var creator = await _creatorRepository.GetByIdAsync(request.CreatorId);
+                if (creator == null)
+                    return Result<ContentPredictionDto>.Fail($"Criador com ID {request.CreatorId} não encontrado");
+                
+                // Para esta implementação simplificada, retornamos dados simulados
+                var prediction = new ContentPredictionDto
+                {
+                    EstimatedViews = 5000,
+                    EstimatedEngagement = 0.08,
+                    EngagementFactors = new Dictionary<string, double>
+                    {
+                        { "Qualidade do Conteúdo", 0.6 },
+                        { "Relevância para o Público", 0.8 },
+                        { "Timing da Publicação", 0.7 }
+                    },
+                    OptimalPublishTime = GetOptimalPublishTimeEstimate(),
+                    PerformancePercentile = 70,
+                    ReachPotential = 0.65,
+                    ConversionPotential = 0.12,
+                    AudienceSuitability = 0.75,
+                    OptimizationSuggestions = new List<string>
+                    {
+                        "Inclua uma chamada para ação clara no final",
+                        "Otimize o título para maior clickthrough rate",
+                        "Publique durante horários de pico para seu público"
+                    }
+                };
+                
+                return Result<ContentPredictionDto>.Ok(prediction);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogError(ex, $"Erro ao prever desempenho de conteúdo: {ex.Message}");
+                return Result<ContentPredictionDto>.Fail($"Erro interno ao prever desempenho: {ex.Message}");
+            }
+        }
+        
+        private OptimalTimeDto GetOptimalPublishTimeEstimate()
+        {
+            return new OptimalTimeDto
+            {
+                DaysOfWeek = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday },
+                TimeOfDay = new TimeSpan(18, 30, 0),
+                TimeZone = "UTC-3",
+                Confidence = 0.8
+            };
+        }
+
+        public virtual async Task<Result<List<EngagementFactorDto>>> IdentifyEngagementFactorsAsync(Guid creatorId)
+        {
+            try
+            {
+                var creator = await _creatorRepository.GetByIdAsync(creatorId);
+                if (creator == null)
+                    return Result<List<EngagementFactorDto>>.Fail($"Criador com ID {creatorId} não encontrado");
                 
                 // Buscar posts do criador
                 var posts = await _contentRepository.GetByCreatorIdAsync(creatorId);
                 if (!posts.Any())
-                    throw new InvalidOperationException($"Não há conteúdos para o criador {creatorId}");
+                    return Result<List<EngagementFactorDto>>.Fail($"Não há conteúdos para o criador {creatorId}");
                 
                 // Buscar dados de performance para todos os posts
                 var allPerformances = new List<ContentPerformance>();
@@ -2372,7 +2109,7 @@ namespace MicroSaaS.Infrastructure.Services
                     .ToList();
                 
                 if (!postsWithPerformance.Any())
-                    throw new InvalidOperationException($"Não há dados de performance suficientes para identificar fatores de engajamento");
+                    return Result<List<EngagementFactorDto>>.Fail($"Não há dados de performance suficientes para identificar fatores de engajamento");
                 
                 var engagementFactors = new List<EngagementFactorDto>();
                 
@@ -2398,12 +2135,12 @@ namespace MicroSaaS.Infrastructure.Services
                 engagementFactors.Add(AnalyzeHashtagsFactor(dynamicPostsWithPerformance));
                 
                 // Ordenar por importância
-                return engagementFactors.OrderByDescending(f => f.Importance).ToList();
+                return Result<List<EngagementFactorDto>>.Ok(engagementFactors.OrderByDescending(f => f.Importance).ToList());
             }
             catch (Exception ex)
             {
                 _loggingService.LogError(ex, $"Erro ao identificar fatores de engajamento para {creatorId}: {ex.Message}");
-                throw;
+                return Result<List<EngagementFactorDto>>.Fail($"Erro interno ao identificar fatores de engajamento: {ex.Message}");
             }
         }
 
@@ -2993,6 +2730,220 @@ namespace MicroSaaS.Infrastructure.Services
             }
             
             return count > 0 ? totalViews / count : 0;
+        }
+
+        public async Task<Result<AudienceSensitivityDto>> AnalyzeAudienceSensitivityAsync(Guid creatorId)
+        {
+            try
+            {
+                _loggingService.LogWarning($"Método AnalyzeAudienceSensitivityAsync implementado parcialmente para {creatorId}");
+                
+                var creator = await _creatorRepository.GetByIdAsync(creatorId);
+                if (creator == null)
+                    return Result<AudienceSensitivityDto>.Fail($"Criador com ID {creatorId} não encontrado");
+                
+                var sensitivityResult = new AudienceSensitivityDto
+                {
+                    CreatorId = creatorId,
+                    ContentTypeSensitivity = new Dictionary<string, double>
+                    {
+                        { "Vídeo", 0.8 },
+                        { "Imagem", 0.7 },
+                        { "Texto", 0.5 }
+                    },
+                    TopicSensitivity = new Dictionary<string, double>
+                    {
+                        { "Tutorial", 0.9 },
+                        { "Notícia", 0.6 },
+                        { "Opinião", 0.5 }
+                    },
+                    StyleSensitivity = new Dictionary<string, double>
+                    {
+                        { "Informal", 0.8 },
+                        { "Técnico", 0.6 },
+                        { "Humorístico", 0.7 }
+                    },
+                    TimingSensitivity = new Dictionary<string, double>
+                    {
+                        { "Manhã", 0.7 },
+                        { "Tarde", 0.8 },
+                        { "Noite", 0.6 }
+                    },
+                    TopPreferences = new List<AudiencePreferenceDto>(),
+                    TopAversions = new List<AudienceAversion>(),
+                    OverallSensitivityScore = 0.7
+                };
+                
+                return Result<AudienceSensitivityDto>.Ok(sensitivityResult);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogError(ex, $"Erro ao analisar sensibilidade da audiência para o criador {creatorId}: {ex.Message}");
+                return Result<AudienceSensitivityDto>.Fail($"Erro interno ao analisar sensibilidade da audiência: {ex.Message}");
+            }
+        }
+
+        private int CalculateTotalAudienceSize(IEnumerable<SocialMediaAccount> accounts)
+        {
+            // Soma de todos os seguidores de todas as contas
+            return accounts.Sum(a => a.FollowersCount);
+        }
+
+        private double CalculateAudienceGrowthRate(IEnumerable<PerformanceMetrics> metrics)
+        {
+            if (!metrics.Any())
+                return 0;
+
+            var orderedMetrics = metrics.OrderBy(m => m.Date).ToList();
+            if (orderedMetrics.Count < 2)
+                return 0;
+
+            var oldestMetrics = orderedMetrics.First();
+            var newestMetrics = orderedMetrics.Last();
+
+            double startingFollowers = oldestMetrics.Followers;
+            double endingFollowers = newestMetrics.Followers;
+
+            if (startingFollowers == 0)
+                return 0;
+
+            return (endingFollowers - startingFollowers) / startingFollowers;
+        }
+
+        private Dictionary<string, double> AnalyzeDemographics(IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação simples de dados demográficos
+            return new Dictionary<string, double>
+            {
+                { "18-24", 0.25 },
+                { "25-34", 0.42 },
+                { "35-44", 0.18 },
+                { "45-54", 0.10 },
+                { "55+", 0.05 }
+            };
+        }
+
+        private List<AudienceSegmentDto> IdentifyKeySegments(IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação de segmentos-chave
+            return new List<AudienceSegmentDto>
+            {
+                new AudienceSegmentDto
+                {
+                    SegmentName = "Profissionais de Tecnologia",
+                    Percentage = 0.45,
+                    KeyCharacteristics = new List<string> { "Interesse em desenvolvimento", "Profissionais de TI", "25-34 anos" },
+                    PreferredContent = new List<string> { "Tutoriais técnicos", "Análises de tecnologia", "Novidades do mercado" },
+                    EngagementRate = 0.12,
+                    GrowthRate = 0.08
+                },
+                new AudienceSegmentDto
+                {
+                    SegmentName = "Entusiastas da Produtividade",
+                    Percentage = 0.28,
+                    KeyCharacteristics = new List<string> { "Profissionais ocupados", "Estudantes", "Interesse em autodesenvolvimento" },
+                    PreferredContent = new List<string> { "Dicas de produtividade", "Automações", "Ferramentas úteis" },
+                    EngagementRate = 0.09,
+                    GrowthRate = 0.06
+                }
+            };
+        }
+
+        private Dictionary<string, double> AnalyzeInterests(IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação de distribuição de interesses
+            return new Dictionary<string, double>
+            {
+                { "Desenvolvimento", 0.35 },
+                { "Design", 0.18 },
+                { "Produtividade", 0.22 },
+                { "Negócios", 0.15 },
+                { "IA", 0.10 }
+            };
+        }
+
+        private Dictionary<SocialMediaPlatform, double> AnalyzePlatformEngagement(IEnumerable<PerformanceMetrics> metrics)
+        {
+            var platforms = metrics.GroupBy(m => m.Platform);
+            var results = new Dictionary<SocialMediaPlatform, double>();
+
+            foreach (var platform in platforms)
+            {
+                // Usar valores disponíveis nas métricas
+                double totalEngagement = platform.Sum(m => m.TotalLikes + m.TotalComments + m.TotalShares);
+                double totalViews = platform.Sum(m => m.TotalViews);
+                double engagementRate = totalViews > 0 ? totalEngagement / totalViews : 0;
+                
+                results[platform.Key] = engagementRate;
+            }
+
+            return results;
+        }
+
+        private List<string> IdentifyEngagementPatterns(IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação de padrões de engajamento
+            return new List<string>
+            {
+                "Maior engajamento em dias úteis entre 18h e 21h",
+                "Conteúdo visual recebe mais compartilhamentos que texto",
+                "Publicações sobre desenvolvimento geram mais comentários",
+                "Maior retenção em vídeos com duração de 8-12 minutos"
+            };
+        }
+
+        private Dictionary<string, double> AnalyzeContentPreferences(IEnumerable<ContentPost> posts, IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação de preferências de conteúdo
+            return new Dictionary<string, double>
+            {
+                { "Vídeos tutoriais", 0.32 },
+                { "Artigos técnicos", 0.28 },
+                { "Análises de produtos", 0.18 },
+                { "Estudos de caso", 0.12 },
+                { "Infográficos", 0.10 }
+            };
+        }
+
+        private LoyaltyMetricsDto CalculateLoyaltyMetrics(IEnumerable<PerformanceMetrics> metrics)
+        {
+            // Simulação de métricas de fidelidade
+            return new LoyaltyMetricsDto
+            {
+                ReturnRate = 0.65,
+                AverageEngagementFrequency = 2.3,
+                ContentConsumptionRate = 0.42,
+                AdvocacyScore = 0.18,
+                LoyaltyFactors = new List<string>
+                {
+                    "Qualidade consistente do conteúdo",
+                    "Interação ativa nos comentários",
+                    "Conteúdo exclusivo para a plataforma"
+                }
+            };
+        }
+
+        private string GetContentTypeByPlatform(SocialMediaPlatform platform)
+        {
+            switch (platform)
+            {
+                case SocialMediaPlatform.YouTube:
+                    return "Vídeo";
+                case SocialMediaPlatform.Instagram:
+                    return "Imagem";
+                case SocialMediaPlatform.Twitter:
+                    return "Texto curto";
+                case SocialMediaPlatform.Facebook:
+                    return "Publicação social";
+                case SocialMediaPlatform.LinkedIn:
+                    return "Artigo profissional";
+                case SocialMediaPlatform.TikTok:
+                    return "Vídeo curto";
+                case SocialMediaPlatform.Pinterest:
+                    return "Pin";
+                default:
+                    return "Conteúdo geral";
+            }
         }
     }
 } 

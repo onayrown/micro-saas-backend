@@ -1,30 +1,37 @@
 version: '3.8'
 
 services:
-  # Aplicação ASP.NET Core
-  api:
+  backend:
     build:
-      context: .
+      context: ./MicroSaaS.Backend
       dockerfile: Dockerfile
     ports:
-      - "7169:80"
-      - "7170:443"
+      - "7170:80"
+      - "7171:443"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__MongoDB=mongodb://mongodb:27017/microsaas
-      - ConnectionStrings__Redis=redis:6379,abortConnect=false
       - ASPNETCORE_URLS=http://+:80;https://+:443
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=microsaas
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS=true
+      - ASPNETCORE_LOGGING__LOGLEVEL__DEFAULT=Debug
+      - ASPNETCORE_LOGGING__LOGLEVEL__MICROSOFT=Debug
+      - ASPNETCORE_LOGGING__LOGLEVEL__MICROSOFT.HOSTING.LIFETIME=Debug
+      - DOTNET_USE_POLLING_FILE_WATCHER=true
+      - MongoDB__ConnectionString=mongodb://mongodb:27017
+      - MongoDB__DatabaseName=microsaas
+      - MongoDB__ServerSelectionTimeout=30000
+      - MongoDB__ConnectTimeout=30000
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+    volumes:
+      - ./MicroSaaS.Backend:/app
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
     depends_on:
       - mongodb
       - redis
     networks:
-      - microsaas_network
-    volumes:
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
-      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
-      - ./https:/https:ro
+      - micro-saas-network
+    # Configuração para debug no Visual Studio
+    command: dotnet run --project /app/MicroSaaS.Backend.API/MicroSaaS.Backend.API.csproj --urls "http://+:80;https://+:443"
 
   # Banco de dados MongoDB
   mongodb:
@@ -34,7 +41,7 @@ services:
     volumes:
       - mongodb_data:/data/db
     networks:
-      - microsaas_network
+      - micro-saas-network
 
   # Servidor Redis para cache e rate limiting
   redis:
@@ -44,7 +51,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - microsaas_network
+      - micro-saas-network
 
   # Interface de administração do MongoDB (opcional)
   mongo-express:
@@ -58,7 +65,7 @@ services:
     depends_on:
       - mongodb
     networks:
-      - microsaas_network
+      - micro-saas-network
 
   # Interface de administração do Redis (opcional)
   redis-commander:
@@ -70,10 +77,10 @@ services:
     depends_on:
       - redis
     networks:
-      - microsaas_network
+      - micro-saas-network
 
 networks:
-  microsaas_network:
+  micro-saas-network:
     driver: bridge
 
 volumes:

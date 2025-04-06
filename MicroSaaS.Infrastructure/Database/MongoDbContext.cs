@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using MicroSaaS.Infrastructure.Entities;
 using MicroSaaS.Infrastructure.Settings;
+using MicroSaaS.Infrastructure.MongoDB;
 using System;
 
 namespace MicroSaaS.Infrastructure.Database
@@ -16,13 +17,16 @@ namespace MicroSaaS.Infrastructure.Database
 
         public MongoDbContext(IOptions<MongoDbSettings> settings)
         {
+            // Garantir que os serializadores estejam registrados antes de usar o MongoDB
+            MongoDbInitializer.Initialize();
+            
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
 
-            _users = _database.GetCollection<UserEntity>("users");
-            _contentCreators = _database.GetCollection<ContentCreatorEntity>("content_creators");
-            _contentPosts = _database.GetCollection<ContentPostEntity>("content_posts");
-            _socialMediaAccounts = _database.GetCollection<SocialMediaAccountEntity>("social_media_accounts");
+            _users = _database.GetCollection<UserEntity>(CollectionNames.Users);
+            _contentCreators = _database.GetCollection<ContentCreatorEntity>(CollectionNames.ContentCreators);
+            _contentPosts = _database.GetCollection<ContentPostEntity>(CollectionNames.ContentPosts);
+            _socialMediaAccounts = _database.GetCollection<SocialMediaAccountEntity>(CollectionNames.SocialMediaAccounts);
         }
 
         public IMongoDatabase Database => _database;

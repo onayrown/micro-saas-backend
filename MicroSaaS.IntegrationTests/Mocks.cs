@@ -1,6 +1,5 @@
 using MicroSaaS.Application.DTOs;
 using MicroSaaS.Application.DTOs.Auth;
-using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
@@ -12,10 +11,15 @@ using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
+using MicroSaaS.Shared.Results;
+using System.Security.Claims;
+using DomainIUserRepository = MicroSaaS.Domain.Interfaces.Repositories.IUserRepository;
+using ApplicationIUserRepository = MicroSaaS.Application.Interfaces.Repositories.IUserRepository;
+using MicroSaaS.Application.Interfaces.Repositories;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class MockUserRepository : IUserRepository
+    public class MockUserRepository : DomainIUserRepository
     {
         public Task<User?> GetByIdAsync(Guid id)
         {
@@ -49,19 +53,39 @@ namespace MicroSaaS.IntegrationTests
             return Task.FromResult<User?>(null);
         }
 
+        public Task<User?> GetByUsernameAsync(string username)
+        {
+            if (username == "testuser")
+            {
+                return Task.FromResult<User?>(new User
+                {
+                    Id = Guid.NewGuid(),
+                    Username = username,
+                    Email = "test@example.com",
+                    PasswordHash = "hashedpassword",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            return Task.FromResult<User?>(null);
+        }
+
         public Task<IEnumerable<User>> GetAllAsync()
         {
             return Task.FromResult<IEnumerable<User>>(new List<User>());
         }
 
-        public Task<User> AddAsync(User user)
+        public Task AddAsync(User user)
         {
-            return Task.FromResult(user);
+            // Apenas retorna uma tarefa concluída
+            return Task.CompletedTask;
         }
 
-        public Task<User> UpdateAsync(User user)
+        public Task UpdateAsync(User user)
         {
-            return Task.FromResult(user);
+            // Apenas retorna uma tarefa concluída
+            return Task.CompletedTask;
         }
 
         public Task DeleteAsync(Guid id)
@@ -72,60 +96,71 @@ namespace MicroSaaS.IntegrationTests
 
     public class MockSocialMediaAccountRepository : ISocialMediaAccountRepository
     {
+        // Método para verificar se existe um criador
+        public Task<bool> CreatorExistsAsync(Guid creatorId)
+        {
+            // Para fins de teste, vamos considerar que qualquer ID fornecido existe
+            return Task.FromResult(true);
+        }
+
+        // Método para obter uma conta por ID
         public Task<SocialMediaAccount?> GetByIdAsync(Guid id)
         {
             return Task.FromResult<SocialMediaAccount?>(null);
         }
 
+        // Método para obter contas por ID do criador
         public Task<IEnumerable<SocialMediaAccount>> GetByCreatorIdAsync(Guid creatorId)
         {
             return Task.FromResult<IEnumerable<SocialMediaAccount>>(new List<SocialMediaAccount>());
         }
 
+        // Método para obter contas por plataforma
         public Task<IEnumerable<SocialMediaAccount>> GetByPlatformAsync(Guid creatorId, SocialMediaPlatform platform)
         {
             return Task.FromResult<IEnumerable<SocialMediaAccount>>(new List<SocialMediaAccount>());
         }
 
+        // Método para adicionar uma conta
         public Task<SocialMediaAccount> AddAsync(SocialMediaAccount account)
         {
             return Task.FromResult(account);
         }
 
+        // Método para atualizar uma conta
         public Task UpdateAsync(SocialMediaAccount account)
         {
             return Task.CompletedTask;
         }
 
+        // Método para excluir uma conta
         public Task DeleteAsync(Guid id)
         {
             return Task.CompletedTask;
         }
 
+        // Método para atualizar token
         public Task UpdateTokenAsync(Guid id, string accessToken, string refreshToken, DateTime expiresAt)
         {
             return Task.CompletedTask;
         }
 
+        // Método para obter o total de seguidores
         public Task<int> GetTotalFollowersAsync()
         {
             return Task.FromResult(1000);
         }
 
+        // Método para obter o total de seguidores por criador
         public Task<int> GetTotalFollowersByCreatorAsync(Guid creatorId)
         {
             return Task.FromResult(500);
         }
 
+        // Método para atualizar métricas de redes sociais
         public Task RefreshSocialMediaMetricsAsync()
         {
             return Task.CompletedTask;
-        }
-
-        public Task<bool> CreatorExistsAsync(Guid creatorId)
-        {
-            // Para fins de teste, vamos considerar que qualquer ID fornecido existe
-            return Task.FromResult(true);
         }
     }
 
@@ -169,11 +204,11 @@ namespace MicroSaaS.IntegrationTests
 
     public class MockAuthService : IAuthService
     {
-        public Task<AuthResponse> LoginAsync(LoginRequest request)
+        public Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
         {
             if (request.Email == "test@example.com" && request.Password == "Test@123")
             {
-                return Task.FromResult(new AuthResponse
+                return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
                 {
                     Token = "test.jwt.token",
                     User = new UserDto
@@ -185,14 +220,14 @@ namespace MicroSaaS.IntegrationTests
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     }
-                });
+                }));
             }
-            return Task.FromResult<AuthResponse>(null!);
+            return Task.FromResult(Result<AuthResponse>.Fail("Credenciais inválidas"));
         }
 
-        public Task<AuthResponse> RegisterAsync(RegisterRequest request)
+        public Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            return Task.FromResult(new AuthResponse
+            return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
             {
                 Token = "test.jwt.token",
                 User = new UserDto
@@ -204,12 +239,12 @@ namespace MicroSaaS.IntegrationTests
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 }
-            });
+            }));
         }
 
-        public Task<AuthResponse> RefreshTokenAsync(string token)
+        public Task<Result<AuthResponse>> RefreshTokenAsync(string token)
         {
-            return Task.FromResult(new AuthResponse
+            return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
             {
                 Token = "new.jwt.token",
                 User = new UserDto
@@ -221,17 +256,36 @@ namespace MicroSaaS.IntegrationTests
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 }
-            });
+            }));
         }
 
-        public Task RevokeTokenAsync(string token)
+        public Task<Result<bool>> RevokeTokenAsync(string token)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(Result<bool>.Ok(true));
         }
 
-        public Task<bool> ValidateUserCredentialsAsync(string email, string password)
+        public Task<Result<bool>> ValidateUserCredentialsAsync(string email, string password)
         {
-            return Task.FromResult(email == "test@example.com" && password == "Test@123");
+            var isValid = email == "test@example.com" && password == "Test@123";
+            return Task.FromResult(Result<bool>.Ok(isValid));
+        }
+
+        public Task<Result<UserProfileResponse>> GetUserProfileAsync(ClaimsPrincipal claimsPrincipal)
+        {
+            // Implementação de mock para o método GetUserProfileAsync
+            var userProfileData = new UserProfileData
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Test User",
+                Email = "test@example.com",
+                Role = "user",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                ProfileImageUrl = null
+            };
+            
+            var response = UserProfileResponse.SuccessResponse(userProfileData);
+            return Task.FromResult(Result<UserProfileResponse>.Ok(response));
         }
     }
 
@@ -338,12 +392,12 @@ namespace MicroSaaS.IntegrationTests
             return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
         }
 
-        public Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(string postId)
+        public Task<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>> GetPostPerformanceAsync(string postId)
         {
             // Retorna dados de performance de exemplo para um post
-            var performances = new List<ContentPerformanceDto>
+            var performances = new List<MicroSaaS.Application.DTOs.ContentPerformanceDto>
             {
-                new ContentPerformanceDto
+                new MicroSaaS.Application.DTOs.ContentPerformanceDto
                 {
                     PostId = postId,
                     Platform = SocialMediaPlatform.Instagram,
@@ -355,15 +409,15 @@ namespace MicroSaaS.IntegrationTests
                 }
             };
             
-            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(performances);
+            return Task.FromResult<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>>(performances);
         }
 
-        public Task<IEnumerable<ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate)
+        public Task<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate)
         {
             // Retorna dados de performance de exemplo para uma conta
-            var performances = new List<ContentPerformanceDto>
+            var performances = new List<MicroSaaS.Application.DTOs.ContentPerformanceDto>
             {
-                new ContentPerformanceDto
+                new MicroSaaS.Application.DTOs.ContentPerformanceDto
                 {
                     AccountId = accountId,
                     Platform = SocialMediaPlatform.Instagram,
@@ -375,7 +429,7 @@ namespace MicroSaaS.IntegrationTests
                 }
             };
             
-            return Task.FromResult<IEnumerable<ContentPerformanceDto>>(performances);
+            return Task.FromResult<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>>(performances);
         }
 
         public Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate)

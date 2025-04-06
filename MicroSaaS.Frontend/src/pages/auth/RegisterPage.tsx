@@ -96,7 +96,7 @@ const RegisterPage: React.FC = () => {
     try {
       setLoading(true);
       await register(formData.name, formData.email, formData.password);
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       console.error('Erro durante o registro:', error);
       if (error instanceof Error) {

@@ -4,14 +4,25 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="MicroSaaS para gerenciamento de conteúdo de criadores" />
+    <meta name="theme-color" content="#3f51b5" />
+    <meta name="description" content="MicroSaaS - Plataforma para criadores de conteúdo" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>MicroSaaS - Gerenciamento de Conteúdo</title>
+    <title>MicroSaaS</title>
+    <script>
+      if (window.location.hostname === 'localhost') {
+        document.write('<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">');
+        document.write('<meta http-equiv="Pragma" content="no-cache">');
+        document.write('<meta http-equiv="Expires" content="0">');
+        
+        localStorage.removeItem('api_baseUrl');
+        
+        console.log('🧹 Cache limpo para ambiente de desenvolvimento');
+      }
+    </script>
 </head>
 <body>
-    <noscript>Você precisa habilitar JavaScript para executar esta aplicação.</noscript>
+    <noscript>Você precisa habilitar JavaScript para executar este aplicativo.</noscript>
     <div id="root"></div>
 </body>
 </html> 

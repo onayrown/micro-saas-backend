@@ -7,17 +7,11 @@ import {
   Grid,
   Card,
   CardContent,
-  CardHeader,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  Chip,
   CircularProgress,
   Button,
-  IconButton
+  IconButton,
+  Chip
 } from '@mui/material';
 import {
   Instagram as InstagramIcon,
@@ -28,12 +22,21 @@ import {
   EventNote as EventNoteIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
-import { ContentPost, PostStatus, SocialMediaPlatform } from '../../types';
-import { formatDate, formatDateTime } from '../../utils/dateUtils';
+import ContentService, { ContentPost } from '../../services/ContentService';
+import { formatDate, formatDateOnly, isToday } from '../../utils/dateUtils';
+import ContentFormDialog from '../../components/content/ContentFormDialog';
+import { ContentFormMode } from '../../components/content/ContentForm';
+import { useAuth } from '../../hooks/useAuth';
 
-interface ScheduleDay {
+// Lista de cores usada para identificação visual de diferentes plataformas
+const PLATFORM_COLORS = ['#1DA1F2', '#E1306C', '#4267B2', '#0077B5', '#FF0000'];
+
+interface CalendarDay {
   date: string;
   formattedDate: string;
   isToday: boolean;
@@ -41,125 +44,233 @@ interface ScheduleDay {
 }
 
 const SchedulePage = () => {
-  const [loading, setLoading] = useState(true);
-  const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<ContentPost | undefined>(undefined);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<ContentFormMode>('create');
 
-  // Simulando carregamento de dados
+  // Posts de amostra para demonstração - serão substituídos por dados da API
+  const samplePosts: ContentPost[] = [
+    {
+      id: '1',
+      title: 'Dicas para melhorar seu SEO',
+      description: 'Aprenda como melhorar o ranqueamento do seu site.',
+      contentType: 'text',
+      platforms: ['Instagram'],
+      scheduledDate: new Date(new Date().setHours(12, 0, 0, 0)).toISOString(),
+      status: 'scheduled',
+      userId: user?.id || '1',
+    },
+    {
+      id: '2', 
+      title: 'Como aumentar engajamento',
+      description: 'Estratégias para aumentar o engajamento nas redes sociais.',
+      contentType: 'text',
+      platforms: ['Twitter'],
+      scheduledDate: new Date(new Date().setHours(15, 30, 0, 0)).toISOString(),
+      status: 'scheduled',
+      userId: user?.id || '1',
+    },
+    {
+      id: '3',
+      title: 'Anúncio de novo produto',
+      description: 'Lançamento oficial do nosso novo produto.',
+      contentType: 'text',
+      platforms: ['Facebook', 'Instagram'],
+      scheduledDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+      status: 'scheduled',
+      userId: user?.id || '1',
+    },
+    {
+      id: '4',
+      title: 'Webinar sobre marketing digital',
+      description: 'Participe do nosso webinar exclusivo sobre estratégias de marketing.',
+      contentType: 'text',
+      platforms: ['LinkedIn'],
+      scheduledDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
+      status: 'scheduled',
+      userId: user?.id || '1',
+    },
+  ];
+
+  // Gera os dias do calendário para o período atual
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Dados de exemplo
-      const today = new Date();
-      const nextWeek = new Array(7).fill(null).map((_, index) => {
-        const date = new Date();
-        date.setDate(today.getDate() + index);
-        return date;
-      });
+    generateCalendarDays();
+  }, [currentDate]);
 
-      const samplePosts: ContentPost[] = [
-        {
-          id: '1',
-          title: '5 dicas para melhorar seu SEO',
-          content: 'Conteúdo sobre dicas de SEO...',
-          platform: SocialMediaPlatform.Instagram,
-          scheduledDate: new Date(today.setHours(14, 30, 0, 0)).toISOString(),
-          status: PostStatus.Scheduled,
-          creatorId: 'user1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Como otimizar seu workflow',
-          content: 'Dicas para melhorar a produtividade...',
-          platform: SocialMediaPlatform.LinkedIn,
-          scheduledDate: new Date(today.setHours(16, 0, 0, 0)).toISOString(),
-          status: PostStatus.Scheduled,
-          creatorId: 'user1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          title: 'Review: Novos frameworks JS',
-          content: 'Análise dos frameworks mais recentes...',
-          platform: SocialMediaPlatform.YouTube,
-          scheduledDate: new Date(nextWeek[2].setHours(10, 0, 0, 0)).toISOString(),
-          status: PostStatus.Scheduled,
-          creatorId: 'user1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '4',
-          title: 'Thread: Estratégias de marketing',
-          content: 'Dicas de marketing para crescer seu negócio...',
-          platform: SocialMediaPlatform.Twitter,
-          scheduledDate: new Date(nextWeek[4].setHours(18, 30, 0, 0)).toISOString(),
-          status: PostStatus.Scheduled,
-          creatorId: 'user1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-
-      // Organizar posts por dia
-      const days: ScheduleDay[] = nextWeek.map((date) => {
-        const dateString = date.toISOString().split('T')[0];
-        const isToday = date.getDate() === today.getDate() && 
-                        date.getMonth() === today.getMonth() && 
-                        date.getFullYear() === today.getFullYear();
+  // Função para gerar os dias do calendário
+  const generateCalendarDays = () => {
+    setLoading(true);
+    
+    try {
+      const startOfWeek = new Date(currentDate);
+      const day = currentDate.getDay();
+      const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para considerar o domingo como último dia
+      startOfWeek.setDate(diff);
+      
+      const days: CalendarDay[] = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(date.getDate() + i);
         
-        return {
+        const dateString = date.toISOString().split('T')[0];
+        const isCurrentDay = isToday(date);
+        
+        days.push({
           date: dateString,
-          formattedDate: formatDate(date),
-          isToday,
+          formattedDate: formatDateOnly(dateString),
+          isToday: isCurrentDay,
           posts: samplePosts.filter(post => 
             post.scheduledDate && new Date(post.scheduledDate).toISOString().split('T')[0] === dateString
           )
-        };
-      });
-
-      setScheduleDays(days);
+        });
+      }
+      
+      setCalendarDays(days);
+    } catch (error) {
+      console.error('Erro ao gerar dias do calendário:', error);
+    } finally {
       setLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const getPlatformIcon = (platform: SocialMediaPlatform) => {
-    switch(platform) {
-      case SocialMediaPlatform.Instagram:
-        return <InstagramIcon style={{ color: '#E1306C' }} />;
-      case SocialMediaPlatform.YouTube:
-        return <YouTubeIcon style={{ color: '#FF0000' }} />;
-      case SocialMediaPlatform.Facebook:
-        return <FacebookIcon style={{ color: '#4267B2' }} />;
-      case SocialMediaPlatform.Twitter:
-        return <TwitterIcon style={{ color: '#1DA1F2' }} />;
-      case SocialMediaPlatform.LinkedIn:
-        return <LinkedInIcon style={{ color: '#0077B5' }} />;
-      default:
-        return <Avatar>{platform.charAt(0)}</Avatar>;
     }
   };
 
-  const handleEditPost = (postId: string) => {
-    // Implementar lógica de edição
-    console.log('Editar post:', postId);
+  // Abre o diálogo para editar um post
+  const handleEditPost = (post: ContentPost) => {
+    setSelectedPost(post);
+    setFormMode('edit');
+    setFormOpen(true);
   };
 
-  const handleDeletePost = (postId: string) => {
-    // Implementar lógica de exclusão
-    console.log('Excluir post:', postId);
-  };
-
+  // Abre o diálogo para criar um novo post
   const handleCreatePost = () => {
-    // Implementar lógica de criação
-    console.log('Criar novo post');
+    setSelectedPost(undefined);
+    setFormMode('create');
+    setFormOpen(true);
   };
 
-  if (loading) {
+  // Callback quando a edição ou criação é concluída
+  const handleFormSuccess = () => {
+    // Recarrega os dados do calendário
+    generateCalendarDays();
+  };
+
+  // Navega para a semana anterior
+  const goToPreviousWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  // Navega para a próxima semana
+  const goToNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  // Retorna para a semana atual
+  const goToCurrentWeek = () => {
+    setCurrentDate(new Date());
+  };
+
+  // Renderiza os posts para um dia específico
+  const renderPostsForDay = (posts: ContentPost[]) => {
+    if (posts.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+          Nenhum post agendado
+        </Typography>
+      );
+    }
+
+    return posts.map((post) => (
+      <Card 
+        key={post.id} 
+        variant="outlined" 
+        sx={{ 
+          mt: 1, 
+          cursor: 'pointer',
+          '&:hover': { boxShadow: 1 }
+        }}
+        onClick={() => handleEditPost(post)}
+      >
+        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+              {formatDate(post.scheduledDate || '').split(' ')[1]}
+            </Typography>
+            <Box>
+              {post.platforms?.slice(0, 2).map((platform: string, i: number) => (
+                <Chip 
+                  key={i}
+                  label={platform}
+                  size="small"
+                  sx={{ 
+                    height: 20, 
+                    mr: i < post.platforms.length - 1 ? 0.5 : 0,
+                    bgcolor: PLATFORM_COLORS[i % PLATFORM_COLORS.length],
+                    color: 'white',
+                    fontSize: '0.7rem'
+                  }}
+                />
+              ))}
+              {post.platforms && post.platforms.length > 2 && (
+                <Chip 
+                  label={`+${post.platforms.length - 2}`}
+                  size="small"
+                  sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
+          </Box>
+          <Typography variant="body2" noWrap>
+            {post.title}
+          </Typography>
+        </CardContent>
+      </Card>
+    ));
+  };
+
+  // Renderiza o cabeçalho do calendário
+  const renderCalendarHeader = () => {
+    const startDate = calendarDays.length > 0 ? calendarDays[0].date : '';
+    const endDate = calendarDays.length > 0 ? calendarDays[calendarDays.length - 1].date : '';
+    
+    const formattedStartDate = startDate ? formatDateOnly(startDate) : '';
+    const formattedEndDate = endDate ? formatDateOnly(endDate) : '';
+    
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" sx={{ flexGrow: 1 }}>
+          {formattedStartDate} - {formattedEndDate}
+        </Typography>
+        <Box>
+          <IconButton onClick={goToPreviousWeek} disabled={loading}>
+            <ChevronLeftIcon />
+          </IconButton>
+          <Button 
+            variant="outlined" 
+            startIcon={<EventIcon />} 
+            onClick={goToCurrentWeek}
+            disabled={loading}
+            sx={{ mx: 1 }}
+          >
+            Hoje
+          </Button>
+          <IconButton onClick={goToNextWeek} disabled={loading}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Mostrar loading quando estiver carregando inicialmente
+  if (loading && calendarDays.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
         <CircularProgress />
@@ -167,111 +278,69 @@ const SchedulePage = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Container>
-        <Typography variant="h6" color="error" sx={{ mt: 4 }}>
-          Erro ao carregar dados: {error}
-        </Typography>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Agenda de Publicações
-        </Typography>
+        <Typography variant="h4">Agendamento de Conteúdo</Typography>
         <Button 
           variant="contained" 
-          startIcon={<AddIcon />}
+          startIcon={<AddIcon />} 
           onClick={handleCreatePost}
+          disabled={loading}
         >
           Agendar Publicação
         </Button>
       </Box>
-
-      <Grid container spacing={3}>
-        {scheduleDays.map((day) => (
-          <Grid item xs={12} key={day.date}>
-            <Paper variant="outlined" sx={{ p: 0 }}>
-              <Box sx={{ 
-                p: 2, 
-                backgroundColor: day.isToday ? 'primary.light' : 'background.paper',
-                color: day.isToday ? 'primary.contrastText' : 'text.primary',
-                borderTopLeftRadius: 4,
-                borderTopRightRadius: 4
-              }}>
-                <Typography variant="h6" component="div">
-                  {day.isToday ? 'Hoje' : day.formattedDate}
-                  {day.isToday && <Typography variant="subtitle2" component="span"> - {day.formattedDate}</Typography>}
-                </Typography>
-              </Box>
-              <Divider />
-              <List sx={{ p: 0 }}>
-                {day.posts.length === 0 ? (
-                  <ListItem sx={{ pl: 3 }}>
-                    <ListItemText 
-                      primary="Nenhuma publicação agendada" 
-                      primaryTypographyProps={{ color: 'text.secondary' }}
-                    />
-                  </ListItem>
-                ) : (
-                  day.posts.map((post) => (
-                    <ListItem key={post.id} alignItems="flex-start" sx={{ pl: 3, pr: 2 }}>
-                      <ListItemAvatar>
-                        <Avatar>
-                          {getPlatformIcon(post.platform)}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography variant="subtitle1" component="span">
-                              {post.title}
-                            </Typography>
-                            {post.scheduledDate && (
-                              <Chip 
-                                label={formatDateTime(post.scheduledDate).split(' ')[1]} 
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                                icon={<EventNoteIcon />}
-                                sx={{ ml: 1 }}
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={
-                          <React.Fragment>
-                            <Typography component="span" variant="body2">
-                              {post.content.length > 100 ? `${post.content.substring(0, 100)}...` : post.content}
-                            </Typography>
-                            <Chip 
-                              label={post.platform} 
-                              size="small"
-                              sx={{ ml: 1 }}
-                            />
-                          </React.Fragment>
-                        }
-                      />
-                      <Box>
-                        <IconButton size="small" onClick={() => handleEditPost(post.id)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleDeletePost(post.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                  ))
-                )}
-              </List>
-            </Paper>
+      
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {renderCalendarHeader()}
+          
+          <Grid container spacing={2}>
+            {calendarDays.map((day) => (
+              <Grid item xs={12} sm={6} md={12/7} key={day.date}>
+                <Paper 
+                  elevation={0} 
+                  sx={{ 
+                    p: 2, 
+                    height: '100%',
+                    bgcolor: day.isToday ? 'rgba(25, 118, 210, 0.1)' : 'background.paper',
+                    border: day.isToday ? '1px solid #1976d2' : '1px solid #e0e0e0',
+                    borderRadius: 1
+                  }}
+                >
+                  <Typography 
+                    variant="subtitle1" 
+                    sx={{ 
+                      fontWeight: day.isToday ? 'bold' : 'medium',
+                      color: day.isToday ? 'primary.main' : 'text.primary',
+                      mb: 1
+                    }}
+                  >
+                    {day.formattedDate}
+                  </Typography>
+                  <Divider />
+                  <Box sx={{ mt: 1, maxHeight: 350, overflow: 'auto' }}>
+                    {renderPostsForDay(day.posts)}
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+        </>
+      )}
+      
+      <ContentFormDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSuccess={handleFormSuccess}
+        mode={formMode}
+        post={selectedPost}
+      />
     </Container>
   );
 };

@@ -18,7 +18,7 @@ namespace MicroSaaS.Infrastructure.Repositories
 
         public SocialMediaAccountRepository(IMongoDbContext context)
         {
-            _accounts = context.GetCollection<SocialMediaAccountEntity>("SocialMediaAccounts");
+            _accounts = context.GetCollection<SocialMediaAccountEntity>(CollectionNames.SocialMediaAccounts);
         }
 
         public async Task<SocialMediaAccount> GetByIdAsync(Guid id)

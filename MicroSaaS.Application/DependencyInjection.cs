@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Shared.Results;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -22,43 +23,43 @@ public static class DependencyInjection
 /// </summary>
 public class FallbackContentAnalysisService : IContentAnalysisService
 {
-    public Task<ContentInsightsDto> GetContentInsightsAsync(Guid contentId)
+    public Task<Result<ContentInsightsDto>> GetContentInsightsAsync(Guid contentId)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<ContentInsightsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<HighPerformancePatternDto> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20)
+    public Task<Result<HighPerformancePatternDto>> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<HighPerformancePatternDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<AudienceSensitivityDto> AnalyzeAudienceSensitivityAsync(Guid creatorId)
+    public Task<Result<AudienceSensitivityDto>> AnalyzeAudienceSensitivityAsync(Guid creatorId)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<AudienceSensitivityDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
     
-    public Task<ContentRecommendationsDto> GenerateContentRecommendationsAsync(Guid creatorId)
+    public Task<Result<ContentRecommendationsDto>> GenerateContentRecommendationsAsync(Guid creatorId)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<ContentRecommendationsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<AudienceInsightsDto> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public Task<Result<AudienceInsightsDto>> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<AudienceInsightsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<ContentComparisonDto> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    public Task<Result<ContentComparisonDto>> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<ContentComparisonDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<ContentPredictionDto> PredictContentPerformanceAsync(ContentPredictionRequestDto request)
+    public Task<Result<ContentPredictionDto>> PredictContentPerformanceAsync(ContentPredictionRequestDto request)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<ContentPredictionDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 
-    public Task<List<EngagementFactorDto>> IdentifyEngagementFactorsAsync(Guid creatorId)
+    public Task<Result<List<EngagementFactorDto>>> IdentifyEngagementFactorsAsync(Guid creatorId)
     {
-        throw new NotImplementedException("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure.");
+        return Task.FromResult(Result<List<EngagementFactorDto>>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 } 

@@ -2,6 +2,8 @@
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Domain.Interfaces.Repositories;
+using MicroSaaS.Shared.Results;
+using System.Security.Claims;
 
 namespace MicroSaaS.Application.Services;
 
@@ -21,12 +23,12 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         var existingUser = await _userRepository.GetByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            return new AuthResponse { Success = false, Message = "Email already exists" };
+            return Result<AuthResponse>.Fail("Email already exists");
         }
 
         var user = new User
@@ -43,7 +45,7 @@ public class AuthService : IAuthService
         await _userRepository.AddAsync(user);
         var token = _tokenService.GenerateToken(user);
 
-        return new AuthResponse 
+        var response = new AuthResponse 
         { 
             Success = true, 
             Token = token,
@@ -55,19 +57,21 @@ public class AuthService : IAuthService
                 IsActive = user.IsActive
             }
         };
+
+        return Result<AuthResponse>.Ok(response);
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email);
         if (user == null || !ValidatePassword(user, request.Password))
         {
-            return new AuthResponse { Success = false, Message = "Invalid email or password" };
+            return Result<AuthResponse>.Fail("Invalid email or password");
         }
 
         var token = _tokenService.GenerateToken(user);
 
-        return new AuthResponse 
+        var response = new AuthResponse 
         { 
             Success = true, 
             Token = token,
@@ -79,21 +83,23 @@ public class AuthService : IAuthService
                 IsActive = user.IsActive
             }
         };
+
+        return Result<AuthResponse>.Ok(response);
     }
 
-    public async Task<AuthResponse> RefreshTokenAsync(string token)
+    public async Task<Result<AuthResponse>> RefreshTokenAsync(string token)
     {
         var userId = _tokenService.GetUserIdFromToken(token);
         var user = await _userRepository.GetByIdAsync(userId);
         
         if (user == null)
         {
-            return new AuthResponse { Success = false, Message = "Invalid token" };
+            return Result<AuthResponse>.Fail("Invalid token");
         }
 
         var newToken = _tokenService.GenerateToken(user);
 
-        return new AuthResponse 
+        var response = new AuthResponse 
         { 
             Success = true, 
             Token = newToken,
@@ -105,24 +111,83 @@ public class AuthService : IAuthService
                 IsActive = user.IsActive
             }
         };
+
+        return Result<AuthResponse>.Ok(response);
     }
 
-    public Task RevokeTokenAsync(string token)
+    public async Task<Result<bool>> RevokeTokenAsync(string token)
     {
-        // Implementação do revoke token
-        // Por enquanto, apenas valida o token
-        _tokenService.ValidateToken(token);
-        return Task.CompletedTask;
+        try
+        {
+            // Implementação do revoke token
+            // Por enquanto, apenas valida o token
+            _tokenService.ValidateToken(token);
+            return Result<bool>.Ok(true);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Fail($"Failed to revoke token: {ex.Message}");
+        }
     }
 
-    public async Task<bool> ValidateUserCredentialsAsync(string email, string password)
+    public async Task<Result<bool>> ValidateUserCredentialsAsync(string email, string password)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
-        return user != null && ValidatePassword(user, password);
+        try
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            bool isValid = user != null && ValidatePassword(user, password);
+            
+            return isValid 
+                ? Result<bool>.Ok(true) 
+                : Result<bool>.Fail("Invalid email or password");
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Fail($"Failed to validate credentials: {ex.Message}");
+        }
     }
 
     private bool ValidatePassword(User user, string password)
     {
         return _passwordHasher.VerifyPassword(password, user.PasswordHash);
+    }
+
+    public async Task<Result<UserProfileResponse>> GetUserProfileAsync(ClaimsPrincipal claimsPrincipal)
+    {
+        try
+        {
+            var userId = claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Result<UserProfileResponse>.Fail("Usuário não autenticado");
+            }
+
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            
+            if (user == null)
+            {
+                return Result<UserProfileResponse>.Fail("Usuário não encontrado");
+            }
+            
+            var userProfileData = new UserProfileData
+            {
+                Id = user.Id.ToString(),
+                Name = user.Username,
+                Email = user.Email,
+                Role = "user",
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                ProfileImageUrl = null
+            };
+            
+            var response = UserProfileResponse.SuccessResponse(userProfileData);
+            
+            return Result<UserProfileResponse>.Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Result<UserProfileResponse>.Fail($"Erro ao obter perfil: {ex.Message}");
+        }
     }
 }

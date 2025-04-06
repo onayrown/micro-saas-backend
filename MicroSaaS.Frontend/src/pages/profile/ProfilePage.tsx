@@ -74,7 +74,7 @@ function a11yProps(index: number) {
 
 const ProfilePage = () => {
   const { user } = useAuth();
-  const { themeMode, setThemeMode, isDarkMode } = useTheme();
+  const { mode, setThemeMode } = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -171,7 +171,7 @@ const ProfilePage = () => {
   };
 
   const handleThemeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setThemeMode(event.target.value as 'light' | 'dark' | 'auto');
+    setThemeMode(event.target.value as 'light' | 'dark');
   };
 
   return (
@@ -179,7 +179,6 @@ const ProfilePage = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Avatar
-            src={user?.avatar || undefined}
             sx={{ width: 64, height: 64, mr: 2 }}
           >
             {user?.name?.charAt(0) || <PersonIcon />}
@@ -378,16 +377,17 @@ const ProfilePage = () => {
                     <ColorLensIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                     Tema
                   </Typography>
-                  <FormControl component="fieldset">
+                  <FormControl component="fieldset" sx={{ mt: 2 }}>
+                    <FormLabel component="legend">Tema da Interface</FormLabel>
                     <RadioGroup
-                      aria-label="tema"
-                      name="theme"
-                      value={themeMode}
+                      aria-label="theme"
+                      name="theme-mode"
+                      value={mode}
                       onChange={handleThemeChange}
+                      row
                     >
-                      <FormControlLabel value="light" control={<Radio />} label="Tema Claro" />
-                      <FormControlLabel value="dark" control={<Radio />} label="Tema Escuro" />
-                      <FormControlLabel value="auto" control={<Radio />} label="Automático (baseado nas configurações do sistema)" />
+                      <FormControlLabel value="light" control={<Radio />} label="Claro" />
+                      <FormControlLabel value="dark" control={<Radio />} label="Escuro" />
                     </RadioGroup>
                   </FormControl>
                 </CardContent>

@@ -7,6 +7,7 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import ProfilePage from '../pages/profile/ProfilePage';
 import RecommendationsPage from '../pages/recommendations/RecommendationsPage';
+import AnalyticsPage from '../pages/analytics/AnalyticsPage';
 import { useAuth } from '../hooks/useAuth';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -46,6 +47,14 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <RecommendationsPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <PrivateRoute>
+              <AnalyticsPage />
             </PrivateRoute>
           }
         />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -12,7 +12,9 @@ import {
   CardActions,
   Chip,
   Divider,
-  IconButton
+  IconButton,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,181 +24,214 @@ import {
   YouTube as YouTubeIcon,
   Facebook as FacebookIcon,
   Twitter as TwitterIcon,
-  LinkedIn as LinkedInIcon
+  LinkedIn as LinkedInIcon,
+  Instagram,
+  YouTube,
+  Facebook,
+  Twitter,
+  LinkedIn,
+  MusicNote,
+  Pinterest,
+  Public
 } from '@mui/icons-material';
-import { PostStatus, SocialMediaPlatform } from '../../types';
+import ContentService, { ContentPost } from '../../services/ContentService';
+import { PostStatus, SocialMediaPlatform } from '../../types/common';
 import { formatDate } from '../../utils/dateUtils';
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  platform: SocialMediaPlatform;
-  scheduledDate: string;
-  status: PostStatus;
-  createdAt: string;
-}
+import ContentFormDialog from '../../components/content/ContentFormDialog';
+import { useAuth } from '../../hooks/useAuth';
+import { ContentFormMode } from '../../components/content/ContentForm';
 
 const ContentPage = () => {
+  const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [posts, setPosts] = useState<ContentPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<ContentPost | undefined>(undefined);
+  const [formMode, setFormMode] = useState<ContentFormMode>('create');
+  const [formOpen, setFormOpen] = useState(false);
   
-  // Dados de exemplo para posts
-  const draftPosts: Post[] = [
-    {
-      id: '1',
-      title: 'Dicas para iniciantes em desenvolvimento web',
-      content: 'Conteúdo sobre dicas para desenvolvimento web...',
-      platform: SocialMediaPlatform.Instagram,
-      scheduledDate: '',
-      status: PostStatus.Draft,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      title: 'Como monetizar seu canal no YouTube',
-      content: 'Guia completo sobre monetização no YouTube...',
-      platform: SocialMediaPlatform.YouTube,
-      scheduledDate: '',
-      status: PostStatus.Draft,
-      createdAt: new Date().toISOString()
+  const fetchPosts = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let status;
+      switch (tabValue) {
+        case 0:
+          status = 'draft';
+          break;
+        case 1:
+          status = 'scheduled';
+          break;
+        case 2:
+          status = 'published';
+          break;
+        default:
+          status = undefined;
+      }
+      
+      const data = await ContentService.getPosts(user.id, status);
+      setPosts(data);
+    } catch (error: any) {
+      console.error('Erro ao carregar posts:', error);
+      setError(error.message || 'Ocorreu um erro ao carregar os posts');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
   
-  const scheduledPosts: Post[] = [
-    {
-      id: '3',
-      title: 'Tendências de marketing digital para 2023',
-      content: 'Análise das tendências de marketing para o próximo ano...',
-      platform: SocialMediaPlatform.LinkedIn,
-      scheduledDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
-      status: PostStatus.Scheduled,
-      createdAt: new Date().toISOString()
-    }
-  ];
-  
-  const publishedPosts: Post[] = [
-    {
-      id: '4',
-      title: '10 ferramentas essenciais para desenvolvedores',
-      content: 'Lista de ferramentas úteis para desenvolvedores...',
-      platform: SocialMediaPlatform.Twitter,
-      scheduledDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
-      status: PostStatus.Published,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: '5',
-      title: 'Como aumentar sua produtividade',
-      content: 'Dicas para melhorar a produtividade no trabalho...',
-      platform: SocialMediaPlatform.Instagram,
-      scheduledDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
-      status: PostStatus.Published,
-      createdAt: new Date().toISOString()
-    }
-  ];
+  useEffect(() => {
+    fetchPosts();
+  }, [tabValue, user]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
   const handleCreatePost = () => {
-    // Implementar lógica para criação de post
-    console.log('Criar novo post');
+    setFormMode('create');
+    setSelectedPost(undefined);
+    setFormOpen(true);
   };
 
-  const handleEditPost = (id: string) => {
-    // Implementar lógica para edição de post
-    console.log('Editar post', id);
+  const handleEditPost = (post: ContentPost) => {
+    setFormMode('edit');
+    setSelectedPost(post);
+    setFormOpen(true);
   };
 
-  const handleDeletePost = (id: string) => {
-    // Implementar lógica para exclusão de post
-    console.log('Excluir post', id);
-  };
-
-  const getPlatformIcon = (platform: SocialMediaPlatform) => {
-    switch(platform) {
-      case SocialMediaPlatform.Instagram:
-        return <InstagramIcon sx={{ color: '#E1306C' }} />;
-      case SocialMediaPlatform.YouTube:
-        return <YouTubeIcon sx={{ color: '#FF0000' }} />;
-      case SocialMediaPlatform.Facebook:
-        return <FacebookIcon sx={{ color: '#4267B2' }} />;
-      case SocialMediaPlatform.Twitter:
-        return <TwitterIcon sx={{ color: '#1DA1F2' }} />;
-      case SocialMediaPlatform.LinkedIn:
-        return <LinkedInIcon sx={{ color: '#0077B5' }} />;
-      default:
-        return null;
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este post?')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await ContentService.deletePost(postId);
+      fetchPosts(); // Recarregar a lista após excluir
+    } catch (error: any) {
+      console.error('Erro ao excluir post:', error);
+      setError(error.message || 'Ocorreu um erro ao excluir o post');
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (status: PostStatus) => {
+  const handleFormSuccess = () => {
+    fetchPosts();
+  };
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'Instagram':
+        return <Instagram />;
+      case 'YouTube':
+        return <YouTube />;
+      case 'Facebook':
+        return <Facebook />;
+      case 'Twitter':
+        return <Twitter />;
+      case 'LinkedIn':
+        return <LinkedIn />;
+      case 'TikTok':
+        return <MusicNote />;
+      case 'Pinterest':
+        return <Pinterest />;
+      default:
+        return <Public />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
     switch(status) {
-      case PostStatus.Draft:
+      case 'draft':
         return 'default';
-      case PostStatus.Scheduled:
+      case 'scheduled':
         return 'primary';
-      case PostStatus.Published:
+      case 'published':
         return 'success';
-      case PostStatus.Failed:
+      case 'failed':
         return 'error';
-      case PostStatus.Processing:
+      case 'processing':
         return 'warning';
       default:
         return 'default';
     }
   };
 
-  const renderPosts = (posts: Post[]) => {
+  const renderPosts = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+    
+    if (error) {
+      return (
+        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+          {error}
+        </Alert>
+      );
+    }
+    
+    if (posts.length === 0) {
+      return (
+        <Box sx={{ p: 5, textAlign: 'center' }}>
+          <Typography variant="subtitle1" color="text.secondary">
+            Nenhum conteúdo encontrado nesta categoria
+          </Typography>
+        </Box>
+      );
+    }
+    
     return (
       <Grid container spacing={3}>
-        {posts.length === 0 ? (
-          <Grid item xs={12}>
-            <Typography variant="subtitle1" color="text.secondary" align="center" sx={{ py: 5 }}>
-              Nenhum conteúdo encontrado nesta categoria
-            </Typography>
+        {posts.map((post) => (
+          <Grid item xs={12} sm={6} md={4} key={post.id}>
+            <Card variant="outlined">
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  {post.platforms && post.platforms.length > 0 && 
+                    getPlatformIcon(post.platforms[0])}
+                  <Chip 
+                    label={post.status} 
+                    size="small" 
+                    color={getStatusColor(post.status)}
+                    sx={{ ml: 1 }}
+                  />
+                </Box>
+                <Typography variant="h6" component="div" gutterBottom noWrap>
+                  {post.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {post.description?.substring(0, 100) || 'Sem descrição'}
+                  {post.description && post.description.length > 100 ? '...' : ''}
+                </Typography>
+                {post.scheduledDate && (
+                  <Typography variant="caption" display="block">
+                    {post.status === 'published' ? 'Publicado em: ' : 'Agendado para: '}
+                    {formatDate(post.scheduledDate)}
+                  </Typography>
+                )}
+              </CardContent>
+              <Divider />
+              <CardActions sx={{ justifyContent: 'flex-end' }}>
+                <IconButton size="small" onClick={() => handleEditPost(post)}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton size="small" onClick={() => handleDeletePost(post.id)}>
+                  <DeleteIcon />
+                </IconButton>
+              </CardActions>
+            </Card>
           </Grid>
-        ) : (
-          posts.map((post) => (
-            <Grid item xs={12} sm={6} md={4} key={post.id}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    {getPlatformIcon(post.platform)}
-                    <Chip 
-                      label={post.status} 
-                      size="small" 
-                      color={getStatusColor(post.status)}
-                      sx={{ ml: 1 }}
-                    />
-                  </Box>
-                  <Typography variant="h6" component="div" gutterBottom noWrap>
-                    {post.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {post.content.substring(0, 100)}...
-                  </Typography>
-                  {post.scheduledDate && (
-                    <Typography variant="caption" display="block">
-                      {post.status === PostStatus.Published ? 'Publicado em: ' : 'Agendado para: '}
-                      {formatDate(post.scheduledDate)}
-                    </Typography>
-                  )}
-                </CardContent>
-                <Divider />
-                <CardActions>
-                  <IconButton size="small" onClick={() => handleEditPost(post.id)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDeletePost(post.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))
-        )}
+        ))}
       </Grid>
     );
   };
@@ -209,6 +244,7 @@ const ContentPage = () => {
           variant="contained" 
           startIcon={<AddIcon />}
           onClick={handleCreatePost}
+          disabled={loading}
         >
           Criar Conteúdo
         </Button>
@@ -221,15 +257,21 @@ const ContentPage = () => {
           aria-label="content tabs"
           sx={{ mb: 3 }}
         >
-          <Tab label="Rascunhos" />
-          <Tab label="Agendados" />
-          <Tab label="Publicados" />
+          <Tab label="Rascunhos" disabled={loading} />
+          <Tab label="Agendados" disabled={loading} />
+          <Tab label="Publicados" disabled={loading} />
         </Tabs>
         
-        {tabValue === 0 && renderPosts(draftPosts)}
-        {tabValue === 1 && renderPosts(scheduledPosts)}
-        {tabValue === 2 && renderPosts(publishedPosts)}
+        {renderPosts()}
       </Box>
+      
+      <ContentFormDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSuccess={handleFormSuccess}
+        mode={formMode}
+        post={selectedPost}
+      />
     </Container>
   );
 };

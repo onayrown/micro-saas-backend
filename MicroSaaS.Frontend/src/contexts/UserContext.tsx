@@ -1,52 +1,62 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AuthService from '../services/AuthService';
-import { User, ContentCreator } from '../types/common';
+import AuthService, { UserProfile } from '../services/AuthService';
+// Ajustar importações de tipo conforme necessário
+// import { User, ContentCreator } from '../types/common'; 
 
+// Usar UserProfile como base para o tipo do usuário no contexto
 interface UserContextData {
-  user: User | null;
-  creator: ContentCreator | null;
+  user: UserProfile | null;
+  // Manter creator separado ou mesclar com user se a estrutura for a mesma
+  creator: UserProfile | null; // Ou tipo específico se diferente
   loading: boolean;
-  setUser: (user: User | null) => void;
-  setCreator: (creator: ContentCreator | null) => void;
+  setUser: (user: UserProfile | null) => void;
+  setCreator: (creator: UserProfile | null) => void;
   logout: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextData>({} as UserContextData);
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [creator, setCreator] = useState<ContentCreator | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [creator, setCreator] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar se o usuário já está autenticado (pelo token)
-    const checkAuth = async () => {
+    const checkAuthAndFetchProfile = async () => {
+      setLoading(true);
       try {
         if (AuthService.isAuthenticated()) {
-          // Aqui normalmente faríamos uma chamada à API para obter o perfil do usuário
-          // Por enquanto, vamos simular com dados de exemplo
-          const mockUser: User = {
-            id: '123',
-            name: 'Usuário Teste',
-            email: 'usuario@teste.com',
-            role: 'creator'
-          };
+          console.log('Usuário autenticado, buscando perfil...');
+          const response = await AuthService.getProfile();
+          
+          if (response.success && response.data) {
+            console.log('Perfil do usuário carregado:', response.data);
+            const userProfile = response.data;
+            
+            // Definir o usuário e o criador com os dados da API
+            setUser(userProfile);
+            setCreator(userProfile); // Assumindo que User e Creator são os mesmos dados aqui
+                                  // Ajustar se forem entidades diferentes
 
-          const mockCreator: ContentCreator = {
-            id: '7f25d1e0-6e12-4b33-8f6b-d5cd3a3c0f7d',
-            userId: '123',
-            name: 'Criador de Conteúdo',
-            bio: 'Especialista em marketing digital',
-            niche: 'Marketing',
-            imageUrl: 'https://via.placeholder.com/150'
-          };
+            // Opcional: Poderia salvar dados mais completos no localStorage também
+            // AuthService.setUser(userProfile); // Sobrescreve o user salvo no login/registro
 
-          setUser(mockUser);
-          setCreator(mockCreator);
+          } else {
+            console.warn('Falha ao buscar perfil:', response.message);
+            // Token pode ser inválido, deslogar
+            await AuthService.logout();
+            setUser(null);
+            setCreator(null);
+          }
+        } else {
+          console.log('Nenhum token encontrado, usuário não autenticado.');
+          // Garantir que não há usuário/criador no estado
+          setUser(null);
+          setCreator(null);
         }
       } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        // Em caso de erro, deslogar o usuário
+        console.error('Erro no checkAuthAndFetchProfile:', error);
+        // Em caso de erro na API, deslogar
         await AuthService.logout();
         setUser(null);
         setCreator(null);
@@ -55,10 +65,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    checkAuth();
+    checkAuthAndFetchProfile();
   }, []);
 
   const handleLogout = async () => {
+    setLoading(true);
     try {
       await AuthService.logout();
     } catch (error) {
@@ -66,7 +77,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setUser(null);
       setCreator(null);
-      window.location.href = '/login';
+      setLoading(false);
+      // Redirecionamento pode ser tratado pelo Router agora
+      // window.location.href = '/login'; 
     }
   };
 

@@ -1,4 +1,5 @@
 using MicroSaaS.Shared.Enums;
+using MicroSaaS.Shared.Results;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,42 +14,42 @@ public interface IContentAnalysisService
     /// <summary>
     /// Analisa um conteúdo específico e provê insights detalhados
     /// </summary>
-    Task<ContentInsightsDto> GetContentInsightsAsync(Guid contentId);
+    Task<Result<ContentInsightsDto>> GetContentInsightsAsync(Guid contentId);
     
     /// <summary>
     /// Analisa padrões de alto desempenho no conteúdo de um criador
     /// </summary>
-    Task<HighPerformancePatternDto> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20);
+    Task<Result<HighPerformancePatternDto>> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20);
     
     /// <summary>
     /// Identifica padrões de audiência e comportamento
     /// </summary>
-    Task<AudienceInsightsDto> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<Result<AudienceInsightsDto>> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     
     /// <summary>
     /// Compara performance entre diferentes tipos de conteúdo
     /// </summary>
-    Task<ContentComparisonDto> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<Result<ContentComparisonDto>> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     
     /// <summary>
     /// Prevê o desempenho de um conteúdo com base em suas características
     /// </summary>
-    Task<ContentPredictionDto> PredictContentPerformanceAsync(ContentPredictionRequestDto request);
+    Task<Result<ContentPredictionDto>> PredictContentPerformanceAsync(ContentPredictionRequestDto request);
     
     /// <summary>
     /// Identifica fatores que mais contribuem para o engajamento
     /// </summary>
-    Task<List<EngagementFactorDto>> IdentifyEngagementFactorsAsync(Guid creatorId);
+    Task<Result<List<EngagementFactorDto>>> IdentifyEngagementFactorsAsync(Guid creatorId);
     
     /// <summary>
     /// Analisa a sensibilidade da audiência a tipos específicos de conteúdo
     /// </summary>
-    Task<AudienceSensitivityDto> AnalyzeAudienceSensitivityAsync(Guid creatorId);
+    Task<Result<AudienceSensitivityDto>> AnalyzeAudienceSensitivityAsync(Guid creatorId);
 
     /// <summary>
     /// Gera recomendações de conteúdo personalizadas para um criador
     /// </summary>
-    Task<ContentRecommendationsDto> GenerateContentRecommendationsAsync(Guid creatorId);
+    Task<Result<ContentRecommendationsDto>> GenerateContentRecommendationsAsync(Guid creatorId);
 }
 
 /// <summary>
@@ -251,40 +252,48 @@ public class LoyaltyMetricsDto
 public class ContentComparisonDto
 {
     public Guid CreatorId { get; set; }
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
-    public Dictionary<string, ContentTypePerformanceDto> ContentTypePerformance { get; set; } = new();
-    public Dictionary<SocialMediaPlatform, List<ContentTypePerformanceDto>> PlatformSpecificPerformance { get; set; } = new();
-    public List<CrossPlatformInsightDto> CrossPlatformInsights { get; set; } = new();
-    public Dictionary<string, double> AttributePerformance { get; set; } = new();
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public List<ContentTypeComparisonDto> TypeComparisons { get; set; } = new();
+    public List<PerformanceTrendDto> PerformanceTrends { get; set; } = new();
+    public List<string> CrossPlatformInsights { get; set; } = new();
+    public List<string> RecommendedStrategies { get; set; } = new();
 }
 
 /// <summary>
-/// DTO para performance de tipo de conteúdo
+/// DTO para comparação de tipos de conteúdo
 /// </summary>
-public class ContentTypePerformanceDto
+public class ContentTypeComparisonDto
 {
     public string ContentType { get; set; } = string.Empty;
-    public int Count { get; set; }
-    public double AverageEngagement { get; set; }
-    public double AverageReach { get; set; }
-    public double AverageConversion { get; set; }
-    public double AverageRetention { get; set; }
-    public double GrowthTrend { get; set; }
-    public List<string> TopPerformingContentIds { get; set; } = new();
-    public List<string> KeySuccessFactors { get; set; } = new();
+    public Dictionary<string, double> MetricsComparison { get; set; } = new();
+    public double PerformanceScore { get; set; }
+    public int SampleSize { get; set; }
+    public List<ContentBriefDto> TopPerformers { get; set; } = new();
+    public List<string> KeyInsights { get; set; } = new();
+    public double PerformanceRatio { get; set; }
 }
 
 /// <summary>
-/// DTO para insights de cross-platform
+/// DTO para resumo de conteúdo
 /// </summary>
-public class CrossPlatformInsightDto
+public class ContentBriefDto
 {
-    public string InsightName { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public List<SocialMediaPlatform> RelatedPlatforms { get; set; } = new();
-    public double ConfidenceScore { get; set; }
-    public List<string> ActionableRecommendations { get; set; } = new();
+    public Guid ContentId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public DateTime PublishDate { get; set; }
+    public double EngagementScore { get; set; }
+    public Dictionary<string, long> KeyMetrics { get; set; } = new();
+}
+
+/// <summary>
+/// DTO para tendências de performance
+/// </summary>
+public class PerformanceTrendDto
+{
+    public string TrendName { get; set; } = string.Empty;
+    public string TrendType { get; set; } = string.Empty;
+    public Dictionary<string, double> DataPoints { get; set; } = new();
 }
 
 /// <summary>
@@ -293,16 +302,17 @@ public class CrossPlatformInsightDto
 public class ContentPredictionRequestDto
 {
     public Guid CreatorId { get; set; }
+    public string ContentType { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public ContentType Type { get; set; }
-    public SocialMediaPlatform TargetPlatform { get; set; }
     public List<string> Tags { get; set; } = new();
+    public SocialMediaPlatform TargetPlatform { get; set; }
+    public ContentType Type { get; set; }
+    public TimeSpan PostTime { get; set; }
+    public DayOfWeek PostDay { get; set; }
     public int EstimatedDurationSeconds { get; set; }
     public bool IncludesCallToAction { get; set; }
-    public DayOfWeek PostDay { get; set; }
-    public TimeSpan PostTime { get; set; }
-    public Dictionary<string, string> AdditionalAttributes { get; set; } = new();
+    public List<string> Topics { get; set; } = new();
 }
 
 /// <summary>
@@ -311,15 +321,34 @@ public class ContentPredictionRequestDto
 public class ContentPredictionDto
 {
     public Guid RequestId { get; set; }
-    public ContentPredictionRequestDto Request { get; set; } = new();
+    public ContentPredictionRequestDto? Request { get; set; }
     public double PredictedEngagementScore { get; set; }
     public double PredictedReachScore { get; set; }
     public double PredictedViralPotential { get; set; }
+    public double EstimatedViews { get; set; }
+    public double EstimatedEngagement { get; set; }
+    public Dictionary<string, double> EngagementFactors { get; set; } = new();
     public Dictionary<string, double> MetricPredictions { get; set; } = new();
     public Dictionary<string, double> FactorConfidenceScores { get; set; } = new();
+    public OptimalTimeDto OptimalPublishTime { get; set; } = new();
+    public double PerformancePercentile { get; set; }
+    public double ReachPotential { get; set; }
+    public double ConversionPotential { get; set; }
+    public double AudienceSuitability { get; set; }
     public List<string> OptimizationSuggestions { get; set; } = new();
-    public PredictedAudienceResponseDto PredictedAudience { get; set; } = new();
+    public PredictedAudienceResponseDto? PredictedAudience { get; set; }
     public double ConfidenceScore { get; set; }
+}
+
+/// <summary>
+/// DTO para horário ótimo de publicação
+/// </summary>
+public class OptimalTimeDto
+{
+    public List<DayOfWeek> DaysOfWeek { get; set; } = new();
+    public TimeSpan TimeOfDay { get; set; }
+    public string TimeZone { get; set; } = string.Empty;
+    public double Confidence { get; set; }
 }
 
 /// <summary>

@@ -9,16 +9,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace MicroSaaS.Infrastructure.Repositories;
 
 public class PerformanceMetricsRepository : IPerformanceMetricsRepository
 {
     private readonly IMongoDbContext _context;
+    private readonly ILogger<PerformanceMetricsRepository>? _logger;
 
-    public PerformanceMetricsRepository(IMongoDbContext context)
+    public PerformanceMetricsRepository(IMongoDbContext context, ILogger<PerformanceMetricsRepository>? logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<PerformanceMetrics> GetByIdAsync(Guid id)
@@ -144,6 +147,26 @@ public class PerformanceMetricsRepository : IPerformanceMetricsRepository
         {
             var filter = Builders<PerformanceMetricsEntity>.Filter.Eq(p => p.Id, entity.Id);
             await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").ReplaceOneAsync(filter, entity);
+        }
+    }
+
+    public async Task<IEnumerable<PerformanceMetrics>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
+    {
+        try
+        {
+            var filter = Builders<PerformanceMetricsEntity>.Filter.And(
+                Builders<PerformanceMetricsEntity>.Filter.Eq(p => p.CreatorId, creatorId.ToString()),
+                Builders<PerformanceMetricsEntity>.Filter.Gte(p => p.Date, startDate),
+                Builders<PerformanceMetricsEntity>.Filter.Lte(p => p.Date, endDate)
+            );
+            
+            var entities = await _context.GetCollection<PerformanceMetricsEntity>("performance_metrics").Find(filter).ToListAsync();
+            return entities.Select(e => e.ToDomain());
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Erro ao buscar métricas do criador {creatorId} entre {startDate} e {endDate}");
+            return Enumerable.Empty<PerformanceMetrics>();
         }
     }
 } 

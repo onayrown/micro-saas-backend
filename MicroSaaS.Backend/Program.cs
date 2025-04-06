@@ -31,6 +31,9 @@ public partial class Program
 
     public static void Main(string[] args)
     {
+        // Inicialização do MongoDB
+        MicroSaaS.Infrastructure.MongoDB.MongoDbInitializer.Initialize();
+        
         var app = CreateApplication(args);
         app.Run();
     }
@@ -77,7 +80,21 @@ public partial class Program
 
             // Configuração do MongoDB
             builder.Services.Configure<MicroSaaS.Infrastructure.Settings.MongoDbSettings>(
-                builder.Configuration.GetSection("MongoDbSettings"));
+                builder.Configuration.GetSection("MongoDB"));
+            
+            // Adicionar configuração de conexão MongoDB com timeout aumentado
+            builder.Services.AddSingleton<MongoDB.Driver.MongoClient>(sp => {
+                var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MicroSaaS.Infrastructure.Settings.MongoDbSettings>>().Value;
+                var mongoSettings = MongoDB.Driver.MongoClientSettings.FromUrl(
+                    new MongoDB.Driver.MongoUrl(settings.ConnectionString));
+                
+                // Configurar timeouts
+                mongoSettings.ServerSelectionTimeout = TimeSpan.FromMilliseconds(settings.ServerSelectionTimeout);
+                mongoSettings.ConnectTimeout = TimeSpan.FromMilliseconds(settings.ConnectTimeout);
+                
+                return new MongoDB.Driver.MongoClient(mongoSettings);
+            });
+
             builder.Services.AddScoped<MicroSaaS.Infrastructure.Database.IMongoDbContext, MicroSaaS.Infrastructure.Database.MongoDbContext>();
             builder.Services.AddScoped<MongoDB.Driver.IMongoDatabase>(provider => 
                 provider.GetRequiredService<MicroSaaS.Infrastructure.Database.IMongoDbContext>().Database);

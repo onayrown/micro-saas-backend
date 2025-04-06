@@ -16,6 +16,8 @@ import {
   ListItemAvatar,
   ListItemText,
   LinearProgress,
+  Button,
+  Alert,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -28,6 +30,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Notifications as NotificationsIcon,
   Schedule as ScheduleIcon,
+  Launch as LaunchIcon,
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -41,6 +44,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import api from '../../services/api';
 
 // Dados simulados
 const revenueData = [
@@ -106,6 +110,8 @@ const getPlatformIcon = (platform: string) => {
 
 const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [apiStatus, setApiStatus] = useState<string | null>(null);
+  const [isTestingApi, setIsTestingApi] = useState(false);
 
   // Simula o carregamento de dados
   useEffect(() => {
@@ -115,6 +121,63 @@ const DashboardPage: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  const testApiConnection = async () => {
+    setIsTestingApi(true);
+    setApiStatus(null);
+    try {
+      console.log('🔍 Testando conexão com a API...');
+      
+      // Verificar e mostrar a URL base usada pelo cliente API
+      console.log('⚠️ URL base do cliente API:', api.defaults.baseURL);
+      
+      // Usar apenas o caminho relativo - sem URL absoluta
+      const response = await api.get('/SwaggerDebug/test');
+      
+      console.log('✅ Resposta da API:', response.data);
+      
+      // Criar uma mensagem formatada com os dados recebidos
+      let successMessage = '✅ Conexão com a API estabelecida com sucesso!';
+      if (response.data) {
+        const dataString = typeof response.data === 'object' 
+          ? JSON.stringify(response.data, null, 2)
+          : response.data.toString();
+        successMessage += `\n\nDados recebidos: ${dataString}`;
+      }
+      
+      setApiStatus(successMessage);
+    } catch (error: any) {
+      console.error('❌ Erro ao testar API:', error);
+      let errorMessage = error.message;
+      
+      // Log para debug da URL completa
+      if (error.config) {
+        console.error('🔍 URL completa que falhou:', `${error.config.baseURL || ''}${error.config.url || ''}`);
+      }
+      
+      // Tentar obter mais detalhes do erro
+      if (error.response) {
+        // O servidor respondeu com um status de erro
+        errorMessage = `Erro ${error.response.status}: ${error.response.statusText}`;
+        if (error.response.data) {
+          errorMessage += `\nDetalhes: ${JSON.stringify(error.response.data)}`;
+        }
+      } else if (error.request) {
+        // A requisição foi feita mas não houve resposta
+        errorMessage = 'Sem resposta do servidor. Verifique se o backend está rodando na porta 7171.';
+      } 
+      
+      setApiStatus(`❌ Erro na conexão: ${errorMessage}`);
+    } finally {
+      setIsTestingApi(false);
+    }
+  };
+
+  // Função para abrir o Swagger
+  const openSwagger = () => {
+    // Usar a mesma porta que a API
+    window.open('https://localhost:7171/swagger/index.html', '_blank');
+  };
 
   if (loading) {
     return (
@@ -136,10 +199,41 @@ const DashboardPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Dashboard
-      </Typography>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" gutterBottom>
+          Dashboard
+        </Typography>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button 
+            variant="outlined" 
+            color="primary"
+            onClick={openSwagger}
+            startIcon={<LaunchIcon />}
+          >
+            Documentação API
+          </Button>
+          
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={testApiConnection}
+            disabled={isTestingApi}
+          >
+            {isTestingApi ? 'Testando...' : 'Testar Conexão com API'}
+          </Button>
+        </Box>
+      </Box>
+      
+      {apiStatus && (
+        <Alert 
+          severity={apiStatus.includes('sucesso') ? 'success' : 'error'}
+          sx={{ mb: 3 }}
+        >
+          {apiStatus}
+        </Alert>
+      )}
 
       {/* Resumo financeiro */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

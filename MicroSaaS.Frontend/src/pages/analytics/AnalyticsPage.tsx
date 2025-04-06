@@ -15,6 +15,20 @@ import {
   MenuItem,
   TextField,
   Button,
+  Card,
+  CardContent,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
   BarChart,
@@ -29,10 +43,36 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
+  ResponsiveContainer
 } from 'recharts';
 import { formatCurrency, formatCompactNumber, formatPercentage } from '../../utils/formatUtils';
 import { SelectChangeEvent } from '@mui/material/Select';
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  Timeline as TimelineIcon,
+  Assessment as AssessmentIcon,
+  Language as LanguageIcon,
+  Schedule as ScheduleIcon,
+  Refresh as RefreshIcon,
+  Info as InfoIcon,
+  Facebook as FacebookIcon,
+  Instagram as InstagramIcon,
+  YouTube as YouTubeIcon,
+  Twitter as TwitterIcon,
+  LinkedIn as LinkedInIcon
+} from '@mui/icons-material';
+import AnalyticsService, { 
+  PerformanceMetric, 
+  ContentPerformance,
+  EngagementData,
+  PlatformPerformance,
+  PerformanceByContent,
+  AudienceDemographic
+} from '../../services/AnalyticsService';
+import { SocialMediaPlatform } from '../../types/common';
+import { useUser } from '../../contexts/UserContext';
+import { Link } from 'react-router-dom';
 
 // Tipos de análise
 enum AnalyticsType {
@@ -126,318 +166,532 @@ const engagementData = [
 // Cores para os gráficos
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const PLATFORM_COLORS = {
-  instagram: '#E1306C',
-  youtube: '#FF0000',
-  twitter: '#1DA1F2',
-  linkedin: '#0A66C2',
-  facebook: '#1877F2',
+  [SocialMediaPlatform.Instagram]: '#E1306C',
+  [SocialMediaPlatform.YouTube]: '#FF0000',
+  [SocialMediaPlatform.Twitter]: '#1DA1F2',
+  [SocialMediaPlatform.LinkedIn]: '#0A66C2',
+  [SocialMediaPlatform.Facebook]: '#1877F2',
+  [SocialMediaPlatform.TikTok]: '#000000'
+};
+
+// Função para obter ícone da plataforma
+const getPlatformIcon = (platform: SocialMediaPlatform) => {
+  switch (platform) {
+    case SocialMediaPlatform.Facebook:
+      return <FacebookIcon sx={{ color: PLATFORM_COLORS[SocialMediaPlatform.Facebook] }} />;
+    case SocialMediaPlatform.Twitter:
+      return <TwitterIcon sx={{ color: PLATFORM_COLORS[SocialMediaPlatform.Twitter] }} />;
+    case SocialMediaPlatform.Instagram:
+      return <InstagramIcon sx={{ color: PLATFORM_COLORS[SocialMediaPlatform.Instagram] }} />;
+    case SocialMediaPlatform.YouTube:
+      return <YouTubeIcon sx={{ color: PLATFORM_COLORS[SocialMediaPlatform.YouTube] }} />;
+    case SocialMediaPlatform.LinkedIn:
+      return <LinkedInIcon sx={{ color: PLATFORM_COLORS[SocialMediaPlatform.LinkedIn] }} />;
+    default:
+      return <LanguageIcon />;
+  }
 };
 
 const AnalyticsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AnalyticsType>(AnalyticsType.REVENUE);
+  const { creator, loading: userLoading } = useUser();
+  
+  // Estados para armazenar dados da API
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<string>('6m');
-  const [platform, setPlatform] = useState<string>('all');
-
-  // Simula o carregamento de dados
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [usingSampleData, setUsingSampleData] = useState<boolean>(false);
+  const [timePeriod, setTimePeriod] = useState<string>('month');
+  
+  // Estados para armazenar os dados analíticos
+  const [dashboardMetrics, setDashboardMetrics] = useState<PerformanceMetric[]>([]);
+  const [contentPerformance, setContentPerformance] = useState<ContentPerformance[]>([]);
+  const [engagementData, setEngagementData] = useState<EngagementData[]>([]);
+  const [platformPerformance, setPlatformPerformance] = useState<PlatformPerformance[]>([]);
+  const [performanceByContent, setPerformanceByContent] = useState<PerformanceByContent[]>([]);
+  const [demographicData, setDemographicData] = useState<AudienceDemographic[]>([]);
+  
+  // Carregar dados iniciais quando o criador estiver disponível
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Simula chamada à API
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setError(null);
-      } catch (err) {
-        setError('Erro ao carregar dados de análise. Tente novamente.');
-      } finally {
-        setLoading(false);
+    if (creator && !userLoading) {
+      loadAnalyticsData();
+    }
+  }, [creator, userLoading]);
+  
+  // Função para carregar todos os dados de análise
+  const loadAnalyticsData = async () => {
+    if (!creator) return;
+    
+    setLoading(true);
+    setError(null);
+    setUsingSampleData(false);
+    
+    try {
+      console.log('📊 Iniciando carregamento de dados analíticos para o criador:', creator.id);
+      
+      // Carregar todos os dados necessários
+      const results = await Promise.allSettled([
+        loadDashboardMetrics(),
+        loadContentPerformance(),
+        loadEngagementData(),
+        loadPlatformPerformance(),
+        loadPerformanceByContentType(),
+        loadDemographicData()
+      ]);
+      
+      // Verificar se alguma promise falhou
+      const failedPromises = results.filter(result => result.status === 'rejected');
+      if (failedPromises.length > 0) {
+        console.warn(`⚠️ ${failedPromises.length} de ${results.length} requisições falharam`);
+        setUsingSampleData(true);
       }
-    };
-
-    loadData();
-  }, [activeTab, timeRange, platform]);
-
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: AnalyticsType) => {
-    setActiveTab(newValue);
+      
+      console.log('✅ Dados analíticos carregados com sucesso, usando dados simulados:', usingSampleData);
+    } catch (err) {
+      console.error('❌ Erro ao carregar dados analíticos:', err);
+      // Se estivermos usando dados simulados, não mostramos erro ao usuário
+      if (!usingSampleData) {
+        setError('Erro ao carregar dados analíticos. Usando dados simulados para demonstração.');
+        setUsingSampleData(true);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleTimeRangeChange = (event: SelectChangeEvent<string>) => {
-    setTimeRange(event.target.value);
+  
+  // Função para recarregar todos os dados
+  const handleRefresh = async () => {
+    if (!creator) return;
+    
+    setRefreshing(true);
+    setUsingSampleData(false);
+    try {
+      await loadAnalyticsData();
+    } catch (err) {
+      if (!usingSampleData) {
+        setError('Erro ao atualizar dados analíticos. Tente novamente mais tarde.');
+      }
+      console.error('Erro ao atualizar dados analíticos:', err);
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-  const handlePlatformChange = (event: SelectChangeEvent<string>) => {
-    setPlatform(event.target.value);
+  
+  // Função para lidar com a mudança de período
+  const handlePeriodChange = (event: SelectChangeEvent<string>) => {
+    setTimePeriod(event.target.value);
   };
-
-  const renderRevenueAnalytics = () => {
+  
+  // Funções para carregar dados específicos
+  const loadDashboardMetrics = async () => {
+    if (!creator) return;
+    try {
+      const data = await AnalyticsService.getDashboardMetrics(creator.id);
+      setDashboardMetrics(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].id === '1') {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar métricas do dashboard:', err);
+      throw err;
+    }
+  };
+  
+  const loadContentPerformance = async () => {
+    if (!creator) return;
+    try {
+      const data = await AnalyticsService.getContentPerformance(creator.id);
+      setContentPerformance(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].id === '1') {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar performance de conteúdo:', err);
+      throw err;
+    }
+  };
+  
+  const loadEngagementData = async () => {
+    if (!creator) return;
+    try {
+      const startDate = getStartDateForPeriod(timePeriod);
+      const endDate = new Date().toISOString().split('T')[0];
+      const data = await AnalyticsService.getEngagementData(creator.id, startDate, endDate);
+      setEngagementData(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].date === '2024-01-01') {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar dados de engajamento:', err);
+      throw err;
+    }
+  };
+  
+  const loadPlatformPerformance = async () => {
+    if (!creator) return;
+    try {
+      const data = await AnalyticsService.getPlatformPerformance(creator.id);
+      setPlatformPerformance(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].platform === SocialMediaPlatform.Instagram && data[0].followers === 58200) {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar performance por plataforma:', err);
+      throw err;
+    }
+  };
+  
+  const loadPerformanceByContentType = async () => {
+    if (!creator) return;
+    try {
+      const data = await AnalyticsService.getPerformanceByContentType(creator.id);
+      setPerformanceByContent(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].contentType === 'Vídeo') {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar performance por tipo de conteúdo:', err);
+      throw err;
+    }
+  };
+  
+  const loadDemographicData = async () => {
+    if (!creator) return;
+    try {
+      const data = await AnalyticsService.getAudienceDemographics(creator.id);
+      setDemographicData(data);
+      // Verificar se estamos usando dados simulados
+      if (data && data.length > 0 && data[0].ageGroup === '18-24') {
+        setUsingSampleData(true);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar dados demográficos:', err);
+      throw err;
+    }
+  };
+  
+  // Função para obter a data de início baseada no período selecionado
+  const getStartDateForPeriod = (period: string): string => {
+    const date = new Date();
+    switch (period) {
+      case 'week':
+        date.setDate(date.getDate() - 7);
+        break;
+      case 'month':
+        date.setMonth(date.getMonth() - 1);
+        break;
+      case 'quarter':
+        date.setMonth(date.getMonth() - 3);
+        break;
+      case 'year':
+        date.setFullYear(date.getFullYear() - 1);
+        break;
+      default:
+        date.setMonth(date.getMonth() - 1);
+    }
+    return date.toISOString().split('T')[0];
+  };
+  
+  if (userLoading || loading) {
     return (
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Receita Total ao Longo do Tempo
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={revenueData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis
-                  tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`}
-                />
-                <Tooltip 
-                  formatter={(value: any) => [`${formatCurrency(value)}`, 'Receita']}
-                  labelFormatter={(label) => `Data: ${label}`}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  name="Receita Total"
-                  stroke="#8884d8"
-                  activeDot={{ r: 8 }}
-                />
-                <Line type="monotone" dataKey="adsense" name="AdSense" stroke="#82ca9d" />
-                <Line type="monotone" dataKey="sponsorships" name="Patrocínios" stroke="#ffc658" />
-                <Line type="monotone" dataKey="affiliate" name="Afiliados" stroke="#ff8042" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Distribuição de Receita
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  dataKey="value"
-                  data={revenueDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  label={({ name, percent }) => `${name}: ${formatPercentage(percent)}`}
-                >
-                  {revenueDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => [formatCurrency(value), 'Receita']} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Receita por Plataforma
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={revenueByPlatformData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="platform" />
-                <YAxis 
-                  tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`}
-                />
-                <Tooltip formatter={(value: any) => [formatCurrency(value), 'Receita']} />
-                <Legend />
-                <Bar dataKey="value" name="Receita" fill="#8884d8">
-                  {revenueByPlatformData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={
-                        entry.platform.toLowerCase() === 'instagram' ? PLATFORM_COLORS.instagram :
-                        entry.platform.toLowerCase() === 'youtube' ? PLATFORM_COLORS.youtube :
-                        entry.platform.toLowerCase() === 'twitter' ? PLATFORM_COLORS.twitter :
-                        entry.platform.toLowerCase() === 'linkedin' ? PLATFORM_COLORS.linkedin :
-                        entry.platform.toLowerCase() === 'facebook' ? PLATFORM_COLORS.facebook :
-                        COLORS[index % COLORS.length]
-                      } 
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '70vh' }}>
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Carregando dados analíticos...
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Isso pode levar alguns instantes
+        </Typography>
+      </Container>
     );
-  };
-
-  const renderFollowersAnalytics = () => {
+  }
+  
+  if (!creator) {
     return (
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Crescimento de Seguidores
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={followersData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis 
-                  tickFormatter={(value) => formatCompactNumber(value)}
-                />
-                <Tooltip formatter={(value: any, name) => [
-                  formatCompactNumber(value),
-                  name === 'instagram' ? 'Instagram' :
-                  name === 'youtube' ? 'YouTube' :
-                  name === 'twitter' ? 'Twitter' :
-                  name === 'linkedin' ? 'LinkedIn' :
-                  name === 'facebook' ? 'Facebook' : name
-                ]} />
-                <Legend />
-                <Line type="monotone" dataKey="instagram" name="Instagram" stroke={PLATFORM_COLORS.instagram} />
-                <Line type="monotone" dataKey="youtube" name="YouTube" stroke={PLATFORM_COLORS.youtube} />
-                <Line type="monotone" dataKey="twitter" name="Twitter" stroke={PLATFORM_COLORS.twitter} />
-                <Line type="monotone" dataKey="linkedin" name="LinkedIn" stroke={PLATFORM_COLORS.linkedin} />
-                <Line type="monotone" dataKey="facebook" name="Facebook" stroke={PLATFORM_COLORS.facebook} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Você precisa estar registrado como criador de conteúdo para acessar as análises.
+        </Alert>
+        <Button component={Link} to="/profile" variant="contained" color="primary">
+          Completar Perfil
+        </Button>
+      </Container>
     );
-  };
+  }
 
-  const renderEngagementAnalytics = () => {
-    return (
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+            Análise de Desempenho
+          </Typography>
+          
+          {usingSampleData && (
+            <Chip
+              icon={<InfoIcon />}
+              label="Dados de demonstração"
+              color="info"
+              variant="outlined"
+              size="small"
+            />
+          )}
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel id="period-select-label">Período</InputLabel>
+            <Select
+              labelId="period-select-label"
+              value={timePeriod}
+              label="Período"
+              onChange={handlePeriodChange}
+            >
+              <MenuItem value="week">Última Semana</MenuItem>
+              <MenuItem value="month">Último Mês</MenuItem>
+              <MenuItem value="quarter">Último Trimestre</MenuItem>
+              <MenuItem value="year">Último Ano</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Button 
+            variant="outlined" 
+            startIcon={<RefreshIcon />}
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+        </Box>
+      </Box>
+      
+      {error && !usingSampleData && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {usingSampleData && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Mostrando dados de demonstração. Alguns recursos da API não estão disponíveis no momento.
+        </Alert>
+      )}
+
       <Grid container spacing={3}>
+        {/* Métricas do Dashboard */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            {dashboardMetrics.map((metric, index) => (
+              <Grid item xs={12} sm={6} md={3} key={metric.id || index}>
+                <Card>
+                  <CardContent>
+                    <Typography color="text.secondary" gutterBottom>
+                      {metric.label}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
+                      <Typography variant="h4">
+                        {metric.value.toLocaleString('pt-BR', { 
+                          minimumFractionDigits: metric.value % 1 === 0 ? 0 : 1,
+                          maximumFractionDigits: metric.value % 1 === 0 ? 0 : 1
+                        })}
+                      </Typography>
+                      <Box 
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          color: metric.trend === 'up' ? 'success.main' : 
+                                 metric.trend === 'down' ? 'error.main' : 'text.secondary',
+                          mb: 0.5
+                        }}
+                      >
+                        {metric.trend === 'up' ? (
+                          <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        ) : metric.trend === 'down' ? (
+                          <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        ) : null}
+                        <Typography variant="body2">
+                          {metric.percentageChange.toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      vs {metric.period}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+
+        {/* Gráfico de Engajamento */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
             <Typography variant="h6" gutterBottom>
-              Taxa de Engajamento por Plataforma
+              Tendência de Engajamento
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer>
               <LineChart
                 data={engagementData}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis 
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip formatter={(value: any) => [`${value}%`, 'Engajamento']} />
+                <YAxis yAxisId="left" orientation="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="instagram" name="Instagram" stroke={PLATFORM_COLORS.instagram} />
-                <Line type="monotone" dataKey="youtube" name="YouTube" stroke={PLATFORM_COLORS.youtube} />
-                <Line type="monotone" dataKey="twitter" name="Twitter" stroke={PLATFORM_COLORS.twitter} />
-                <Line type="monotone" dataKey="linkedin" name="LinkedIn" stroke={PLATFORM_COLORS.linkedin} />
-                <Line type="monotone" dataKey="facebook" name="Facebook" stroke={PLATFORM_COLORS.facebook} />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="engagement" 
+                  stroke="#8884d8" 
+                  name="Engajamento"
+                  activeDot={{ r: 8 }}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="impressions" 
+                  stroke="#82ca9d" 
+                  name="Impressões"
+                />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="shares" 
+                  stroke="#ff7300" 
+                  name="Compartilhamentos"
+                />
               </LineChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
-      </Grid>
-    );
-  };
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
-
-    if (error) {
-      return (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      );
-    }
-
-    switch (activeTab) {
-      case AnalyticsType.REVENUE:
-        return renderRevenueAnalytics();
-      case AnalyticsType.FOLLOWERS:
-        return renderFollowersAnalytics();
-      case AnalyticsType.ENGAGEMENT:
-        return renderEngagementAnalytics();
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Análises
-      </Typography>
-
-      <Tabs
-        value={activeTab}
-        onChange={handleTabChange}
-        indicatorColor="primary"
-        textColor="primary"
-        sx={{ mb: 3 }}
-      >
-        <Tab label="Receita" value={AnalyticsType.REVENUE} />
-        <Tab label="Seguidores" value={AnalyticsType.FOLLOWERS} />
-        <Tab label="Engajamento" value={AnalyticsType.ENGAGEMENT} />
-      </Tabs>
-
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel id="time-range-label">Período</InputLabel>
-              <Select
-                labelId="time-range-label"
-                id="time-range"
-                value={timeRange}
-                label="Período"
-                onChange={handleTimeRangeChange}
+        {/* Performance por Tipo de Conteúdo */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+            <Typography variant="h6" gutterBottom>
+              Performance por Tipo de Conteúdo
+            </Typography>
+            <ResponsiveContainer>
+              <BarChart
+                data={performanceByContent}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
               >
-                <MenuItem value="30d">Últimos 30 dias</MenuItem>
-                <MenuItem value="3m">Últimos 3 meses</MenuItem>
-                <MenuItem value="6m">Últimos 6 meses</MenuItem>
-                <MenuItem value="1y">Último ano</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel id="platform-label">Plataforma</InputLabel>
-              <Select
-                labelId="platform-label"
-                id="platform"
-                value={platform}
-                label="Plataforma"
-                onChange={handlePlatformChange}
-              >
-                <MenuItem value="all">Todas as plataformas</MenuItem>
-                <MenuItem value="instagram">Instagram</MenuItem>
-                <MenuItem value="youtube">YouTube</MenuItem>
-                <MenuItem value="twitter">Twitter</MenuItem>
-                <MenuItem value="linkedin">LinkedIn</MenuItem>
-                <MenuItem value="facebook">Facebook</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="contentType" type="category" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="engagementRate" name="Taxa de Engajamento (%)" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
         </Grid>
-      </Paper>
 
-      {renderContent()}
+        {/* Tabela de Performance de Conteúdo */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2, width: '100%', overflow: 'hidden' }}>
+            <Typography variant="h6" gutterBottom>
+              Top Conteúdos por Performance
+            </Typography>
+            <TableContainer sx={{ maxHeight: 440 }}>
+              <Table stickyHeader aria-label="performance table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Título</TableCell>
+                    <TableCell>Plataforma</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell align="right">Impressões</TableCell>
+                    <TableCell align="right">Engajamento</TableCell>
+                    <TableCell align="right">Taxa de Engajamento</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {contentPerformance.map((post) => (
+                    <TableRow key={post.id} hover>
+                      <TableCell component="th" scope="row">
+                        {post.title}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {getPlatformIcon(post.platform)}
+                          <Typography variant="body2" sx={{ ml: 1 }}>
+                            {post.platform}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>{post.type}</TableCell>
+                      <TableCell align="right">{post.impressions.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell align="right">{post.engagement.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell align="right">{post.engagementRate.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Grid>
+
+        {/* Performance por Plataforma */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+            <Typography variant="h6" gutterBottom>
+              Performance por Plataforma
+            </Typography>
+            <ResponsiveContainer>
+              <BarChart
+                data={platformPerformance}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="platform" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="engagement" name="Engajamento (%)" fill="#8884d8" />
+                <Bar dataKey="growth" name="Crescimento (%)" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* Demografia da Audiência */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+            <Typography variant="h6" gutterBottom>
+              Demografia da Audiência
+            </Typography>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={demographicData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  dataKey="percentage"
+                  nameKey="ageGroup"
+                >
+                  {demographicData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };

@@ -17,4 +17,5 @@ public interface IPerformanceMetricsRepository
     Task<decimal> GetAverageEngagementRateAsync();
     Task<decimal> GetAverageEngagementRateByCreatorAsync(Guid creatorId);
     Task RefreshMetricsAsync();
+    Task<IEnumerable<PerformanceMetrics>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate);
 } 
