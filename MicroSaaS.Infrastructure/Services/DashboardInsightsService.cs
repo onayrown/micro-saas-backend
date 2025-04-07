@@ -1,5 +1,6 @@
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Domain.Interfaces;
+using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MicroSaaS.Infrastructure.Services;
 
-public class DashboardInsightsService : IDashboardInsightsService
+public class DashboardInsightsService : MicroSaaS.Application.Interfaces.Services.IDashboardInsightsService, MicroSaaS.Domain.Interfaces.IDashboardInsightsService
 {
     private readonly IDashboardInsightsRepository _repository;
     private readonly IContentPerformanceRepository _performanceRepository;
@@ -107,4 +108,4 @@ public class DashboardInsightsService : IDashboardInsightsService
     {
         await _repository.DeleteAsync(id);
     }
-} 
+}

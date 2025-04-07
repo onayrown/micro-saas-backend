@@ -55,7 +55,7 @@ export interface ApiResponse<T> {
  */
 class AuthService {
   private tokenKey = 'token';
-  private userKey = 'user';
+  // Não armazenamos dados do usuário no localStorage por questões de segurança
   private refreshLock = false;
   private refreshPromise: Promise<string | null> | null = null;
 
@@ -68,14 +68,9 @@ class AuthService {
     try {
       const response = await api.post<AuthResponse>('/v1/Auth/register', data);
 
-      // Se o registro for bem-sucedido, salva o token e os dados do usuário
-      if (response.data.success && response.data.token && response.data.user) {
+      // Se o registro for bem-sucedido, salva apenas o token
+      if (response.data.success && response.data.token) {
         this.setToken(response.data.token);
-        this.setUser({
-          id: response.data.user.id,
-          name: response.data.user.username,
-          email: response.data.user.email,
-        });
       }
 
       return response.data;
@@ -109,14 +104,9 @@ class AuthService {
 
       const response = await api.post<AuthResponse>('/v1/Auth/login', loginPayload);
 
-      // Se o login for bem-sucedido, salva o token e os dados do usuário
-      if (response.data.success && response.data.token && response.data.user) {
+      // Se o login for bem-sucedido, salva apenas o token
+      if (response.data.success && response.data.token) {
         this.setToken(response.data.token);
-        this.setUser({
-          id: response.data.user.id,
-          name: response.data.user.username,
-          email: response.data.user.email,
-        });
       }
 
       return response.data;
@@ -280,17 +270,11 @@ class AuthService {
 
   /**
    * Obtém os dados do usuário atual
+   * @deprecated Não use este método. Os dados do usuário devem ser obtidos da API.
    */
   getUser(): any {
-    const userData = localStorage.getItem(this.userKey);
-    return userData ? JSON.parse(userData) : null;
-  }
-
-  /**
-   * Define os dados do usuário
-   */
-  private setUser(user: any): void {
-    localStorage.setItem(this.userKey, JSON.stringify(user));
+    console.warn('getUser() está obsoleto. Use o contexto de autenticação para obter dados do usuário.');
+    return null;
   }
 
   /**
@@ -298,7 +282,6 @@ class AuthService {
    */
   private clearAuth(): void {
     localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
 
     // Remove o token dos cabeçalhos da API
     delete api.defaults.headers.common['Authorization'];
@@ -327,15 +310,8 @@ class AuthService {
       console.log('Buscando perfil do usuário autenticado...');
       const response = await api.get<ApiResponse<UserProfile>>('/v1/creators/me');
 
-      // Se a requisição for bem-sucedida, salva/atualiza os dados do usuário localmente
-      if (response.data.success && response.data.data) {
-        this.setUser({
-          id: response.data.data.id,
-          name: response.data.data.name,
-          email: response.data.data.email,
-          // Outros campos relevantes podem ser salvos se necessário
-        });
-      }
+      // Retorna os dados do perfil sem armazená-los localmente
+      // Os dados do usuário são gerenciados pelo contexto de autenticação
 
       return response.data;
     } catch (error: any) {

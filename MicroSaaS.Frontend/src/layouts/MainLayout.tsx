@@ -33,7 +33,8 @@ import {
   Notifications,
   TrendingUp,
   Share,
-  Lightbulb
+  Lightbulb,
+  CloudUpload
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 
@@ -85,6 +86,7 @@ const MainLayout: React.FC = () => {
     { text: 'Analytics', icon: <TrendingUp />, path: '/analytics' },
     { text: 'Redes Sociais', icon: <Share />, path: '/social' },
     { text: 'Recomendações', icon: <Lightbulb />, path: '/recommendations' },
+    { text: 'Teste de Upload', icon: <CloudUpload />, path: '/media-test' },
     { text: 'Configurações', icon: <Settings />, path: '/settings' },
     { text: 'Perfil', icon: <Person />, path: '/profile' },
   ];
@@ -137,8 +139,8 @@ const MainLayout: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find((item) => item.path === location.pathname)?.text || 'MicroSaaS'}
           </Typography>
-          <IconButton 
-            color="inherit" 
+          <IconButton
+            color="inherit"
             sx={{ mx: 1 }}
             onClick={handleNotificationsMenuOpen}
           >
@@ -155,27 +157,27 @@ const MainLayout: React.FC = () => {
               <ListItemIcon>
                 <Notifications fontSize="small" color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Nova conexão de rede social" 
-                secondary="Sua conta Instagram foi conectada com sucesso" 
+              <ListItemText
+                primary="Nova conexão de rede social"
+                secondary="Sua conta Instagram foi conectada com sucesso"
               />
             </MenuItem>
             <MenuItem>
               <ListItemIcon>
                 <Notifications fontSize="small" color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Publicação agendada" 
-                secondary="Seu post será publicado em 30 minutos" 
+              <ListItemText
+                primary="Publicação agendada"
+                secondary="Seu post será publicado em 30 minutos"
               />
             </MenuItem>
             <MenuItem>
               <ListItemIcon>
                 <Notifications fontSize="small" color="success" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Post publicado com sucesso" 
-                secondary="Seu conteúdo foi publicado no Instagram" 
+              <ListItemText
+                primary="Post publicado com sucesso"
+                secondary="Seu conteúdo foi publicado no Instagram"
               />
             </MenuItem>
             <Divider />
@@ -285,4 +287,4 @@ const MainLayout: React.FC = () => {
   );
 };
 
-export default MainLayout; 
+export default MainLayout;

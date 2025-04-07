@@ -20,6 +20,7 @@ import SettingsPage from './pages/settings/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SocialAccountsPage from './pages/social/SocialAccountsPage';
 import RecommendationsPage from './pages/recommendations/RecommendationsPage';
+import MediaUploadTest from './pages/MediaUploadTest';
 
 // Rotas públicas (acessíveis sem autenticação)
 const PublicRoutes = () => {
@@ -49,6 +50,7 @@ const PrivateRoutes = () => {
         <Route path="social" element={<SocialAccountsPage />} />
         <Route path="recommendations" element={<RecommendationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="media-test" element={<MediaUploadTest />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
@@ -57,7 +59,7 @@ const PrivateRoutes = () => {
 
 const App: React.FC = () => {
   const { isAuthenticated, isInitialized } = useAuth();
-  
+
   if (!isInitialized) {
     return <div>Carregando Aplicação...</div>;
   }
@@ -72,4 +74,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

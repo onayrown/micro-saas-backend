@@ -12,14 +12,14 @@ namespace MicroSaaS.Infrastructure.Services
 {
     public class DashboardService : IDashboardService
     {
-        private readonly IDashboardInsightsService _insightsService;
+        private readonly MicroSaaS.Application.Interfaces.Services.IDashboardInsightsService _insightsService;
         private readonly MicroSaaS.Application.Interfaces.Repositories.IPerformanceMetricsRepository _metricsRepository;
         private readonly MicroSaaS.Application.Interfaces.Repositories.IContentPostRepository _contentRepository;
         private readonly MicroSaaS.Application.Interfaces.Repositories.IContentPerformanceRepository _contentPerformanceRepository;
         private readonly IRecommendationService _recommendationService;
 
         public DashboardService(
-            IDashboardInsightsService insightsService,
+            MicroSaaS.Application.Interfaces.Services.IDashboardInsightsService insightsService,
             MicroSaaS.Application.Interfaces.Repositories.IPerformanceMetricsRepository metricsRepository,
             MicroSaaS.Application.Interfaces.Repositories.IContentPostRepository contentRepository,
             MicroSaaS.Application.Interfaces.Repositories.IContentPerformanceRepository contentPerformanceRepository,
@@ -51,17 +51,17 @@ namespace MicroSaaS.Infrastructure.Services
         public async Task<IEnumerable<PerformanceMetrics>> GetMetricsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null, SocialMediaPlatform? platform = null)
         {
             var metrics = await _metricsRepository.GetByCreatorIdAsync(creatorId);
-            
+
             // Aplicar filtros se fornecidos
             if (startDate.HasValue)
                 metrics = metrics.Where(m => m.Date >= startDate.Value).ToList();
-                
+
             if (endDate.HasValue)
                 metrics = metrics.Where(m => m.Date <= endDate.Value).ToList();
-                
+
             if (platform.HasValue)
                 metrics = metrics.Where(m => m.Platform == platform.Value).ToList();
-                
+
             return metrics;
         }
 
@@ -69,10 +69,10 @@ namespace MicroSaaS.Infrastructure.Services
         {
             var targetDate = date ?? DateTime.UtcNow.Date;
             var metrics = await _metricsRepository.GetByCreatorIdAsync(creatorId);
-            
+
             // Filtrar por data e plataforma
-            return metrics.FirstOrDefault(m => 
-                m.Date.Date == targetDate.Date && 
+            return metrics.FirstOrDefault(m =>
+                m.Date.Date == targetDate.Date &&
                 m.Platform == platform);
         }
 
@@ -80,13 +80,13 @@ namespace MicroSaaS.Infrastructure.Services
         {
             var posts = await _contentRepository.GetByCreatorIdAsync(creatorId);
             var performances = await _contentPerformanceRepository.GetByCreatorIdAsync(creatorId);
-            
+
             // Associar cada post com sua performance média
             var postPerformances = posts
                 .Select(post => {
                     var postPerfs = performances.Where(p => p.PostId == post.Id).ToList();
-                    var avgEngagement = postPerfs.Any() 
-                        ? postPerfs.Average(p => p.EngagementRate) 
+                    var avgEngagement = postPerfs.Any()
+                        ? postPerfs.Average(p => p.EngagementRate)
                         : 0;
                     return new { Post = post, EngagementRate = avgEngagement };
                 })
@@ -94,7 +94,7 @@ namespace MicroSaaS.Infrastructure.Services
                 .Take(limit)
                 .Select(pp => pp.Post)
                 .ToList();
-                
+
             return postPerformances;
         }
 
@@ -107,10 +107,10 @@ namespace MicroSaaS.Infrastructure.Services
         {
             var metrics = await _metricsRepository.GetByCreatorIdAsync(creatorId);
             var platformMetrics = metrics.Where(m => m.Platform == platform).ToList();
-            
+
             if (!platformMetrics.Any())
                 return 0;
-                
+
             return platformMetrics.Average(m => m.EngagementRate);
         }
 
@@ -118,23 +118,23 @@ namespace MicroSaaS.Infrastructure.Services
         {
             var end = endDate ?? DateTime.UtcNow;
             var start = startDate ?? end.AddDays(-30);
-            
+
             // Na implementação real, este método buscaria dados de receita do repositório
             // e calcularia o crescimento percentual
-            
+
             // Implementação simulada para fins de demonstração
             var performances = await _contentPerformanceRepository.GetByCreatorIdAsync(creatorId);
             var startRevenue = performances
                 .Where(p => p.CollectedAt >= start && p.CollectedAt < start.AddDays(1))
                 .Sum(p => p.EstimatedRevenue);
-                
+
             var endRevenue = performances
                 .Where(p => p.CollectedAt >= end.AddDays(-1) && p.CollectedAt <= end)
                 .Sum(p => p.EstimatedRevenue);
-                
+
             if (startRevenue == 0)
                 return 0; // Evitar divisão por zero
-                
+
             return ((endRevenue - startRevenue) / startRevenue) * 100;
         }
 
@@ -142,23 +142,23 @@ namespace MicroSaaS.Infrastructure.Services
         {
             var end = endDate ?? DateTime.UtcNow;
             var start = startDate ?? end.AddDays(-30);
-            
+
             var metrics = await _metricsRepository.GetByCreatorIdAsync(creatorId);
             var platformMetrics = metrics.Where(m => m.Platform == platform).ToList();
-            
+
             var startMetrics = platformMetrics
                 .Where(m => m.Date.Date <= start.Date)
                 .OrderByDescending(m => m.Date)
                 .FirstOrDefault();
-                
+
             var endMetrics = platformMetrics
                 .Where(m => m.Date.Date <= end.Date)
                 .OrderByDescending(m => m.Date)
                 .FirstOrDefault();
-                
+
             if (startMetrics == null || endMetrics == null)
                 return 0;
-                
+
             return endMetrics.Followers - startMetrics.Followers;
         }
 
@@ -167,7 +167,7 @@ namespace MicroSaaS.Infrastructure.Services
             // Garantir que os timestamps estão definidos
             metrics.CreatedAt = DateTime.UtcNow;
             metrics.UpdatedAt = DateTime.UtcNow;
-            
+
             return await _metricsRepository.AddAsync(metrics);
         }
 
@@ -175,8 +175,8 @@ namespace MicroSaaS.Infrastructure.Services
         {
             // Garantir que o timestamp está definido
             performance.CollectedAt = DateTime.UtcNow;
-            
+
             return await _contentPerformanceRepository.AddAsync(performance);
         }
     }
-} 
+}

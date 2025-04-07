@@ -196,6 +196,39 @@
   - Implementação de verificação robusta de token de autenticação
   - Melhoria no tratamento de erros e logs para facilitar a depuração
 
+- ✅ **12/04/2024:** Implementação do serviço de upload de mídia e correção de arquitetura
+  - Implementação do controlador de mídia para upload, exclusão e recuperação de arquivos
+  - Implementação do serviço de armazenamento local para arquivos
+  - Correção de inconsistências arquiteturais para seguir a Clean Architecture
+  - Remoção de referências diretas do Backend ao Domain, seguindo o padrão definido
+  - Implementação de DTOs e interfaces na camada de Application
+
+- ✅ **13/04/2024:** Correção de erros de compilação e refinamento da arquitetura
+  - Correção da interface IStorageService no Domain para remover dependências de AspNetCore
+  - Criação da interface IDashboardInsightsService na camada de Application
+  - Atualização das implementações para usar as interfaces corretas
+  - Garantia de que todas as dependências seguem o fluxo correto da Clean Architecture
+  - Refinamento da separação de responsabilidades entre as camadas
+  - Resolução de ambiguidades entre interfaces com o mesmo nome em diferentes camadas
+  - Adição de pacotes necessários para processamento de imagens (SixLabors.ImageSharp)
+  - Correção de chamadas de métodos de logging com parâmetros incorretos
+  - Correção de referências no MediaController para ApiResponse, RateLimit e Cache
+  - Ajuste dos parâmetros do atributo RateLimit para corresponder ao construtor disponível
+
+- ✅ **14/04/2024:** Implementação do upload de mídia
+  - Correção do serviço de upload de mídia no frontend para enviar corretamente o creatorId
+  - Criação de uma página de teste para upload de mídia
+  - Adição da rota para a página de teste no menu principal
+  - Integração completa entre frontend e backend para upload de mídia
+
+- ✅ **15/04/2024:** Correções de segurança e melhoria da interface
+  - Remoção de dados sensíveis do localStorage para evitar vulnerabilidades XSS
+  - Remoção de dados fictícios e placeholders inadequados na interface
+  - Simplificação da página de perfil, removendo abas duplicadas de segurança e notificações
+  - Criação de versões simplificadas das páginas de Analytics e Recommendations
+  - Melhoria no tratamento de erros e feedback visual para o usuário
+  - Adição de diretrizes claras de segurança e qualidade de código no documento planning.md
+
 - ✅ **[Data Atual]:** Correção do endpoint de busca de perfil do usuário
   - Identificado que o endpoint correto no backend é `/api/v1/creators/me` (definido pelo atributo [Route("...")] no ContentCreatorController).
   - Revertida a modificação anterior no frontend para usar o endpoint correto.

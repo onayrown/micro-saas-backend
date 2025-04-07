@@ -6,7 +6,6 @@ using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Backend.Attributes;
 using MicroSaaS.Backend.Swagger;
-using MicroSaaS.Domain.Interfaces;
 using MicroSaaS.Infrastructure.Repositories;
 using MicroSaaS.Infrastructure.Services;
 using MicroSaaS.Infrastructure.Settings;
@@ -33,7 +32,7 @@ public partial class Program
     {
         // Inicialização do MongoDB
         MicroSaaS.Infrastructure.MongoDB.MongoDbInitializer.Initialize();
-        
+
         var app = CreateApplication(args);
         app.Run();
     }
@@ -62,9 +61,9 @@ public partial class Program
         try
         {
             Log.Information("Iniciando aplicação MicroSaaS");
-            
+
             var builder = WebApplication.CreateBuilder(args);
-            
+
             // Adicionar Serilog ao Host
             builder.Host.UseSerilog();
 
@@ -81,24 +80,24 @@ public partial class Program
             // Configuração do MongoDB
             builder.Services.Configure<MicroSaaS.Infrastructure.Settings.MongoDbSettings>(
                 builder.Configuration.GetSection("MongoDB"));
-            
+
             // Adicionar configuração de conexão MongoDB com timeout aumentado
             builder.Services.AddSingleton<MongoDB.Driver.MongoClient>(sp => {
                 var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MicroSaaS.Infrastructure.Settings.MongoDbSettings>>().Value;
                 var mongoSettings = MongoDB.Driver.MongoClientSettings.FromUrl(
                     new MongoDB.Driver.MongoUrl(settings.ConnectionString));
-                
+
                 // Configurar timeouts
                 mongoSettings.ServerSelectionTimeout = TimeSpan.FromMilliseconds(settings.ServerSelectionTimeout);
                 mongoSettings.ConnectTimeout = TimeSpan.FromMilliseconds(settings.ConnectTimeout);
-                
+
                 return new MongoDB.Driver.MongoClient(mongoSettings);
             });
 
             builder.Services.AddScoped<MicroSaaS.Infrastructure.Database.IMongoDbContext, MicroSaaS.Infrastructure.Database.MongoDbContext>();
-            builder.Services.AddScoped<MongoDB.Driver.IMongoDatabase>(provider => 
+            builder.Services.AddScoped<MongoDB.Driver.IMongoDatabase>(provider =>
                 provider.GetRequiredService<MicroSaaS.Infrastructure.Database.IMongoDbContext>().Database);
-                
+
             // Registrar HttpClient para os serviços que dependem dele
             builder.Services.AddHttpClient();
             builder.Services.AddScoped<HttpClient>();
@@ -152,6 +151,7 @@ public partial class Program
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IPerformanceMetricsRepository, PerformanceMetricsRepository>();
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IDashboardInsightsRepository, DashboardInsightsRepository>();
             builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentPerformanceRepository, ContentPerformanceRepository>();
+            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IMediaRepository, MicroSaaS.Infrastructure.Repositories.MediaRepository>();
 
             // Registrar serviços
             builder.Services.AddScoped<IAuthService, MicroSaaS.Infrastructure.Services.AuthService>();
@@ -163,10 +163,12 @@ public partial class Program
             builder.Services.AddScoped<IPerformanceAnalysisService, MicroSaaS.Infrastructure.Services.PerformanceAnalysisService>();
             builder.Services.AddScoped<ILoggingService, SerilogService>();
             builder.Services.AddScoped<ICacheService, RedisCacheService>();
-            builder.Services.AddScoped<IDashboardInsightsService, DashboardInsightsService>();
+            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Services.IDashboardInsightsService, MicroSaaS.Infrastructure.Services.DashboardInsightsService>();
             builder.Services.AddScoped<ISchedulerService, SchedulerService>();
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
             builder.Services.AddScoped<IDashboardService, DashboardService>();
+            builder.Services.AddScoped<IMediaService, MediaService>();
+            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Services.IStorageService, LocalStorageService>();
 
             // Adicionar serviços hospedados
             builder.Services.AddHostedService<SchedulerService>();
@@ -195,16 +197,16 @@ public partial class Program
                         Url = new Uri("https://www.microsaas.com.br/licenca")
                     }
                 });
-                
+
                 // Configurações para resolver problemas com tipos genéricos
                 c.UseAllOfToExtendReferenceSchemas();
-                
+
                 // Para resolver problemas com tipos circulares ou complexos
                 c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
-                
+
                 // Ignorar propriedades não serializáveis
                 c.MapType<TimeSpan>(() => new Microsoft.OpenApi.Models.OpenApiSchema { Type = "string", Format = "time-span" });
-                
+
                 // Incluir arquivos XML de documentação
                 var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -212,7 +214,7 @@ public partial class Program
                 {
                     c.IncludeXmlComments(xmlPath);
                 }
-                
+
                 // Configurar autenticação JWT no Swagger
                 c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                 {
@@ -237,15 +239,15 @@ public partial class Program
                         Array.Empty<string>()
                     }
                 });
-                
+
                 // Desativar validação de parâmetros personalizados
                 c.SchemaFilter<SwaggerRequiredSchemaFilter>();
-                
+
                 // Agrupar endpoints por tag para melhor organização
                 c.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] });
                 c.DocInclusionPredicate((docName, api) => true);
             });
-            
+
             // Configuração de versionamento da API
             builder.Services.AddApiVersioning(options =>
             {
@@ -253,7 +255,7 @@ public partial class Program
                 options.AssumeDefaultVersionWhenUnspecified = true;
                 options.ReportApiVersions = true;
             });
-            
+
             builder.Services.AddVersionedApiExplorer(options =>
             {
                 options.GroupNameFormat = "'v'VVV";
@@ -274,7 +276,7 @@ public partial class Program
 
             // Configuração do Rate Limiting
             builder.Services.AddMemoryCache();
-            
+
             // Tornar o Redis opcional para desenvolvimento
             if (builder.Environment.IsDevelopment())
             {
@@ -302,7 +304,7 @@ public partial class Program
                     options.InstanceName = "MicroSaaS:";
                 });
             }
-            
+
             builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
             builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
             builder.Services.AddInMemoryRateLimiting();
@@ -320,7 +322,7 @@ public partial class Program
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI(c => 
+                app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MicroSaaS API v1");
                     c.RoutePrefix = "swagger";
@@ -347,12 +349,12 @@ public partial class Program
             {
                 Console.WriteLine($"Aviso: Middleware de limitação de taxa não está disponível. Erro: {ex.Message}");
             }
-            
+
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
             app.UseAuthentication();
             app.UseAuthorization();
-            
+
             app.MapControllers();
 
             // Adicionar uma rota alternativa para o swagger.json para o caso da geração automática continuar falhando
@@ -375,7 +377,7 @@ public partial class Program
                         Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                         Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
                     }
-                    
+
                     // Se falhar, gerar um documento OpenAPI manualmente com mais endpoints
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync(@"{

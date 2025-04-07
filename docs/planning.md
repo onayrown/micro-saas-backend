@@ -109,3 +109,54 @@
 - Hooks personalizados para lógica reutilizável
 - Context API para estado global
 - Serviços para chamadas à API
+
+## 7. Diretrizes de Segurança e Qualidade de Código
+
+### 7.1 Segurança
+
+#### 7.1.1 Armazenamento de Dados
+- **NUNCA armazenar dados sensíveis no localStorage ou sessionStorage**
+  - Dados sensíveis incluem: IDs de usuário, informações pessoais, tokens de acesso não-JWT
+  - Apenas tokens JWT podem ser armazenados no localStorage, e mesmo assim com tempo de expiração curto
+- **Dados de usuário devem ser obtidos da API a cada sessão**
+  - Utilizar o contexto de autenticação para gerenciar dados do usuário em memória
+  - Nunca persistir dados de usuário no navegador
+
+#### 7.1.2 Autenticação e Autorização
+- Implementar renovação automática de tokens
+- Validar permissões tanto no frontend quanto no backend
+- Implementar logout automático após período de inatividade
+
+#### 7.1.3 Proteção contra Vulnerabilidades
+- Implementar proteção contra CSRF em todas as requisições
+- Sanitizar todos os inputs de usuário
+- Utilizar Content Security Policy (CSP) para prevenir XSS
+
+### 7.2 Qualidade de Código
+
+#### 7.2.1 Dados Reais vs. Placeholders
+- **NUNCA utilizar dados fictícios ou placeholders hardcoded na interface**
+  - Exibir mensagens claras quando dados não estiverem disponíveis
+  - Implementar estados de carregamento (loading) e erro apropriados
+- **Todos os textos exibidos devem vir de fontes confiáveis:**
+  - API
+  - Arquivos de tradução/localização
+  - Constantes definidas em um único lugar
+
+#### 7.2.2 Tratamento de Erros
+- Implementar tratamento de erros consistente em todas as chamadas à API
+- Fornecer feedback claro ao usuário em caso de falhas
+- Registrar erros em serviço de logging para análise posterior
+
+#### 7.2.3 Testes
+- Implementar testes unitários para toda lógica de negócio
+- Implementar testes de integração para fluxos críticos
+- Manter cobertura de testes acima de 80%
+
+### 7.3 Princípios Fundamentais
+
+- **Nada de Gambiarras**: Soluções temporárias são estritamente proibidas
+- **Código para Produção**: Todo código deve ser escrito como se fosse para produção imediata
+- **Documentação Obrigatória**: Qualquer dívida técnica deve ser documentada em tasks.md
+- **Segurança em Primeiro Lugar**: Nunca comprometer a segurança em favor da conveniência
+- **Qualidade Consistente**: Manter o mesmo nível de qualidade em todo o código

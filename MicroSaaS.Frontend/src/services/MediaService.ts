@@ -17,15 +17,15 @@ class MediaService {
   async uploadMedia(files: File[], creatorId: string): Promise<UploadedMedia[]> {
     try {
       const formData = new FormData();
-      
+
+      // Adicionar o creatorId ao FormData
+      formData.append('creatorId', creatorId);
+
       // Adicionar cada arquivo ao FormData
       files.forEach((file, index) => {
         formData.append(`files`, file);
       });
-      
-      // Adicionar o ID do criador
-      formData.append('creatorId', creatorId);
-      
+
       const response = await api.post<ApiResponse<UploadedMedia[]>>(
         '/v1/Media/upload',
         formData,
@@ -43,20 +43,20 @@ class MediaService {
           }
         }
       );
-      
+
       if (response.data?.success && response.data.data) {
         return response.data.data;
       }
-      
+
       throw new Error(response.data?.message || 'Falha ao fazer upload de mídia');
     } catch (error: any) {
       console.error('Erro ao fazer upload de mídia:', error);
-      
+
       if (error.response && error.response.data) {
         const apiError = error.response.data as ApiResponse<any>;
         throw new Error(apiError.message || 'Erro ao fazer upload de mídia');
       }
-      
+
       throw error;
     }
   }
@@ -64,20 +64,20 @@ class MediaService {
   async deleteMedia(mediaId: string): Promise<boolean> {
     try {
       const response = await api.delete<ApiResponse<boolean>>(`/v1/Media/${mediaId}`);
-      
+
       if (response.data?.success) {
         return true;
       }
-      
+
       throw new Error(response.data?.message || 'Falha ao excluir mídia');
     } catch (error: any) {
       console.error('Erro ao excluir mídia:', error);
-      
+
       if (error.response && error.response.data) {
         const apiError = error.response.data as ApiResponse<any>;
         throw new Error(apiError.message || 'Erro ao excluir mídia');
       }
-      
+
       throw error;
     }
   }
@@ -85,11 +85,11 @@ class MediaService {
   async getMediaByCreator(creatorId: string): Promise<UploadedMedia[]> {
     try {
       const response = await api.get<ApiResponse<UploadedMedia[]>>(`/v1/Media/creator/${creatorId}`);
-      
+
       if (response.data?.success && response.data.data) {
         return response.data.data;
       }
-      
+
       return [];
     } catch (error: any) {
       console.error('Erro ao obter mídias do criador:', error);
