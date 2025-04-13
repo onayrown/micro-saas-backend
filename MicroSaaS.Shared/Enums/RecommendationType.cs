@@ -14,5 +14,7 @@ public enum RecommendationType
     ContentRepurposing,
     EngagementTactic,
     Platform,
-    Timing
+    Timing,
+    Strategy,
+    Topic
 } 

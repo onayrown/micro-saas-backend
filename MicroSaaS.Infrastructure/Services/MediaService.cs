@@ -52,12 +52,13 @@ namespace MicroSaaS.Infrastructure.Services
                     // Fazer upload do arquivo
                     var (url, path) = await _storageService.UploadFileAsync(file, "media");
 
-                    // Criar o DTO de mídia
-                    var mediaDto = new MediaDto
+                    // Criar a entidade Media
+                    var media = new Media
                     {
                         Id = Guid.NewGuid(),
                         CreatorId = creatorId,
                         Url = url,
+                        StoragePath = path, // Store the storage path
                         FileName = file.FileName,
                         FileType = file.ContentType,
                         FileSize = file.Length,
@@ -66,14 +67,14 @@ namespace MicroSaaS.Infrastructure.Services
                         IsActive = true
                     };
 
-                    // Extrair metadados do arquivo
-                    await ExtractMetadataAsync(mediaDto, file);
+                    // Extrair metadados do arquivo (agora passa a entidade Media)
+                    await ExtractMetadataAsync(media, file);
 
-                    // Salvar a mídia no banco de dados
-                    var savedMedia = await _mediaRepository.AddAsync(mediaDto);
+                    // Salvar a mídia no banco de dados (espera Media, retorna Media)
+                    var savedMediaEntity = await _mediaRepository.AddAsync(media);
 
-                    // Adicionar ao resultado
-                    result.Add(savedMedia);
+                    // Mapear a entidade salva para DTO e adicionar ao resultado
+                    result.Add(MapToDto(savedMediaEntity));
                 }
                 catch (Exception ex)
                 {
@@ -90,15 +91,21 @@ namespace MicroSaaS.Infrastructure.Services
         /// </summary>
         public async Task<List<MediaDto>> GetMediaByCreatorAsync(Guid creatorId)
         {
-            return await _mediaRepository.GetByCreatorIdAsync(creatorId);
+            // Repositório retorna List<Media>
+            var mediaEntities = await _mediaRepository.GetByCreatorIdAsync(creatorId);
+            // Mapear para List<MediaDto>
+            return mediaEntities.Select(MapToDto).ToList();
         }
 
         /// <summary>
         /// Obtém uma mídia pelo ID
         /// </summary>
-        public async Task<MediaDto> GetMediaByIdAsync(Guid id)
+        public async Task<MediaDto?> GetMediaByIdAsync(Guid id) // Return nullable DTO
         {
-            return await _mediaRepository.GetByIdAsync(id);
+            // Repositório retorna Media?
+            var mediaEntity = await _mediaRepository.GetByIdAsync(id);
+            // Mapear para MediaDto?
+            return mediaEntity != null ? MapToDto(mediaEntity) : null;
         }
 
         /// <summary>
@@ -106,22 +113,34 @@ namespace MicroSaaS.Infrastructure.Services
         /// </summary>
         public async Task<bool> DeleteMediaAsync(Guid id)
         {
-            var media = await _mediaRepository.GetByIdAsync(id);
-            if (media == null)
+            // Obter a entidade Media primeiro para pegar o StoragePath
+            var mediaEntity = await _mediaRepository.GetByIdAsync(id);
+            if (mediaEntity == null)
                 return false;
 
-            // Excluir o arquivo do armazenamento
-            // Nota: Precisamos de uma forma de obter o caminho de armazenamento, que não está no DTO
-            // Uma solução seria adicionar o campo StoragePath ao DTO ou usar um serviço para obter o caminho
-            // Por enquanto, vamos extrair o caminho da URL
-            string storagePath = ExtractStoragePathFromUrl(media.Url);
-            if (!string.IsNullOrEmpty(storagePath))
+            // Excluir o arquivo do armazenamento usando StoragePath da entidade
+            if (!string.IsNullOrEmpty(mediaEntity.StoragePath))
             {
-                await _storageService.DeleteFileAsync(storagePath);
+                await _storageService.DeleteFileAsync(mediaEntity.StoragePath);
+            }
+            else // Fallback: tentar extrair da URL se StoragePath estiver vazio
+            {
+                 string storagePathFromUrl = ExtractStoragePathFromUrl(mediaEntity.Url);
+                 if (!string.IsNullOrEmpty(storagePathFromUrl))
+                 {
+                     await _storageService.DeleteFileAsync(storagePathFromUrl);
+                     _loggingService.LogWarning("StoragePath estava vazio para MediaId {MediaId}, usando caminho extraído da URL: {Path}", id, storagePathFromUrl);
+                 }
+                 else
+                 {
+                     _loggingService.LogError(null, "Não foi possível determinar o caminho de armazenamento para excluir o arquivo da MediaId {MediaId}", id);
+                     // Considerar se deve continuar com a exclusão do DB mesmo assim
+                 }
             }
 
+
             // Excluir a mídia do banco de dados (exclusão lógica)
-            return await _mediaRepository.DeleteAsync(id);
+            return await _mediaRepository.DeleteAsync(id); // Este método já existe no repositório e opera por ID
         }
 
         /// <summary>
@@ -153,6 +172,30 @@ namespace MicroSaaS.Infrastructure.Services
             }
         }
 
+        #region Métodos Privados de Mapeamento
+
+        private MediaDto MapToDto(Media media)
+        {
+            return new MediaDto
+            {
+                Id = media.Id,
+                CreatorId = media.CreatorId,
+                Url = media.Url,
+                // StoragePath não costuma ir para o DTO
+                FileName = media.FileName,
+                FileType = media.FileType,
+                FileSize = media.FileSize,
+                Width = media.Width,
+                Height = media.Height,
+                Duration = media.Duration,
+                CreatedAt = media.CreatedAt,
+                UpdatedAt = media.UpdatedAt,
+                IsActive = media.IsActive
+            };
+        }
+
+        #endregion
+
         #region Métodos Privados
 
         /// <summary>
@@ -177,9 +220,9 @@ namespace MicroSaaS.Infrastructure.Services
         }
 
         /// <summary>
-        /// Extrai metadados de um arquivo
+        /// Extrai metadados de um arquivo (agora opera na entidade Media)
         /// </summary>
-        private async Task ExtractMetadataAsync(MediaDto mediaDto, IFormFile file)
+        private async Task ExtractMetadataAsync(Media media, IFormFile file) // Recebe Media
         {
             try
             {
@@ -190,15 +233,22 @@ namespace MicroSaaS.Infrastructure.Services
                     {
                         using (var image = await Image.LoadAsync(stream))
                         {
-                            mediaDto.Width = image.Width;
-                            mediaDto.Height = image.Height;
+                            media.Width = image.Width; // Modifica a entidade
+                            media.Height = image.Height; // Modifica a entidade
                         }
                     }
                 }
+                // else if (file.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+                // {
+                //     // Extrair duração do vídeo (ex: usando FFmpeg)
+                //     // media.Duration = GetVideoDuration(file);
+                // }
+                // else if (file.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+                // {
+                //     // Extrair duração do áudio
+                //     // media.Duration = GetAudioDuration(file);
+                // }
 
-                // Extrair metadados de vídeos e áudios
-                // Nota: Para extrair metadados de vídeos e áudios, seria necessário usar uma biblioteca específica
-                // como FFmpeg, o que está fora do escopo deste exemplo
             }
             catch (Exception ex)
             {

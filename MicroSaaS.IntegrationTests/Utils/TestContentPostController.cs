@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using MicroSaaS.Shared.DTOs;
+using MicroSaaS.Application.Services;
 using MicroSaaS.Application.DTOs.ContentPost;
 
 namespace MicroSaaS.IntegrationTests.Utils
@@ -19,6 +21,12 @@ namespace MicroSaaS.IntegrationTests.Utils
         private static readonly List<ContentPost> _posts = new List<ContentPost>();
         private static readonly List<ContentCreator> _creators = new List<ContentCreator>();
         private static readonly object _lock = new object();
+        
+        // IDs fixos para testes
+        private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        private static readonly Guid CREATOR_ID_2 = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+        private static readonly Guid POST_ID_1 = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        private static readonly Guid POST_ID_2 = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
         public TestContentPostController(ILogger<TestContentPostController> logger)
         {
@@ -52,18 +60,37 @@ namespace MicroSaaS.IntegrationTests.Utils
             }
             
             var scheduledPosts = _posts
-                .Where(p => p.Creator?.Id == creatorId && p.Status == PostStatus.Scheduled)
+                .Where(p => p.CreatorId == creatorId && p.Status == PostStatus.Scheduled)
                 .Select(p => MapToDto(p))
                 .ToList();
                 
             return Ok(scheduledPosts);
         }
 
-        [HttpPost]
-        public async Task<ActionResult<ContentPostDto>> Create([FromBody] CreatePostRequest request)
+        [HttpGet]
+        public async Task<ActionResult<List<ContentPostDto>>> GetAll()
         {
-            _logger.LogInformation("TestContentPostController.Create: Criando novo post para criador {CreatorId}", request.CreatorId);
+            var posts = _posts.ToList();
+            return posts.Select(MapToDto).ToList();
+        }
+
+        [HttpGet("get-by-creator/{creatorId}")]
+        public async Task<ActionResult<List<ContentPostDto>>> GetByCreator(string creatorId)
+        {
+            if (!Guid.TryParse(creatorId, out Guid creatorGuid))
+            {
+                return BadRequest(new { message = "ID do criador inválido" });
+            }
             
+            var posts = _posts.Where(p => p.CreatorId == creatorGuid).ToList();
+            return posts.Select(MapToDto).ToList();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateContentPostRequest request)
+        {
+            _logger.LogInformation("TestContentPostController.Create: Criando novo post");
+
             // Verificação do token de autenticação
             var authHeader = Request.Headers["Authorization"].ToString();
             if (authHeader.Contains("invalid-token"))
@@ -71,61 +98,34 @@ namespace MicroSaaS.IntegrationTests.Utils
                 return StatusCode(403);
             }
 
-            if (request.CreatorId == Guid.Empty)
+            if (!Guid.TryParse(request.CreatorId, out Guid creatorId))
             {
                 return BadRequest(new { message = "ID do criador inválido" });
             }
-            
-            ContentCreator creator;
-            
-            // Use lock para evitar problemas de concorrência
-            lock (_lock)
-            {
-                // Verificar se o criador existe, ou criar um novo para testes
-                creator = _creators.FirstOrDefault(c => c.Id == request.CreatorId);
-                if (creator == null)
-                {
-                    // Para testes, criamos um criador fictício quando o ID não for encontrado
-                    creator = new ContentCreator
-                    {
-                        Id = request.CreatorId,
-                        Name = "Criador Autocriado para Teste",
-                        Email = $"teste_{request.CreatorId.ToString().Substring(0, 8)}@exemplo.com",
-                        Username = $"teste_{request.CreatorId.ToString().Substring(0, 8)}",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _creators.Add(creator);
-                }
-            }
-            
-            // Criar novo post
+
             var newPost = new ContentPost
             {
                 Id = Guid.NewGuid(),
                 Title = request.Title,
                 Content = request.Content,
-                CreatorId = request.CreatorId,
-                Creator = creator,
-                Status = PostStatus.Draft,
+                CreatorId = creatorId,
+                Status = request.Status,
                 Platform = request.Platform,
                 MediaUrl = request.MediaUrl,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            
-            // Use lock novamente para adicionar à coleção
+
             lock (_lock)
             {
                 _posts.Add(newPost);
             }
             
-            var dto = MapToDto(newPost);
-            return CreatedAtAction(nameof(GetById), new { id = newPost.Id, version = "1" }, dto);
+            return Created($"/api/ContentPost/{newPost.Id}", MapToDto(newPost));
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ContentPostDto>> GetById(Guid id)
+        public async Task<ActionResult<ContentPostDto>> GetById(string id)
         {
             _logger.LogInformation("TestContentPostController.GetById: Buscando post {PostId}", id);
             
@@ -136,12 +136,12 @@ namespace MicroSaaS.IntegrationTests.Utils
                 return StatusCode(403);
             }
 
-            if (id == Guid.Empty)
+            if (string.IsNullOrEmpty(id) || !Guid.TryParse(id, out Guid postId))
             {
                 return BadRequest(new { message = "ID do post inválido" });
             }
             
-            var post = _posts.FirstOrDefault(p => p.Id == id);
+            var post = _posts.FirstOrDefault(p => p.Id == postId);
             if (post == null)
             {
                 return NotFound();
@@ -190,7 +190,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             // Criar alguns criadores de conteúdo de exemplo
             var creator1 = new ContentCreator
             {
-                Id = Guid.NewGuid(),
+                Id = CREATOR_ID_1,
                 Name = "Criador de Teste 1",
                 Email = "criador1@exemplo.com",
                 Username = "testcreator1",
@@ -200,7 +200,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             
             var creator2 = new ContentCreator
             {
-                Id = Guid.NewGuid(),
+                Id = CREATOR_ID_2,
                 Name = "Criador de Teste 2",
                 Email = "criador2@exemplo.com",
                 Username = "testcreator2",
@@ -212,47 +212,49 @@ namespace MicroSaaS.IntegrationTests.Utils
             _creators.Add(creator2);
             
             // Criar alguns posts de exemplo
-            _posts.Add(new ContentPost
+            var post1 = new ContentPost
             {
-                Id = Guid.NewGuid(),
-                Title = "Post Agendado 1",
-                Content = "Conteúdo do post agendado 1",
-                CreatorId = creator1.Id,
-                Creator = creator1,
-                Status = PostStatus.Scheduled,
+                Id = POST_ID_1,
+                CreatorId = CREATOR_ID_1,
+                Title = "Post de Teste 1",
+                Content = "Este é um post de teste para integração",
                 Platform = SocialMediaPlatform.Instagram,
-                MediaUrl = "https://exemplo.com/imagem1.jpg",
-                CreatedAt = DateTime.UtcNow.AddDays(-2),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
-            });
-            
-            _posts.Add(new ContentPost
-            {
-                Id = Guid.NewGuid(),
-                Title = "Post Publicado 1",
-                Content = "Conteúdo do post publicado 1",
-                CreatorId = creator1.Id,
-                Creator = creator1,
                 Status = PostStatus.Published,
-                Platform = SocialMediaPlatform.YouTube,
-                MediaUrl = "https://exemplo.com/video1.mp4",
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = DateTime.UtcNow.AddDays(-4)
-            });
+                MediaUrl = "https://exemplo.com/imagem1.jpg",
+                CreatedAt = DateTime.UtcNow.AddDays(-10),
+                UpdatedAt = DateTime.UtcNow.AddDays(-10)
+            };
             
-            _posts.Add(new ContentPost
+            var post2 = new ContentPost
+            {
+                Id = POST_ID_2,
+                CreatorId = CREATOR_ID_1,
+                Title = "Post de Teste 2",
+                Content = "Este é outro post de teste para integração",
+                Platform = SocialMediaPlatform.Twitter,
+                Status = PostStatus.Scheduled,
+                MediaUrl = "https://exemplo.com/imagem2.jpg",
+                ScheduledTime = DateTime.UtcNow.AddDays(1),
+                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+            };
+            
+            var post3 = new ContentPost
             {
                 Id = Guid.NewGuid(),
-                Title = "Post Agendado 2",
-                Content = "Conteúdo do post agendado 2",
-                CreatorId = creator2.Id,
-                Creator = creator2,
-                Status = PostStatus.Scheduled,
-                Platform = SocialMediaPlatform.TikTok,
-                MediaUrl = "https://exemplo.com/video2.mp4",
-                CreatedAt = DateTime.UtcNow.AddDays(-1),
-                UpdatedAt = DateTime.UtcNow
-            });
+                CreatorId = CREATOR_ID_2,
+                Title = "Post de Teste 3",
+                Content = "Este é um post do segundo criador de teste",
+                Platform = SocialMediaPlatform.Facebook,
+                Status = PostStatus.Draft,
+                MediaUrl = "https://exemplo.com/imagem3.jpg",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                UpdatedAt = DateTime.UtcNow.AddDays(-3)
+            };
+            
+            _posts.Add(post1);
+            _posts.Add(post2);
+            _posts.Add(post3);
         }
         
         private ContentPostDto MapToDto(ContentPost post)
@@ -260,15 +262,36 @@ namespace MicroSaaS.IntegrationTests.Utils
             return new ContentPostDto
             {
                 Id = post.Id,
+                CreatorId = post.CreatorId,
                 Title = post.Title,
                 Content = post.Content,
-                CreatorId = post.CreatorId,
-                Status = post.Status,
                 Platform = post.Platform,
+                Status = post.Status,
                 MediaUrl = post.MediaUrl,
+                ScheduledTime = post.ScheduledTime?.TimeOfDay,
+                ScheduledFor = post.ScheduledTime,
                 CreatedAt = post.CreatedAt,
                 UpdatedAt = post.UpdatedAt
             };
         }
+    }
+
+    public class CreateContentPostRequest
+    {
+        public string CreatorId { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public SocialMediaPlatform Platform { get; set; }
+        public PostStatus Status { get; set; }
+        public string MediaUrl { get; set; } = string.Empty;
+    }
+
+    public class UpdatePostRequest
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public PostStatus Status { get; set; }
+        public SocialMediaPlatform Platform { get; set; }
+        public string MediaUrl { get; set; } = string.Empty;
     }
 } 

@@ -14,9 +14,20 @@ namespace MicroSaaS.IntegrationTests.Utils
     public class TestSocialMediaAccountController : ControllerBase
     {
         private readonly ILogger<TestSocialMediaAccountController> _logger;
+        
+        // Usamos listas estáticas com dados mock para manter o estado entre requisições
         private static readonly List<ContentCreator> _creators = new List<ContentCreator>();
         private static readonly List<SocialMediaAccount> _accounts = new List<SocialMediaAccount>();
         private static readonly object _lock = new object();
+
+        // IDs fixos para testes de integração - definidos como constantes para reutilização
+        private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        private static readonly Guid CREATOR_ID_2 = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+        private static readonly Guid ACCOUNT_ID_1 = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        private static readonly Guid ACCOUNT_ID_2 = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        
+        // ID para testar cenários de não-existência
+        private static readonly Guid NON_EXISTENT_CREATOR_ID = Guid.Parse("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB");
 
         public TestSocialMediaAccountController(ILogger<TestSocialMediaAccountController> logger)
         {
@@ -119,7 +130,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             }
             
             // Para testes específicos onde estamos testando criador não existente
-            if (effectiveCreatorId == Guid.Parse("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"))
+            if (effectiveCreatorId == NON_EXISTENT_CREATOR_ID)
             {
                 return NotFound(new { message = "Criador não encontrado" });
             }
@@ -206,7 +217,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             // Criar alguns criadores de conteúdo com IDs fixos para os testes
             var creator1 = new ContentCreator
             {
-                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), // ID fixo para testes
+                Id = CREATOR_ID_1, // Usando constante para garantir consistência
                 Name = "Criador de Teste 1",
                 Email = "criador1@exemplo.com",
                 Username = "testcreator1",
@@ -216,7 +227,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             
             var creator2 = new ContentCreator
             {
-                Id = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"),
+                Id = CREATOR_ID_2, // Usando constante para garantir consistência
                 Name = "Criador de Teste 2",
                 Email = "criador2@exemplo.com",
                 Username = "testcreator2",
@@ -230,7 +241,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             // Criar algumas contas de mídia social com ID fixo para o primeiro criador
             _accounts.Add(new SocialMediaAccount
             {
-                Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), // ID fixo para testes
+                Id = ACCOUNT_ID_1, // Usando constante para garantir consistência
                 CreatorId = creator1.Id,
                 Platform = SocialMediaPlatform.Instagram,
                 Username = "testcreator1_instagram",
@@ -245,7 +256,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             
             _accounts.Add(new SocialMediaAccount
             {
-                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                Id = ACCOUNT_ID_2, // Usando constante para garantir consistência
                 CreatorId = creator1.Id,
                 Platform = SocialMediaPlatform.YouTube,
                 Username = "testcreator1_youtube",

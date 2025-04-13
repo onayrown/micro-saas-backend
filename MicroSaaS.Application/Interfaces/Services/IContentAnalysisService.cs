@@ -143,7 +143,7 @@ public class ContentPatternDto
     public string Description { get; set; } = string.Empty;
     public double ConfidenceScore { get; set; }
     public double AverageEngagement { get; set; }
-    public List<string> ExampleContentIds { get; set; } = new();
+    public List<Guid> ExampleContentIds { get; set; } = new();
     public List<string> Attributes { get; set; } = new();
 }
 
@@ -301,7 +301,7 @@ public class PerformanceTrendDto
 /// </summary>
 public class ContentPredictionRequestDto
 {
-    public Guid CreatorId { get; set; }
+    public string CreatorId { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

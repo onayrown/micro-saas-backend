@@ -1,176 +1,146 @@
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Tests.Helpers;
+using MicroSaaS.Infrastructure.Services;
+using MicroSaaS.Infrastructure.Settings;
+using Microsoft.Extensions.Options;
 using Moq;
+using System; 
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Text;
 using FluentAssertions;
 using Xunit;
+using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 
 namespace MicroSaaS.Tests.Unit;
 
 public class TokenServiceTests
 {
-    private readonly Mock<ITokenService> _serviceMock;
+    private readonly Mock<IOptions<JwtSettings>> _jwtSettingsMock;
+    private readonly JwtSettings _jwtSettings;
+    private readonly TokenService _tokenService;
 
     public TokenServiceTests()
     {
-        _serviceMock = new Mock<ITokenService>();
+        _jwtSettings = new JwtSettings
+        {
+            SecretKey = Convert.ToBase64String(Encoding.UTF8.GetBytes("TestSecretKeySuperLongEnoughForHS256")),
+            Issuer = "TestIssuer",
+            Audience = "TestAudience",
+            ExpirationInDays = 1 // Exemplo: 1 dia
+        };
+        _jwtSettingsMock = new Mock<IOptions<JwtSettings>>();
+        _jwtSettingsMock.Setup(x => x.Value).Returns(_jwtSettings);
+        _tokenService = new TokenService(_jwtSettingsMock.Object);
     }
 
     [Fact]
-    public void GenerateToken_WhenValidUser_ShouldReturnToken()
+    public void GenerateToken_ShouldReturnValidJwtToken()
     {
         // Arrange
-        var user = TestHelper.CreateTestUser();
-        var token = "valid_token";
-
-        _serviceMock.Setup(x => x.GenerateToken(user))
-            .Returns(token);
-
-        // Act
-        var result = _serviceMock.Object.GenerateToken(user);
-
-        // Assert
-        result.Should().NotBeNullOrEmpty();
-        result.Should().Be(token);
-
-        _serviceMock.Verify(x => x.GenerateToken(user), Times.Once);
-    }
-
-    [Fact]
-    public void GenerateToken_WhenNullUser_ShouldThrowException()
-    {
-        // Arrange
-        User? user = null;
-
-        _serviceMock.Setup(x => x.GenerateToken(user!))
-            .Throws<ArgumentNullException>();
-
-        // Act & Assert
-        _serviceMock.Object.Invoking(x => x.GenerateToken(user!))
-            .Should().Throw<ArgumentNullException>();
-
-        _serviceMock.Verify(x => x.GenerateToken(user!), Times.Once);
-    }
-
-    [Fact]
-    public void ValidateToken_WhenValidToken_ShouldReturnTrue()
-    {
-        // Arrange
-        var token = "valid_token";
-
-        _serviceMock.Setup(x => x.ValidateToken(token))
-            .Returns(true);
-
-        // Act
-        var result = _serviceMock.Object.ValidateToken(token);
-
-        // Assert
-        result.Should().BeTrue();
-
-        _serviceMock.Verify(x => x.ValidateToken(token), Times.Once);
-    }
-
-    [Fact]
-    public void ValidateToken_WhenInvalidToken_ShouldReturnFalse()
-    {
-        // Arrange
-        var token = "invalid_token";
-
-        _serviceMock.Setup(x => x.ValidateToken(token))
-            .Returns(false);
-
-        // Act
-        var result = _serviceMock.Object.ValidateToken(token);
-
-        // Assert
-        result.Should().BeFalse();
-
-        _serviceMock.Verify(x => x.ValidateToken(token), Times.Once);
-    }
-
-    [Fact]
-    public void ValidateToken_WhenNullToken_ShouldThrowException()
-    {
-        // Arrange
-        string? token = null;
-
-        _serviceMock.Setup(x => x.ValidateToken(token!))
-            .Throws<ArgumentNullException>();
-
-        // Act & Assert
-        _serviceMock.Object.Invoking(x => x.ValidateToken(token!))
-            .Should().Throw<ArgumentNullException>();
-
-        _serviceMock.Verify(x => x.ValidateToken(token!), Times.Once);
-    }
-
-    [Fact]
-    public void GetUserIdFromToken_WhenValidToken_ShouldReturnUserId()
-    {
-        // Arrange
-        var token = "valid_token";
         var userId = Guid.NewGuid();
-
-        _serviceMock.Setup(x => x.GetUserIdFromToken(token))
-            .Returns(userId);
+        var user = new User { Id = userId, Username = "testuser", Role = "user" };
 
         // Act
-        var result = _serviceMock.Object.GetUserIdFromToken(token);
+        var token = _tokenService.GenerateToken(user);
 
         // Assert
-        result.Should().Be(userId);
-
-        _serviceMock.Verify(x => x.GetUserIdFromToken(token), Times.Once);
+        token.Should().NotBeNullOrEmpty();
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
+        jsonToken.Should().NotBeNull();
+        jsonToken!.Issuer.Should().Be(_jwtSettings.Issuer);
+        jsonToken.Audiences.Should().Contain(_jwtSettings.Audience);
+        jsonToken.Claims.Should().Contain(c => c.Type == JwtRegisteredClaimNames.Sub && c.Value == userId.ToString());
+        jsonToken.Claims.Should().Contain(c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId.ToString());
+        jsonToken.Claims.Should().Contain(c => c.Type == JwtRegisteredClaimNames.Email && c.Value == user.Email);
+        jsonToken.Claims.Should().Contain(c => c.Type == ClaimTypes.Name && c.Value == user.Username);
+        jsonToken.Claims.Should().Contain(c => c.Type == ClaimTypes.Role && c.Value == user.Role);
     }
 
     [Fact]
-    public void GetUserIdFromToken_WhenInvalidToken_ShouldThrowException()
+    public void ValidateToken_WithValidToken_ShouldReturnClaimsPrincipal()
     {
         // Arrange
-        var token = "invalid_token";
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Username = "testuser", Role = "user" };
+        var token = _tokenService.GenerateToken(user);
+        
+        // Act
+        var principal = _tokenService.ValidateToken(token); 
 
-        _serviceMock.Setup(x => x.GetUserIdFromToken(token))
-            .Throws<InvalidOperationException>();
-
-        // Act & Assert
-        _serviceMock.Object.Invoking(x => x.GetUserIdFromToken(token))
-            .Should().Throw<InvalidOperationException>();
-
-        _serviceMock.Verify(x => x.GetUserIdFromToken(token), Times.Once);
+        // Assert
+        principal.Should().NotBeNull();
+        principal!.Identity!.IsAuthenticated.Should().BeTrue(); 
+        principal.Claims.Should().Contain(c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId.ToString());
     }
 
     [Fact]
-    public void GetUserEmailFromToken_WhenValidToken_ShouldReturnUserEmail()
+    public void ValidateToken_WithInvalidTokenFormat_ShouldReturnNull()
     {
         // Arrange
-        var token = "valid_token";
-        var email = "test@example.com";
-
-        _serviceMock.Setup(x => x.GetUserEmailFromToken(token))
-            .Returns(email);
+        var invalidToken = "invalid.token.string";
 
         // Act
-        var result = _serviceMock.Object.GetUserEmailFromToken(token);
+        var principal = _tokenService.ValidateToken(invalidToken);
 
         // Assert
-        result.Should().Be(email);
+        principal.Should().BeNull(); 
+    }
+    
+    [Fact]
+    public void ValidateToken_WithExpiredToken_ShouldNotValidate()
+    {
+        // Renomeando o teste para refletir o comportamento real
+        // Arrange - usar um token que está realmente expirado
+        var expiredSettings = new JwtSettings
+        {
+            SecretKey = _jwtSettings.SecretKey,
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
+            ExpirationInDays = -1 // Token expirado
+        };
+        var expiredOptionsMock = new Mock<IOptions<JwtSettings>>();
+        expiredOptionsMock.Setup(x => x.Value).Returns(expiredSettings);
+        var expiredTokenService = new TokenService(expiredOptionsMock.Object);
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Username = "testuser", Role = "user" };
+        var expiredToken = expiredTokenService.GenerateToken(user);
 
-        _serviceMock.Verify(x => x.GetUserEmailFromToken(token), Times.Once);
+        // Act
+        var principal = _tokenService.ValidateToken(expiredToken);
+
+        // Assert
+        principal.Should().BeNull("O token expirado deve ser considerado inválido");
     }
 
     [Fact]
-    public void GetUserEmailFromToken_WhenInvalidToken_ShouldThrowException()
+    public void GetUserIdFromToken_WithValidToken_ShouldReturnUserIdString()
     {
         // Arrange
-        var token = "invalid_token";
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Username = "testuser", Role = "user" };
+        var token = _tokenService.GenerateToken(user);
 
-        _serviceMock.Setup(x => x.GetUserEmailFromToken(token))
-            .Throws<InvalidOperationException>();
+        // Act
+        var extractedUserId = _tokenService.GetUserIdFromToken(token);
 
-        // Act & Assert
-        _serviceMock.Object.Invoking(x => x.GetUserEmailFromToken(token))
-            .Should().Throw<InvalidOperationException>();
+        // Assert
+        extractedUserId.Should().Be(userId.ToString());
+    }
 
-        _serviceMock.Verify(x => x.GetUserEmailFromToken(token), Times.Once);
+    [Fact]
+    public void GetUserIdFromToken_WithInvalidToken_ShouldReturnNull()
+    { 
+        // Arrange
+        var invalidToken = "invalid.token";
+
+        // Act
+        var extractedUserId = _tokenService.GetUserIdFromToken(invalidToken);
+
+        // Assert
+        extractedUserId.Should().BeNull();
     }
 } 

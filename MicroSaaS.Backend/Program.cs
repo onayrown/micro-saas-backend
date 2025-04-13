@@ -1,23 +1,34 @@
 using AspNetCoreRateLimit;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using MicroSaaS.Application;
 using MicroSaaS.Application.DTOs.Validators;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Backend.Attributes;
 using MicroSaaS.Backend.Swagger;
-using MicroSaaS.Infrastructure.Repositories;
+using MicroSaaS.Infrastructure;
+using MicroSaaS.Infrastructure.MongoDB;
 using MicroSaaS.Infrastructure.Services;
 using MicroSaaS.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using System.Text;
+using MicroSaaS.Infrastructure.MongoDB;
+using Microsoft.Extensions.Logging;
+using System;
+using MicroSaaS.Backend.HealthChecks;
+using DotNetEnv;
+using Microsoft.Extensions.DependencyInjection;
+using HealthChecks.Redis;
+using MongoDB.Driver;
 
 namespace MicroSaaS.Backend;
 
@@ -28,13 +39,16 @@ public partial class Program
     // Não precisa de implementação
     partial void InitializeForTesting();
 
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
+        // Carregar variáveis de ambiente do arquivo .env
+        DotNetEnv.Env.Load();
+
         // Inicialização do MongoDB
         MicroSaaS.Infrastructure.MongoDB.MongoDbInitializer.Initialize();
 
         var app = CreateApplication(args);
-        app.Run();
+        await app.RunAsync();
     }
 
     // Método para criar a aplicação, usado para testes
@@ -77,27 +91,6 @@ public partial class Program
             builder.Services.AddFluentValidationAutoValidation();
             builder.Services.AddMvc();
 
-            // Configuração do MongoDB
-            builder.Services.Configure<MicroSaaS.Infrastructure.Settings.MongoDbSettings>(
-                builder.Configuration.GetSection("MongoDB"));
-
-            // Adicionar configuração de conexão MongoDB com timeout aumentado
-            builder.Services.AddSingleton<MongoDB.Driver.MongoClient>(sp => {
-                var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MicroSaaS.Infrastructure.Settings.MongoDbSettings>>().Value;
-                var mongoSettings = MongoDB.Driver.MongoClientSettings.FromUrl(
-                    new MongoDB.Driver.MongoUrl(settings.ConnectionString));
-
-                // Configurar timeouts
-                mongoSettings.ServerSelectionTimeout = TimeSpan.FromMilliseconds(settings.ServerSelectionTimeout);
-                mongoSettings.ConnectTimeout = TimeSpan.FromMilliseconds(settings.ConnectTimeout);
-
-                return new MongoDB.Driver.MongoClient(mongoSettings);
-            });
-
-            builder.Services.AddScoped<MicroSaaS.Infrastructure.Database.IMongoDbContext, MicroSaaS.Infrastructure.Database.MongoDbContext>();
-            builder.Services.AddScoped<MongoDB.Driver.IMongoDatabase>(provider =>
-                provider.GetRequiredService<MicroSaaS.Infrastructure.Database.IMongoDbContext>().Database);
-
             // Registrar HttpClient para os serviços que dependem dele
             builder.Services.AddHttpClient();
             builder.Services.AddScoped<HttpClient>();
@@ -131,47 +124,13 @@ public partial class Program
             builder.Services.Configure<RevenueSettings>(
                 builder.Configuration.GetSection("Revenue"));
 
-            // Registrar dependências do repositório do domínio
-            builder.Services.AddScoped<MicroSaaS.Domain.Repositories.IUserRepository, MicroSaaS.Infrastructure.Repositories.UserRepository>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Repositories.IContentCreatorRepository, MicroSaaS.Infrastructure.Repositories.ContentCreatorRepository>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Repositories.IContentPostRepository, MicroSaaS.Infrastructure.Repositories.ContentPostRepository>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Repositories.ISocialMediaAccountRepository, MicroSaaS.Infrastructure.Repositories.SocialMediaAccountRepository>();
-
-            // Registrar adaptadores para conectar interfaces da aplicação às implementações do domínio
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IUserRepository, MicroSaaS.Infrastructure.AdapterRepositories.UserRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentCreatorRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentCreatorRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentPostRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentPostRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.ISocialMediaAccountRepository, MicroSaaS.Infrastructure.AdapterRepositories.SocialMediaAccountRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IDashboardInsightsRepository, MicroSaaS.Infrastructure.AdapterRepositories.DashboardInsightsRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IContentPerformanceRepository, MicroSaaS.Infrastructure.AdapterRepositories.ContentPerformanceRepositoryAdapter>();
-            builder.Services.AddScoped<MicroSaaS.Domain.Interfaces.IContentPostRepository, MicroSaaS.Infrastructure.AdapterRepositories.DomainContentPostRepositoryAdapter>();
-
-            // Registrar outros repositórios
-            builder.Services.AddScoped<IContentChecklistRepository, ContentChecklistRepository>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IPerformanceMetricsRepository, PerformanceMetricsRepository>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IDashboardInsightsRepository, DashboardInsightsRepository>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IContentPerformanceRepository, ContentPerformanceRepository>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Repositories.IMediaRepository, MicroSaaS.Infrastructure.Repositories.MediaRepository>();
-
-            // Registrar serviços
-            builder.Services.AddScoped<IAuthService, MicroSaaS.Infrastructure.Services.AuthService>();
-            builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-            builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<ISocialMediaIntegrationService, SocialMediaIntegrationService>();
-            builder.Services.AddScoped<IRevenueService, RevenueService>();
-            builder.Services.AddScoped<IContentPlanningService, ContentPlanningService>();
-            builder.Services.AddScoped<IPerformanceAnalysisService, MicroSaaS.Infrastructure.Services.PerformanceAnalysisService>();
-            builder.Services.AddScoped<ILoggingService, SerilogService>();
-            builder.Services.AddScoped<ICacheService, RedisCacheService>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Services.IDashboardInsightsService, MicroSaaS.Infrastructure.Services.DashboardInsightsService>();
-            builder.Services.AddScoped<ISchedulerService, SchedulerService>();
-            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
-            builder.Services.AddScoped<IDashboardService, DashboardService>();
-            builder.Services.AddScoped<IMediaService, MediaService>();
-            builder.Services.AddScoped<MicroSaaS.Application.Interfaces.Services.IStorageService, LocalStorageService>();
+            // IMPORTANTE: Usar os métodos de extensão para registrar serviços da aplicação e infraestrutura
+            // Isso garante que todos os serviços e repositórios sejam registrados corretamente
+            builder.Services.AddApplicationServices();
+            builder.Services.AddInfrastructure(builder.Configuration);
 
             // Adicionar serviços hospedados
-            builder.Services.AddHostedService<SchedulerService>();
+            builder.Services.AddHostedService<MicroSaaS.Application.Services.Scheduler.SchedulerService>();
 
             // Adicionar controllers
             builder.Services.AddControllers();
@@ -282,10 +241,18 @@ public partial class Program
             {
                 try
                 {
+                    // Usar as configurações do arquivo .env para o Redis
+                    string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING") ?? 
+                                                  builder.Configuration.GetConnectionString("Redis") ?? 
+                                                  "localhost:6379";
+                    
+                    string redisInstanceName = Environment.GetEnvironmentVariable("REDIS_INSTANCE_NAME") ?? 
+                                              "MicroSaaS:";
+                    
                     builder.Services.AddStackExchangeRedisCache(options =>
                     {
-                        options.Configuration = builder.Configuration.GetConnectionString("Redis");
-                        options.InstanceName = "MicroSaaS:";
+                        options.Configuration = redisConnectionString;
+                        options.InstanceName = redisInstanceName;
                     });
                 }
                 catch (Exception ex)
@@ -298,10 +265,18 @@ public partial class Program
             else
             {
                 // Em produção, ainda queremos que falhe se o Redis não estiver disponível
+                // Usar as configurações do arquivo .env para o Redis
+                string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING") ?? 
+                                              builder.Configuration.GetConnectionString("Redis") ?? 
+                                              "localhost:6379";
+                
+                string redisInstanceName = Environment.GetEnvironmentVariable("REDIS_INSTANCE_NAME") ?? 
+                                          "MicroSaaS:";
+                
                 builder.Services.AddStackExchangeRedisCache(options =>
                 {
-                    options.Configuration = builder.Configuration.GetConnectionString("Redis");
-                    options.InstanceName = "MicroSaaS:";
+                    options.Configuration = redisConnectionString;
+                    options.InstanceName = redisInstanceName;
                 });
             }
 
@@ -315,6 +290,13 @@ public partial class Program
             {
                 options.Filters.Add(new RateLimitAttribute(limit: 100, period: "1m"));
             });
+
+            // Registrar o MongoDbHealthCheck
+            builder.Services.AddSingleton<MongoDbHealthCheck>();
+
+            // Adicionar Health Checks
+            builder.Services.AddHealthChecks()
+                .AddCheck<MongoDbHealthCheck>("mongodb");
 
             var app = builder.Build();
 
@@ -477,6 +459,10 @@ public partial class Program
         {
             Log.Fatal(ex, "A aplicação terminou inesperadamente");
             throw;
+        }
+        finally
+        {
+            Log.CloseAndFlush();
         }
     }
 }

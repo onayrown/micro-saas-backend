@@ -20,6 +20,9 @@ namespace MicroSaaS.IntegrationTests.Controllers
         private readonly ITestOutputHelper _output;
         private string _authToken = string.Empty;
 
+        private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        private static readonly Guid CREATOR_ID_2 = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+
         public ContentCreatorControllerTests(SimplifiedTestFactory factory, ITestOutputHelper output)
         {
             _output = output;
@@ -130,7 +133,8 @@ namespace MicroSaaS.IntegrationTests.Controllers
         public async Task GetById_WithValidId_ShouldReturnCreator()
         {
             // Arrange
-            var creatorId = await CreateCreator_WithValidData_ShouldReturnCreatedCreator();
+            // Usamos o ID fixo do criador que já está inicializado em TestContentCreatorController
+            var creatorId = CREATOR_ID_1;
 
             // Act
             var response = await _client.GetAsync($"/api/v1/creators/{creatorId}");

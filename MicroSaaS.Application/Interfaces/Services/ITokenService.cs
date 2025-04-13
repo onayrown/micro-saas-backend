@@ -1,14 +1,15 @@
 ﻿using MicroSaaS.Domain.Entities;
+using System.Security.Claims;
 
 namespace MicroSaaS.Application.Interfaces.Services;
 
 public interface ITokenService
 {
     string GenerateToken(User user);
-    bool ValidateToken(string token);
+    ClaimsPrincipal ValidateToken(string token);
     Task<bool> ValidateTokenAsync(string token);
     Task<string> RefreshTokenAsync(string token);
     Task RevokeTokenAsync(string token);
-    Guid GetUserIdFromToken(string token);
+    string GetUserIdFromToken(string token);
     string GetUserEmailFromToken(string token);
 }

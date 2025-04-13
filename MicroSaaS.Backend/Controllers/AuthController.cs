@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MicroSaaS.Application.DTOs.Auth;
 using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Shared.Results;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -67,7 +68,7 @@ public class AuthController : ControllerBase
     /// <response code="500">Erro interno do servidor</response>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<AuthResponse>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
@@ -78,8 +79,11 @@ public class AuthController : ControllerBase
             
             if (!result.Success)
             {
-                _loggingService.LogWarning("Falha no login para o email: {Email}", request.Email);
-                return Unauthorized(new { message = result.ErrorMessage });
+                _loggingService.LogWarning("Falha no login para o email: {Email}. Motivo: {ErrorMessage}", request.Email, result.ErrorMessage);
+                
+                var errorResponse = Result<AuthResponse>.Fail(result.ErrorMessage ?? "Credenciais inválidas");
+                
+                return Unauthorized(errorResponse);
             }
 
             _loggingService.LogInformation("Login bem-sucedido para o email: {Email}", request.Email);
@@ -88,7 +92,8 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _loggingService.LogError(ex, "Erro durante o login para o email: {Email}", request.Email);
-            return StatusCode(500, new { message = "Erro interno do servidor" });
+            var errorResponse = Result<AuthResponse>.Fail("Erro interno do servidor");
+            return StatusCode(500, errorResponse);
         }
     }
 

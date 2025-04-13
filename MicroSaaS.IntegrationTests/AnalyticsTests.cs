@@ -36,7 +36,7 @@ namespace MicroSaaS.IntegrationTests
         {
             // Arrange
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _validToken);
-            string postId = "post-1";
+            var postId = Guid.NewGuid();
 
             // Act
             var response = await _client.GetAsync($"/api/Analytics/post/{postId}");
@@ -55,7 +55,7 @@ namespace MicroSaaS.IntegrationTests
         {
             // Arrange
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _invalidToken);
-            string postId = "post-1";
+            var postId = Guid.NewGuid();
 
             // Act
             var response = await _client.GetAsync($"/api/Analytics/post/{postId}");
@@ -69,7 +69,7 @@ namespace MicroSaaS.IntegrationTests
         {
             // Arrange
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _validToken);
-            string postId = "invalid-id";
+            var postId = Guid.Empty; // ID inválido
 
             // Act
             var response = await _client.GetAsync($"/api/Analytics/post/{postId}");

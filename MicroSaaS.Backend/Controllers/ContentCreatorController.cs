@@ -140,52 +140,50 @@ public class ContentCreatorController : ControllerBase
             _loggingService.LogInformation("GetCurrentCreator: UserId parseado com sucesso: {UserId}. Buscando no repositório...", userId);
 
             // Buscar o ContentCreator pelo UserId
-            // Assumindo que o repositório tem um método como GetByUserIdAsync ou similar.
-            // Se não tiver, precisaremos adaptar ou buscar pelo ID principal se UserId == CreatorId.
-            // Vamos assumir por enquanto que o ID do Claim é o ID do ContentCreator.
-            var creator = await _repository.GetByIdAsync(userId); 
+            var creator = await _repository.GetByIdAsync(userId);
 
-            // Log 4: Resultado da busca no repositório
+            // Log 4: Resultado da busca no repositório E CONTEÚDO DA ENTIDADE
             if (creator == null)
             {
-                // Log 4a: Não encontrado
                 _loggingService.LogWarning("GetCurrentCreator: ContentCreator NÃO encontrado no repositório para UserId: {UserId}", userId);
                 return NotFound(new ApiResponse<ContentCreatorDto> { Success = false, Message = "Perfil do criador de conteúdo não encontrado." });
             }
-
-             // Log 5: Encontrado (implícito ao não entrar no if acima)
-             _loggingService.LogInformation("GetCurrentCreator: ContentCreator ENCONTRADO no repositório para UserId: {UserId}. Mapeando para DTO.", userId);
+            // Logar o objeto creator COMPLETO para inspeção
+            _loggingService.LogInformation("GetCurrentCreator: ContentCreator ENCONTRADO no repositório. Dados da entidade: {@CreatorEntity}", creator);
 
             // Converter a entidade real para DTO
             var creatorDto = new ContentCreatorDto
             {
                 Id = creator.Id,
                 Name = creator.Name,
-                Email = creator.Email, // Certifique-se de que o Email está na entidade ContentCreator
-                Username = creator.Username, // Certifique-se de que o Username está na entidade ContentCreator
+                Email = creator.Email,
+                Username = creator.Username,
                 Bio = creator.Bio,
                 ProfileImageUrl = creator.ProfileImageUrl,
                 WebsiteUrl = creator.WebsiteUrl,
                 CreatedAt = creator.CreatedAt,
                 UpdatedAt = creator.UpdatedAt,
-                TotalFollowers = creator.TotalFollowers, // Adicionar se existir na entidade
-                TotalPosts = creator.TotalPosts,       // Adicionar se existir na entidade
+                TotalFollowers = creator.TotalFollowers,
+                TotalPosts = creator.TotalPosts,
                 SocialMediaAccounts = creator.SocialMediaAccounts?.Select(a => new SocialMediaAccountDto
                 {
                     Id = a.Id,
                     Platform = a.Platform,
                     Username = a.Username,
                     Followers = a.FollowersCount,
-                    IsVerified = false // Ajustar se a entidade tiver essa informação
+                    IsVerified = false
                 }).ToList() ?? new List<SocialMediaAccountDto>()
-                // Platforms = ??? // Mapear se necessário e se existir na entidade
             };
+            
+            // Log 6: Logar o DTO antes de retornar
+            _loggingService.LogInformation("GetCurrentCreator: Mapeado para DTO: {@CreatorDto}", creatorDto);
 
+            // Log 7: Mensagem final (mantida)
             _loggingService.LogInformation("GetCurrentCreator: Dados do criador encontrados para UserId: {UserId}", userId);
             return Ok(new ApiResponse<ContentCreatorDto>
             {
                 Success = true,
-                Data = creatorDto // Retornar o DTO real
+                Data = creatorDto
             });
         }
         catch (Exception ex)

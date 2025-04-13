@@ -1,7 +1,7 @@
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Services;
+using MicroSaaS.Application.Services.Recommendation;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Tests.Helpers;
@@ -86,7 +86,7 @@ public class RecommendationTests
         var platform = SocialMediaPlatform.Instagram;
         
         // Configurar mock para retornar um criador válido
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
 
@@ -157,7 +157,7 @@ public class RecommendationTests
         var platform = SocialMediaPlatform.Instagram;
         
         // Configurar mock para retornar um criador válido
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
             
@@ -197,7 +197,7 @@ public class RecommendationTests
         var platform = SocialMediaPlatform.Instagram;
         
         // Configurar mock para retornar um criador válido
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
             
@@ -241,7 +241,7 @@ public class RecommendationTests
         };
         
         // Configurar mock para retornar um criador válido
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
             
@@ -276,7 +276,7 @@ public class RecommendationTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);

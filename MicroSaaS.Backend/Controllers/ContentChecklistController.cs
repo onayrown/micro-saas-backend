@@ -44,7 +44,7 @@ public class ContentChecklistController : ControllerBase
     {
         try
         {
-            var checklist = await _contentPlanningService.CreateChecklistAsync(request.CreatorId, request.Title);
+            var checklist = await _contentPlanningService.CreateChecklistAsync(request.CreatorId, request.Title, request.Description);
             return CreatedAtAction(nameof(GetById), new { id = checklist.Id }, checklist);
         }
         catch (ArgumentException ex)
@@ -76,7 +76,7 @@ public class ContentChecklistController : ControllerBase
     {
         try
         {
-            await _contentPlanningService.UpdateChecklistItemAsync(itemId, request.IsCompleted);
+            await _contentPlanningService.UpdateChecklistItemAsync(checklistId, itemId, request.IsCompleted);
             return NoContent();
         }
         catch (ArgumentException ex)
@@ -85,12 +85,12 @@ public class ContentChecklistController : ControllerBase
         }
     }
 
-    [HttpPut("items/{itemId}/duedate")]
-    public async Task<ActionResult<ChecklistItem>> SetItemDueDate(Guid itemId, [FromBody] SetDueDateRequest request)
+    [HttpPut("{checklistId}/items/{itemId}/duedate")]
+    public async Task<ActionResult<ChecklistItem>> SetItemDueDate(Guid checklistId, Guid itemId, [FromBody] SetDueDateRequest request)
     {
         try
         {
-            var item = await _contentPlanningService.SetItemDueDateAsync(itemId, request.DueDate);
+            var item = await _contentPlanningService.SetItemDueDateAsync(checklistId, itemId, request.DueDate);
             return Ok(item);
         }
         catch (ArgumentException ex)
@@ -99,12 +99,12 @@ public class ContentChecklistController : ControllerBase
         }
     }
     
-    [HttpPut("items/{itemId}/reminder")]
-    public async Task<ActionResult<ChecklistItem>> SetItemReminder(Guid itemId, [FromBody] SetReminderRequest request)
+    [HttpPut("{checklistId}/items/{itemId}/reminder")]
+    public async Task<ActionResult<ChecklistItem>> SetItemReminder(Guid checklistId, Guid itemId, [FromBody] SetReminderRequest request)
     {
         try
         {
-            var item = await _contentPlanningService.SetItemReminderAsync(itemId, request.ReminderDate);
+            var item = await _contentPlanningService.SetItemReminderAsync(checklistId, itemId, request.ReminderDate);
             return Ok(item);
         }
         catch (ArgumentException ex)
@@ -113,12 +113,12 @@ public class ContentChecklistController : ControllerBase
         }
     }
     
-    [HttpPut("items/{itemId}/priority")]
-    public async Task<ActionResult<ChecklistItem>> SetItemPriority(Guid itemId, [FromBody] SetPriorityRequest request)
+    [HttpPut("{checklistId}/items/{itemId}/priority")]
+    public async Task<ActionResult<ChecklistItem>> SetItemPriority(Guid checklistId, Guid itemId, [FromBody] SetPriorityRequest request)
     {
         try
         {
-            var item = await _contentPlanningService.SetItemPriorityAsync(itemId, request.Priority);
+            var item = await _contentPlanningService.SetItemPriorityAsync(checklistId, itemId, request.Priority);
             return Ok(item);
         }
         catch (ArgumentException ex)
@@ -185,6 +185,7 @@ public class CreateChecklistRequest
 {
     public Guid CreatorId { get; set; }
     public string Title { get; set; }
+    public string Description { get; set; }
 }
 
 public class AddChecklistItemRequest

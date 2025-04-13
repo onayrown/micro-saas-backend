@@ -43,20 +43,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Função para carregar o perfil do usuário usando AuthService
   const loadUserProfile = useCallback(async () => {
     try {
+      console.log('[AuthContext] Chamando AuthService.getProfile...');
       const response = await AuthService.getProfile();
-      
+      console.log('[AuthContext] Resposta de getProfile recebida:', response);
+
       if (response.success && response.data) {
-        setUser({
+        console.log('[AuthContext] Sucesso! Dados recebidos em response.data:', response.data);
+        
+        const userData = {
           id: response.data.id,
           name: response.data.name || response.data.username,
           email: response.data.email,
-          role: 'user' // Ajustar se a API fornecer informações de papel/role
-        });
+          role: 'user'
+        };
+        console.log('[AuthContext] Preparando para chamar setUser com:', userData);
+        
+        setUser(userData);
+        console.log('[AuthContext] setUser chamado com sucesso.');
         return true;
+      } else {
+         console.warn('[AuthContext] Falha ao carregar perfil ou dados ausentes:', response.message);
       }
       return false;
     } catch (err) {
-      console.error('Erro ao carregar perfil:', err);
+      console.error('[AuthContext] Erro CRÍTICO ao carregar perfil:', err);
       return false;
     }
   }, []);
@@ -134,7 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         name, 
         email, 
         password,
-        username: name // Usando o mesmo valor para name e username conforme esperado pela API
+        username: name
       });
       
       if (!response.success) {

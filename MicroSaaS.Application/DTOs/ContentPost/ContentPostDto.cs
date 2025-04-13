@@ -1,5 +1,6 @@
 using MicroSaaS.Shared.Enums;
 using System;
+using System.Collections.Generic;
 
 namespace MicroSaaS.Application.DTOs.ContentPost;
 
@@ -11,6 +12,9 @@ public class ContentPostDto
     public string Content { get; set; } = string.Empty;
     public SocialMediaPlatform Platform { get; set; }
     public string MediaUrl { get; set; } = string.Empty;
+    public List<string> MediaUrls { get; set; } = new List<string>();
+    public List<string> Hashtags { get; set; } = new List<string>();
+    public string PlatformId { get; set; } = string.Empty;
     public TimeSpan? ScheduledTime { get; set; }
     public DateTime? ScheduledFor { get; set; }
     public PostStatus Status { get; set; }

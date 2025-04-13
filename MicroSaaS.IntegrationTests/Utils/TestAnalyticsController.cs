@@ -30,7 +30,7 @@ namespace MicroSaaS.IntegrationTests.Utils
         }
 
         [HttpGet("post/{postId}")]
-        public async Task<ActionResult<List<ContentPerformanceDto>>> GetPostAnalytics(string postId)
+        public async Task<ActionResult<List<ContentPerformanceDto>>> GetPostAnalytics(Guid postId)
         {
             _logger.LogInformation("TestAnalyticsController.GetPostAnalytics: Buscando analytics para post {PostId}", postId);
             
@@ -41,7 +41,7 @@ namespace MicroSaaS.IntegrationTests.Utils
                 return StatusCode(403);
             }
             
-            if (string.IsNullOrEmpty(postId) || postId == "invalid-id")
+            if (postId == Guid.Empty)
             {
                 return BadRequest(new { message = "ID do post inválido" });
             }
@@ -110,7 +110,8 @@ namespace MicroSaaS.IntegrationTests.Utils
                 for (int i = 0; i < 5; i++)
                 {
                     var date = startDate.AddDays(i * ((endDate - startDate).Days / 5));
-                    result.Add(CreateSamplePerformanceData($"post-{i}", date, platform));
+                    var postId = Guid.NewGuid();
+                    result.Add(CreateSamplePerformanceData(postId, date, platform));
                 }
                 
                 foreach (var item in result)
@@ -130,16 +131,16 @@ namespace MicroSaaS.IntegrationTests.Utils
         private void InitializeTestData()
         {
             // Dados de exemplo para diferentes plataformas
-            _performanceData.Add(CreateSamplePerformanceData("post-1", DateTime.Now.AddDays(-5), SocialMediaPlatform.Instagram));
-            _performanceData.Add(CreateSamplePerformanceData("post-2", DateTime.Now.AddDays(-10), SocialMediaPlatform.YouTube));
-            _performanceData.Add(CreateSamplePerformanceData("post-3", DateTime.Now.AddDays(-15), SocialMediaPlatform.TikTok));
+            _performanceData.Add(CreateSamplePerformanceData(Guid.NewGuid(), DateTime.Now.AddDays(-5), SocialMediaPlatform.Instagram));
+            _performanceData.Add(CreateSamplePerformanceData(Guid.NewGuid(), DateTime.Now.AddDays(-10), SocialMediaPlatform.YouTube));
+            _performanceData.Add(CreateSamplePerformanceData(Guid.NewGuid(), DateTime.Now.AddDays(-15), SocialMediaPlatform.TikTok));
             
             // Adicionar alguns IDs de conta de exemplo
             _accountIds.Add(Guid.NewGuid());
             _accountIds.Add(Guid.NewGuid());
         }
 
-        private ContentPerformanceDto CreateSamplePerformanceData(string postId, DateTime? date = null, SocialMediaPlatform? platform = null)
+        private ContentPerformanceDto CreateSamplePerformanceData(Guid postId, DateTime? date = null, SocialMediaPlatform? platform = null)
         {
             var random = new Random();
             var postDate = date ?? DateTime.Now.AddDays(-random.Next(1, 30));

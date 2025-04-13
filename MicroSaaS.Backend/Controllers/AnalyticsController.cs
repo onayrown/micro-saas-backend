@@ -40,11 +40,17 @@ public class AnalyticsController : ControllerBase
     }
 
     /// <summary>
-    /// Obtém métricas de desempenho para um post específico
+    /// Obtém análises de desempenho para um post específico
     /// </summary>
-    /// <param name="postId">ID do post para análise</param>
+    /// <param name="postId">ID do post</param>
     /// <returns>Métricas de desempenho do post</returns>
     /// <remarks>
+    /// Exemplo de requisição:
+    /// 
+    /// ```
+    /// GET /api/v1/Analytics/post/3fa85f64-5717-4562-b3fc-2c963f66afa6
+    /// ```
+    /// 
     /// Exemplo de resposta:
     /// 
     /// ```json
@@ -54,16 +60,11 @@ public class AnalyticsController : ControllerBase
     ///     {
     ///       "postId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     ///       "platform": "Instagram",
-    ///       "dateRecorded": "2023-06-14T10:00:00Z",
-    ///       "likes": 245,
-    ///       "comments": 31,
-    ///       "shares": 18,
-    ///       "views": 1250,
-    ///       "impressions": 2150,
-    ///       "engagementRate": 12.5,
-    ///       "reach": 1850,
-    ///       "saves": 42,
-    ///       "clickThroughs": 75
+    ///       "likes": 1250,
+    ///       "comments": 356,
+    ///       "shares": 125,
+    ///       "views": 15000,
+    ///       "date": "2023-07-01T00:00:00Z"
     ///     }
     ///   ],
     ///   "message": "Métricas de desempenho recuperadas com sucesso"
@@ -71,7 +72,7 @@ public class AnalyticsController : ControllerBase
     /// ```
     /// </remarks>
     /// <response code="200">Análises recuperadas com sucesso</response>
-    /// <response code="400">ID de post inválido</response>
+    /// <response code="400">ID inválido</response>
     /// <response code="401">Usuário não autenticado</response>
     /// <response code="403">Usuário não tem permissão para acessar estas métricas</response>
     /// <response code="404">Post não encontrado</response>
@@ -83,20 +84,12 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<List<ContentPerformanceDto>>>> GetPostAnalytics(string postId)
+    public async Task<ActionResult<ApiResponse<List<ContentPerformanceDto>>>> GetPostAnalytics(Guid postId)
     {
         try
         {
-            // Validar se o ID é válido
-            if (string.IsNullOrEmpty(postId))
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "ID do post não pode ser vazio"
-                });
-                
-            // Verificar se o post existe
-            var post = await _postRepository.GetByIdAsync(Guid.Parse(postId));
+            // Buscar o post para verificar se existe
+            var post = await _postRepository.GetByIdAsync(postId);
             if (post == null)
                 return NotFound(new ApiResponse<object>
                 {

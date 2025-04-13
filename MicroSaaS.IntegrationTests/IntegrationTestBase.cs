@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using Moq;
 using Xunit;
-using MicroSaaS.Infrastructure.Repositories;
+using MicroSaaS.Infrastructure.Persistence.Repositories;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Infrastructure.Services;
 using MicroSaaS.Application.Interfaces.Services;
@@ -25,6 +25,13 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using MicroSaaS.IntegrationTests.Models;
+using AppAuthResponse = MicroSaaS.Application.DTOs.Auth.AuthResponse;
+using TestAuthResponse = MicroSaaS.IntegrationTests.Models.AuthResponse;
 
 namespace MicroSaaS.IntegrationTests;
 
@@ -172,16 +179,18 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             
-            var response = new AuthResponse
+            var response = new TestAuthResponse
             {
                 Success = true,
                 Token = "valid_token_for_testing",
                 Message = "Login successful",
-                User = new UserDto
+                User = new Models.UserDto
                 {
-                    Id = Guid.NewGuid(),
+                    Id = "10000000-1000-1000-1000-100000000000",
                     Username = "Test User",
+                    Name = "Test User",
                     Email = request.Email,
+                    Role = "user",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -228,16 +237,18 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             
-            var response = new AuthResponse
+            var response = new TestAuthResponse
             {
                 Success = true,
                 Token = "valid_token_for_testing",
                 Message = "Registration successful",
-                User = new UserDto
+                User = new Models.UserDto
                 {
-                    Id = Guid.NewGuid(),
+                    Id = "20000000-2000-2000-2000-200000000000",
                     Username = request.Name,
+                    Name = request.Name,
                     Email = request.Email,
+                    Role = "user",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -271,9 +282,10 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
     {
         var testUser = new User
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.Parse("10000000-1000-1000-1000-100000000000"),
             Email = "test@example.com",
             Username = "Test User",
+            Name = "Test User",
             PasswordHash = "hashed_password",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -287,6 +299,10 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<MicroSaaS
         mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.Is<string>(e => e == "invalid@example.com")))
             .ReturnsAsync((User?)null);
+            
+        mockUserRepository
+            .Setup(x => x.GetByIdAsync(It.Is<Guid>(id => id == Guid.Parse("10000000-1000-1000-1000-100000000000"))))
+            .ReturnsAsync(testUser);
     }
     
     private void SetupPasswordHasherMock(Mock<IPasswordHasher> mockPasswordHasher)

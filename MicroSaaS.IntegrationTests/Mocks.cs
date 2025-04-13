@@ -13,26 +13,30 @@ using Microsoft.Extensions.Hosting;
 using System.Linq;
 using MicroSaaS.Shared.Results;
 using System.Security.Claims;
-using DomainIUserRepository = MicroSaaS.Domain.Interfaces.Repositories.IUserRepository;
-using ApplicationIUserRepository = MicroSaaS.Application.Interfaces.Repositories.IUserRepository;
 using MicroSaaS.Application.Interfaces.Repositories;
+using MicroSaaS.IntegrationTests.Models;
 
 namespace MicroSaaS.IntegrationTests
 {
-    public class MockUserRepository : DomainIUserRepository
+    public class MockUserRepository : IUserRepository
     {
         public Task<User?> GetByIdAsync(Guid id)
         {
-            return Task.FromResult<User?>(new User
+            if (id == Guid.Parse("10000000-1000-1000-1000-100000000000"))
             {
-                Id = id,
-                Username = "testuser",
-                Email = "test@example.com",
-                PasswordHash = "hashedpassword",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
+                return Task.FromResult<User?>(new User
+                {
+                    Id = id,
+                    Username = "Test User",
+                    Name = "Test User",
+                    Email = "test@example.com",
+                    PasswordHash = "hashed_password",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            return Task.FromResult<User?>(null);
         }
 
         public Task<User?> GetByEmailAsync(string email)
@@ -41,10 +45,11 @@ namespace MicroSaaS.IntegrationTests
             {
                 return Task.FromResult<User?>(new User
                 {
-                    Id = Guid.NewGuid(),
-                    Username = "testuser",
+                    Id = Guid.Parse("10000000-1000-1000-1000-100000000000"),
+                    Username = "Test User",
+                    Name = "Test User",
                     Email = email,
-                    PasswordHash = "hashedpassword",
+                    PasswordHash = "hashed_password",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -92,10 +97,125 @@ namespace MicroSaaS.IntegrationTests
         {
             return Task.CompletedTask;
         }
+
+        public Task<bool> IsEmailUniqueAsync(string email)
+        {
+            // Considera o email único se não for test@example.com
+            return Task.FromResult(email != "test@example.com");
+        }
+
+        public Task<bool> IsUsernameUniqueAsync(string username)
+        {
+            // Considera o username único se não for testuser
+            return Task.FromResult(username != "testuser");
+        }
     }
 
     public class MockSocialMediaAccountRepository : ISocialMediaAccountRepository
     {
+        private readonly List<SocialMediaAccount> _accounts = new();
+        
+        // IDs fixos para testes consistentes
+        private static readonly Guid ACCOUNT_ID_1 = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        private static readonly Guid ACCOUNT_ID_2 = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        
+        // Construtor que inicializa contas padrão para testes
+        public MockSocialMediaAccountRepository()
+        {
+            // Inicializar com algumas contas de teste se a lista estiver vazia
+            if (_accounts.Count == 0)
+            {
+                _accounts.Add(new SocialMediaAccount
+                {
+                    Id = ACCOUNT_ID_1,
+                    CreatorId = CREATOR_ID_1,
+                    Platform = SocialMediaPlatform.Instagram,
+                    Username = "testcreator1_instagram",
+                    AccessToken = "token_instagram_1",
+                    RefreshToken = "refresh_instagram_1",
+                    TokenExpiresAt = DateTime.UtcNow.AddDays(60),
+                    IsActive = true,
+                    ProfileUrl = "profile_instagram_1",
+                    CreatedAt = DateTime.UtcNow.AddDays(-25),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-25)
+                });
+                
+                _accounts.Add(new SocialMediaAccount
+                {
+                    Id = ACCOUNT_ID_2,
+                    CreatorId = CREATOR_ID_1,
+                    Platform = SocialMediaPlatform.YouTube,
+                    Username = "testcreator1_youtube",
+                    AccessToken = "token_youtube_1",
+                    RefreshToken = "refresh_youtube_1",
+                    TokenExpiresAt = DateTime.UtcNow.AddDays(60),
+                    IsActive = true,
+                    ProfileUrl = "profile_youtube_1",
+                    CreatedAt = DateTime.UtcNow.AddDays(-20),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-20)
+                });
+            }
+        }
+
+        public Task<SocialMediaAccount> AddAsync(SocialMediaAccount account)
+        {
+            // Se o ID não foi especificado, atribuir um novo
+            account.Id = account.Id == Guid.Empty ? Guid.NewGuid() : account.Id;
+            _accounts.Add(account);
+            return Task.FromResult(account);
+        }
+
+        public Task<bool> DeleteAsync(Guid id)
+        {
+            var account = _accounts.FirstOrDefault(a => a.Id == id);
+            if (account != null)
+            {
+                _accounts.Remove(account);
+                return Task.FromResult(true);
+            }
+            return Task.FromResult(false);
+        }
+
+        public Task<SocialMediaAccount?> GetByIdAsync(Guid id)
+        {
+            return Task.FromResult(_accounts.FirstOrDefault(a => a.Id == id));
+        }
+
+        public Task<IEnumerable<SocialMediaAccount>> GetByCreatorIdAsync(Guid creatorId)
+        {
+            return Task.FromResult(_accounts.Where(a => a.CreatorId == creatorId));
+        }
+
+        public Task<SocialMediaAccount?> GetByCreatorIdAndPlatformAsync(Guid creatorId, SocialMediaPlatform platform)
+        {
+            return Task.FromResult(_accounts.FirstOrDefault(a => a.CreatorId == creatorId && a.Platform == platform));
+        }
+
+        public Task<SocialMediaAccount> UpdateAsync(SocialMediaAccount account)
+        {
+            var existingAccount = _accounts.FirstOrDefault(a => a.Id == account.Id);
+            if (existingAccount != null)
+            {
+                _accounts.Remove(existingAccount);
+                _accounts.Add(account);
+                return Task.FromResult(account);
+            }
+            throw new InvalidOperationException("Account not found for update");
+        }
+
+        public Task UpdateTokenAsync(Guid id, string accessToken, string refreshToken, DateTime expiresAt)
+        {
+            var account = _accounts.FirstOrDefault(a => a.Id == id);
+            if (account != null)
+            {
+                account.AccessToken = accessToken;
+                account.RefreshToken = refreshToken;
+                account.TokenExpiresAt = expiresAt;
+            }
+            return Task.CompletedTask;
+        }
+
         // Método para verificar se existe um criador
         public Task<bool> CreatorExistsAsync(Guid creatorId)
         {
@@ -103,46 +223,10 @@ namespace MicroSaaS.IntegrationTests
             return Task.FromResult(true);
         }
 
-        // Método para obter uma conta por ID
-        public Task<SocialMediaAccount?> GetByIdAsync(Guid id)
-        {
-            return Task.FromResult<SocialMediaAccount?>(null);
-        }
-
-        // Método para obter contas por ID do criador
-        public Task<IEnumerable<SocialMediaAccount>> GetByCreatorIdAsync(Guid creatorId)
-        {
-            return Task.FromResult<IEnumerable<SocialMediaAccount>>(new List<SocialMediaAccount>());
-        }
-
         // Método para obter contas por plataforma
         public Task<IEnumerable<SocialMediaAccount>> GetByPlatformAsync(Guid creatorId, SocialMediaPlatform platform)
         {
             return Task.FromResult<IEnumerable<SocialMediaAccount>>(new List<SocialMediaAccount>());
-        }
-
-        // Método para adicionar uma conta
-        public Task<SocialMediaAccount> AddAsync(SocialMediaAccount account)
-        {
-            return Task.FromResult(account);
-        }
-
-        // Método para atualizar uma conta
-        public Task UpdateAsync(SocialMediaAccount account)
-        {
-            return Task.CompletedTask;
-        }
-
-        // Método para excluir uma conta
-        public Task DeleteAsync(Guid id)
-        {
-            return Task.CompletedTask;
-        }
-
-        // Método para atualizar token
-        public Task UpdateTokenAsync(Guid id, string accessToken, string refreshToken, DateTime expiresAt)
-        {
-            return Task.CompletedTask;
         }
 
         // Método para obter o total de seguidores
@@ -168,32 +252,43 @@ namespace MicroSaaS.IntegrationTests
     {
         public string GenerateToken(User user)
         {
-            return "test.jwt.token";
+            return "valid_token_for_testing";
         }
 
-        public bool ValidateToken(string token)
+        public string GetUserIdFromToken(string token)
         {
-            return true;
+            return token == "valid_token_for_testing" ? Guid.NewGuid().ToString() : string.Empty;
+        }
+
+        public ClaimsPrincipal ValidateToken(string token)
+        {
+            if (token == "valid_token_for_testing")
+            {
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.Email, "test@example.com"),
+                    new Claim(ClaimTypes.Role, "user")
+                };
+                var identity = new ClaimsIdentity(claims, "TestAuth");
+                return new ClaimsPrincipal(identity);
+            }
+            return new ClaimsPrincipal();
         }
 
         public Task<bool> ValidateTokenAsync(string token)
         {
-            return Task.FromResult(true);
-        }
-
-        public Guid GetUserIdFromToken(string token)
-        {
-            return Guid.NewGuid();
+            return Task.FromResult(token == "valid_token_for_testing");
         }
 
         public string GetUserEmailFromToken(string token)
         {
-            return "test@example.com";
+            return token == "valid_token_for_testing" ? "test@example.com" : string.Empty;
         }
 
         public Task<string> RefreshTokenAsync(string token)
         {
-            return Task.FromResult("new.jwt.token");
+            return Task.FromResult("new_valid_token_for_testing");
         }
 
         public Task RevokeTokenAsync(string token)
@@ -204,58 +299,97 @@ namespace MicroSaaS.IntegrationTests
 
     public class MockAuthService : IAuthService
     {
-        public Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
+        public Task<Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>> LoginAsync(LoginRequest request)
         {
             if (request.Email == "test@example.com" && request.Password == "Test@123")
             {
-                return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
+                var userDto = new MicroSaaS.IntegrationTests.Models.UserDto
                 {
-                    Token = "test.jwt.token",
-                    User = new UserDto
-                    {
-                        Id = Guid.NewGuid(),
-                        Username = "testuser",
-                        Email = request.Email,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }
-                }));
-            }
-            return Task.FromResult(Result<AuthResponse>.Fail("Credenciais inválidas"));
-        }
-
-        public Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
-        {
-            return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
-            {
-                Token = "test.jwt.token",
-                User = new UserDto
-                {
-                    Id = Guid.NewGuid(),
-                    Username = request.Name,
+                    Id = Guid.NewGuid().ToString(),
+                    Username = "testuser",
+                    Name = "Test User",
                     Email = request.Email,
+                    Role = "user",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
-                }
+                };
+                
+                return Task.FromResult(Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>.Ok(new MicroSaaS.Application.DTOs.Auth.AuthResponse
+                {
+                    Success = true,
+                    Token = "test.jwt.token",
+                    User = new MicroSaaS.Application.DTOs.UserDto
+                    {
+                        Id = userDto.Id,
+                        Username = userDto.Username,
+                        Email = userDto.Email,
+                        Role = userDto.Role,
+                        IsActive = userDto.IsActive
+                    },
+                    Message = "Login successful"
+                }));
+            }
+            return Task.FromResult(Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>.Fail("Credenciais inválidas"));
+        }
+
+        public Task<Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>> RegisterAsync(RegisterRequest request)
+        {
+            var userDto = new MicroSaaS.IntegrationTests.Models.UserDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Username = request.Name,
+                Name = request.Name,
+                Email = request.Email,
+                Role = "user",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            return Task.FromResult(Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>.Ok(new MicroSaaS.Application.DTOs.Auth.AuthResponse
+            {
+                Success = true,
+                Token = "test.jwt.token",
+                User = new MicroSaaS.Application.DTOs.UserDto
+                {
+                    Id = userDto.Id,
+                    Username = userDto.Username,
+                    Email = userDto.Email,
+                    Role = userDto.Role,
+                    IsActive = userDto.IsActive
+                },
+                Message = "Registration successful"
             }));
         }
 
-        public Task<Result<AuthResponse>> RefreshTokenAsync(string token)
+        public Task<Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>> RefreshTokenAsync(string token)
         {
-            return Task.FromResult(Result<AuthResponse>.Ok(new AuthResponse
+            var userDto = new MicroSaaS.IntegrationTests.Models.UserDto
             {
+                Id = Guid.NewGuid().ToString(),
+                Username = "testuser",
+                Name = "Test User",
+                Email = "test@example.com",
+                Role = "user",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            return Task.FromResult(Result<MicroSaaS.Application.DTOs.Auth.AuthResponse>.Ok(new MicroSaaS.Application.DTOs.Auth.AuthResponse
+            {
+                Success = true,
                 Token = "new.jwt.token",
-                User = new UserDto
+                User = new MicroSaaS.Application.DTOs.UserDto
                 {
-                    Id = Guid.NewGuid(),
-                    Username = "testuser",
-                    Email = "test@example.com",
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
+                    Id = userDto.Id,
+                    Username = userDto.Username,
+                    Email = userDto.Email,
+                    Role = userDto.Role,
+                    IsActive = userDto.IsActive
+                },
+                Message = "Token refreshed successfully"
             }));
         }
 
@@ -273,9 +407,10 @@ namespace MicroSaaS.IntegrationTests
         public Task<Result<UserProfileResponse>> GetUserProfileAsync(ClaimsPrincipal claimsPrincipal)
         {
             // Implementação de mock para o método GetUserProfileAsync
+            var userId = Guid.NewGuid();
             var userProfileData = new UserProfileData
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = userId.ToString(),
                 Name = "Test User",
                 Email = "test@example.com",
                 Role = "user",
@@ -374,7 +509,7 @@ namespace MicroSaaS.IntegrationTests
             return Task.CompletedTask;
         }
 
-        public Task CancelScheduledPostAsync(string postId)
+        public Task CancelScheduledPostAsync(Guid postId)
         {
             // Simula o cancelamento de um post agendado
             return Task.CompletedTask;
@@ -382,17 +517,73 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<IEnumerable<ContentPost>> GetScheduledPostsAsync(Guid creatorId)
         {
-            // Retorna uma lista vazia de posts agendados
-            return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
+            // Retornar alguns posts agendados de exemplo
+            var posts = new List<ContentPost>
+            {
+                new ContentPost
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Post agendado 1",
+                    Content = "Conteúdo do post agendado 1",
+                    Platform = SocialMediaPlatform.Instagram,
+                    Status = PostStatus.Scheduled,
+                    ScheduledTime = DateTime.UtcNow.AddDays(1),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new ContentPost
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Post agendado 2",
+                    Content = "Conteúdo do post agendado 2",
+                    Platform = SocialMediaPlatform.YouTube,
+                    Status = PostStatus.Scheduled,
+                    ScheduledTime = DateTime.UtcNow.AddDays(2),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            };
+            
+            return Task.FromResult<IEnumerable<ContentPost>>(posts);
         }
 
         public Task<IEnumerable<ContentPost>> GetPublishedPostsAsync(Guid creatorId)
         {
-            // Retorna uma lista vazia de posts publicados
-            return Task.FromResult<IEnumerable<ContentPost>>(new List<ContentPost>());
+            // Retornar alguns posts publicados de exemplo
+            var posts = new List<ContentPost>
+            {
+                new ContentPost
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Post publicado 1",
+                    Content = "Conteúdo do post publicado 1",
+                    Platform = SocialMediaPlatform.Instagram,
+                    Status = PostStatus.Published,
+                    PublishedAt = DateTime.UtcNow.AddDays(-1),
+                    CreatedAt = DateTime.UtcNow.AddDays(-2),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                },
+                new ContentPost
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Post publicado 2",
+                    Content = "Conteúdo do post publicado 2",
+                    Platform = SocialMediaPlatform.YouTube,
+                    Status = PostStatus.Published,
+                    PublishedAt = DateTime.UtcNow.AddDays(-2),
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-2)
+                }
+            };
+            
+            return Task.FromResult<IEnumerable<ContentPost>>(posts);
         }
 
-        public Task<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>> GetPostPerformanceAsync(string postId)
+        public Task<IEnumerable<MicroSaaS.Application.DTOs.ContentPerformanceDto>> GetPostPerformanceAsync(Guid postId)
         {
             // Retorna dados de performance de exemplo para um post
             var performances = new List<MicroSaaS.Application.DTOs.ContentPerformanceDto>
@@ -434,13 +625,16 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate)
         {
-            // Retorna métricas de receita de exemplo
-            return Task.FromResult(new Dictionary<string, decimal>
+            // Retornar métricas de receita de exemplo para testes
+            var revenueMetrics = new Dictionary<string, decimal>
             {
-                { "total", 1000.0m },
-                { "sponsored", 750.0m },
-                { "affiliate", 250.0m }
-            });
+                { "Total", 1200.00m },
+                { "Direta", 800.00m },
+                { "Afiliados", 250.00m },
+                { "Parcerias", 150.00m }
+            };
+            
+            return Task.FromResult(revenueMetrics);
         }
 
         public Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId)
@@ -463,6 +657,25 @@ namespace MicroSaaS.IntegrationTests
             };
             
             return Task.FromResult<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>>(recommendations);
+        }
+
+        public Task<List<ContentRecommendation>> GetContentRecommendationsAsync(Guid creatorId)
+        {
+            // Criar uma recomendação de exemplo para o criador de conteúdo
+            var recommendation = new ContentRecommendation
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = creatorId,
+                Title = "Use mais hashtags relacionadas a tecnologia",
+                Description = "Nossa análise mostra que posts com hashtags como #tecnologia #inovação #programação têm desempenho 30% melhor",
+                Priority = RecommendationPriority.High,
+                Type = MicroSaaS.Shared.Enums.RecommendationType.ContentTopic,
+                SuggestedTopics = new List<string> { "Tecnologia", "Programação", "Desenvolvimento" },
+                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            
+            return Task.FromResult(new List<ContentRecommendation> { recommendation });
         }
     }
 
@@ -527,40 +740,6 @@ namespace MicroSaaS.IntegrationTests
             };
             
             return Task.FromResult(result);
-        }
-
-        public Task<List<ContentRecommendation>> GetContentRecommendationsAsync(Guid creatorId)
-        {
-            var recommendations = new List<ContentRecommendation>
-            {
-                new ContentRecommendation
-                {
-                    Id = Guid.NewGuid(),
-                    CreatorId = creatorId,
-                    Title = "Diversifique seus tópicos",
-                    Description = "Baseado na análise do seu conteúdo, recomendamos expandir para tópicos relacionados para aumentar o alcance.",
-                    Type = MicroSaaS.Shared.Enums.RecommendationType.ContentTopic,
-                    SuggestedTopics = new List<string> { "Dicas práticas", "Tutoriais rápidos", "Histórias de sucesso" },
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    Priority = RecommendationPriority.High,
-                    PotentialImpact = "Aumento potencial de 20% no alcance"
-                },
-                new ContentRecommendation
-                {
-                    Id = Guid.NewGuid(),
-                    CreatorId = creatorId,
-                    Title = "Experimente vídeos curtos",
-                    Description = "Vídeos de 60-90 segundos estão gerando maior engajamento em sua niche. Considere adaptar parte do seu conteúdo para este formato.",
-                    Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    Priority = RecommendationPriority.Medium,
-                    PotentialImpact = "Aumento potencial de 35% no engajamento"
-                }
-            };
-            
-            return Task.FromResult(recommendations);
         }
 
         // Implementar outros métodos conforme necessário
@@ -648,7 +827,7 @@ namespace MicroSaaS.IntegrationTests
                     Type = MicroSaaS.Shared.DTOs.RecommendationType.Topic,
                     Platform = platform,
                     ConfidenceScore = 0.9m,
-                    ExampleContentIds = new List<string> { "post123", "post456" },
+                    ExampleContentIds = new List<Guid> { Guid.Parse("00000000-0000-0000-0000-000000000123"), Guid.Parse("00000000-0000-0000-0000-000000000456") },
                     SuggestedHashtags = new List<string> { "#teste", "#integracao" },
                     SuggestedKeywords = new List<string> { "teste", "integração" },
                     CreatedAt = DateTime.UtcNow
@@ -688,7 +867,7 @@ namespace MicroSaaS.IntegrationTests
                 Type = request.RecommendationType,
                 Platform = request.Platform,
                 ConfidenceScore = 0.85m,
-                ExampleContentIds = new List<string> { "post123", "post456" },
+                ExampleContentIds = new List<Guid> { Guid.Parse("00000000-0000-0000-0000-000000000123"), Guid.Parse("00000000-0000-0000-0000-000000000456") },
                 SuggestedHashtags = new List<string> { "#personalizado", "#teste" },
                 SuggestedKeywords = new List<string> { "personalizado", "teste" },
                 CreatedAt = DateTime.UtcNow
@@ -697,29 +876,97 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<MicroSaaS.Shared.DTOs.AudienceSensitivityDto> GetAudienceSensitivityAnalysisAsync(Guid creatorId, SocialMediaPlatform platform)
         {
-            return Task.FromResult(new MicroSaaS.Shared.DTOs.AudienceSensitivityDto 
+            return Task.FromResult(new MicroSaaS.Shared.DTOs.AudienceSensitivityDto
             {
                 CreatorId = creatorId,
                 Platform = platform.ToString(),
-                TopResponsiveTopics = new List<string> { "topic1", "topic2" },
-                TopResponsiveFormats = new List<string> { "format1", "format2" },
+                TopResponsiveTopics = new List<string> { "Educação", "Tecnologia" },
+                TopResponsiveFormats = new List<string> { "Vídeos curtos", "Carrosséis" },
                 BestTimeOfDay = new List<TimeSpan> { new TimeSpan(12, 0, 0), new TimeSpan(18, 0, 0) },
                 BestDaysOfWeek = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Friday },
-                ConfidenceScore = 0.8m,
+                ConfidenceScore = 0.85m,
                 LastUpdated = DateTime.UtcNow,
                 SensitivityTopics = new List<MicroSaaS.Shared.DTOs.TopicSensitivityDto> 
                 {
                     new MicroSaaS.Shared.DTOs.TopicSensitivityDto 
                     {
-                        Topic = "Tópico sensível",
-                        SensitivityLevel = 7,
-                        RecommendedApproach = "Abordagem neutra"
+                        Topic = "Política",
+                        SensitivityLevel = 8,
+                        RecommendedApproach = "Evitar ou abordar com neutralidade"
+                    },
+                    new MicroSaaS.Shared.DTOs.TopicSensitivityDto 
+                    {
+                        Topic = "Saúde",
+                        SensitivityLevel = 6,
+                        RecommendedApproach = "Abordar com responsabilidade e fontes"
                     }
                 },
                 OverallSensitivity = 7.0,
-                Analysis = "Análise de exemplo para testes",
-                RecommendedContentApproach = "Abordagem recomendada para testes"
+                Analysis = "Sua audiência é sensível a tópicos políticos e prefere conteúdo educacional",
+                RecommendedContentApproach = "Foque em conteúdo educacional e evite polarizações"
             });
+        }
+
+        public Task<MicroSaaS.Shared.DTOs.GrowthRecommendationDto> GenerateCustomGrowthRecommendationAsync(MicroSaaS.Shared.DTOs.CustomRecommendationRequestDto request)
+        {
+            return Task.FromResult(new MicroSaaS.Shared.DTOs.GrowthRecommendationDto
+            {
+                Id = Guid.NewGuid(),
+                CreatorId = request.CreatorId,
+                Title = "Recomendação de crescimento personalizada",
+                Description = "Esta é uma recomendação de crescimento personalizada para testes",
+                Category = MicroSaaS.Shared.DTOs.GrowthCategory.ContentQuality,
+                Platform = request.Platform,
+                ImplementationSteps = new List<string> { "Passo 1 personalizado", "Passo 2 personalizado" },
+                ExpectedOutcome = "Resultado esperado personalizado para teste",
+                Difficulty = 3,
+                TimeToImplement = "2 semanas",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        public Task<List<MicroSaaS.Domain.Entities.ContentRecommendation>> GetContentRecommendationsAsync(Guid creatorId)
+        {
+            return Task.FromResult(new List<MicroSaaS.Domain.Entities.ContentRecommendation>
+            {
+                new MicroSaaS.Domain.Entities.ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Recomendação de conteúdo teste",
+                    Description = "Esta é uma recomendação de conteúdo para testes de mock",
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.Topic,
+                    Platform = SocialMediaPlatform.Instagram,
+                    CreatedAt = DateTime.UtcNow
+                }
+            });
+        }
+
+        public Task<List<ContentRecommendation>> GetRecommendationsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var recommendations = new List<ContentRecommendation>
+            {
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Aumentar frequência de postagem no Instagram",
+                    Description = "Análise mostra que aumentar a frequência de postagem em 30% pode melhorar seu alcance",
+                    Priority = RecommendationPriority.High,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
+                },
+                new ContentRecommendation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    Title = "Criar conteúdo em formato carrossel",
+                    Description = "Conteúdos em formato carrossel têm engajamento 25% maior",
+                    Priority = RecommendationPriority.Medium,
+                    Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
+                }
+            };
+
+            return Task.FromResult(recommendations);
         }
     }
 
@@ -762,6 +1009,13 @@ namespace MicroSaaS.IntegrationTests
 
         public Task CancelScheduledPostAsync(Guid postId)
         {
+            // Simula o cancelamento de um post agendado
+            var post = _scheduledPosts.FirstOrDefault(p => p.Id == postId);
+            if (post != null)
+            {
+                post.Status = PostStatus.Cancelled;
+                post.UpdatedAt = DateTime.UtcNow;
+            }
             return Task.CompletedTask;
         }
 
@@ -887,8 +1141,8 @@ namespace MicroSaaS.IntegrationTests
             {
                 _metrics.Add(new PerformanceMetrics
                 {
-                    Id = Guid.NewGuid(),
-                    CreatorId = creatorId,
+                    Id = Guid.NewGuid().ToString(),
+                    CreatorId = creatorId.ToString(),
                     Date = DateTime.UtcNow.AddDays(-i),
                     Platform = i % 2 == 0 ? SocialMediaPlatform.Instagram : SocialMediaPlatform.YouTube,
                     Followers = 5000 + (i * 50),
@@ -962,7 +1216,7 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<PerformanceMetrics> AddMetricsAsync(PerformanceMetrics metrics)
         {
-            metrics.Id = Guid.NewGuid();
+            metrics.Id = Guid.NewGuid().ToString();
             metrics.CreatedAt = DateTime.UtcNow;
             metrics.UpdatedAt = DateTime.UtcNow;
             
@@ -980,48 +1234,20 @@ namespace MicroSaaS.IntegrationTests
             {
                 Id = Guid.NewGuid(),
                 CreatorId = creatorId,
-                GeneratedDate = now,
-                Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram, SocialMediaPlatform.YouTube, SocialMediaPlatform.TikTok },
-                PeriodStart = start,
-                PeriodEnd = end,
-                GrowthRate = 4.2m,
-                TotalRevenueInPeriod = 2800.00m,
-                ComparisonWithPreviousPeriod = 15.2m,
-                TopContentInsights = new List<ContentInsight>
-                {
-                    new ContentInsight
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Vídeo de tutorial tem alto engajamento",
-                        Type = InsightType.HighEngagement,
-                        Description = "Seus tutoriais estão gerando 2x mais engajamento que outros conteúdos",
-                        RecommendedAction = "Postar mais vídeos tutoriais"
-                    }
-                },
-                Recommendations = new List<ContentRecommendation>
-                {
-                    new ContentRecommendation
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Aumentar frequência no Instagram",
-                        Description = "Aumente a frequência de publicações no Instagram para melhorar o alcance",
-                        Priority = RecommendationPriority.High,
-                        Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
-                    }
-                },
-                BestTimeToPost = _postTimeRecommendations,
-                CreatedAt = now,
-                UpdatedAt = now,
-                Date = now.Date,
-                TotalFollowers = 5500,
-                TotalPosts = 140,
-                TotalViews = 75000,
-                TotalLikes = 22000,
-                TotalComments = 4500,
-                TotalShares = 2200,
-                AverageEngagementRate = 4.8m,
-                TotalRevenue = 3200.00m,
-                Type = InsightType.Normal
+                AverageEngagementRate = 4.5m,
+                GrowthRate = 2.8m,
+                TotalPosts = 125,
+                TotalFollowers = 10000,
+                TotalLikes = 5000,
+                TotalComments = 1200,
+                TotalShares = 800,
+                TotalViews = 50000,
+                TotalRevenue = 2500m,
+                Date = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram },
+                KeyInsights = new List<string> { "Vídeos têm melhor desempenho", "Melhor horário para postar é às 18:00" }
             };
             
             _insights.Add(insight);
@@ -1030,14 +1256,15 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<decimal> GetAverageEngagementRateAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
         {
-            var metrics = _metrics.Where(m => m.CreatorId == creatorId && m.Platform == platform).ToList();
-            if (!metrics.Any())
-            {
-                return Task.FromResult(4.5m); // Valor padrão para testes
-            }
+            var performances = _contentPerformances
+                .Where(p => p.CreatorId == creatorId && p.Platform == platform)
+                .ToList();
             
-            var avgEngagementRate = metrics.Average(m => m.EngagementRate);
-            return Task.FromResult(avgEngagementRate);
+            if (!performances.Any())
+                return Task.FromResult(0m);
+                
+            var avgRate = performances.Average(p => p.EngagementRate);
+            return Task.FromResult(avgRate);
         }
 
         public Task<List<MicroSaaS.Domain.Entities.PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
@@ -1050,7 +1277,7 @@ namespace MicroSaaS.IntegrationTests
         {
             var targetDate = date ?? DateTime.UtcNow.Date;
             var metric = _metrics.FirstOrDefault(m => 
-                m.CreatorId == creatorId && 
+                m.CreatorId == creatorId.ToString() && 
                 m.Date.Date == targetDate.Date && 
                 m.Platform == platform);
                 
@@ -1059,8 +1286,8 @@ namespace MicroSaaS.IntegrationTests
                 // Criar um exemplo se não encontrar
                 metric = new PerformanceMetrics
                 {
-                    Id = Guid.NewGuid(),
-                    CreatorId = creatorId,
+                    Id = Guid.NewGuid().ToString(),
+                    CreatorId = creatorId.ToString(),
                     Date = targetDate,
                     Platform = platform,
                     Followers = 5000,
@@ -1082,17 +1309,41 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<int> GetFollowerGrowthAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram, DateTime? startDate = null, DateTime? endDate = null)
         {
-            // Retornar um valor fixo para testes
-            return Task.FromResult(180);
+            // Valor padrão para testes
+            if (creatorId.ToString() == "11111111-1111-1111-1111-111111111111")
+            {
+                return Task.FromResult(120); // Crescimento especial para o criador de teste
+            }
+            
+            return Task.FromResult(75); // Crescimento padrão
         }
 
         public Task<DashboardInsights> GetLatestInsightsAsync(Guid creatorId)
         {
             var insight = _insights.FirstOrDefault(i => i.CreatorId == creatorId);
+            
             if (insight == null)
             {
-                // Criar insights de exemplo se não existirem
-                return GenerateInsightsAsync(creatorId);
+                // Criar percepções padrão para testes
+                insight = new DashboardInsights
+                {
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
+                    AverageEngagementRate = 4.5m,
+                    GrowthRate = 2.8m,
+                    TotalPosts = 125,
+                    TotalFollowers = 10000,
+                    TotalLikes = 5000,
+                    TotalComments = 1200,
+                    TotalShares = 800,
+                    TotalViews = 50000,
+                    TotalRevenue = 2500m,
+                    Date = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram },
+                    KeyInsights = new List<string> { "Vídeos têm melhor desempenho", "Melhor horário para postar é às 18:00" }
+                };
             }
             
             return Task.FromResult(insight);
@@ -1100,19 +1351,21 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<IEnumerable<PerformanceMetrics>> GetMetricsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null, SocialMediaPlatform? platform = null)
         {
-            // Filtrando
-            var result = _metrics.Where(m => m.CreatorId == creatorId).AsEnumerable();
-            
-            if (startDate.HasValue)
-                result = result.Where(m => m.Date >= startDate.Value);
-                
-            if (endDate.HasValue)
-                result = result.Where(m => m.Date <= endDate.Value);
-                
+            var metrics = _metrics
+                .Where(m => m.CreatorId == creatorId.ToString())
+                .ToList();
+
             if (platform.HasValue)
-                result = result.Where(m => m.Platform == platform.Value);
-            
-            return Task.FromResult(result);
+            {
+                metrics = metrics.Where(m => m.Platform == platform.Value).ToList();
+            }
+
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                metrics = metrics.Where(m => m.Date >= startDate.Value && m.Date <= endDate.Value).ToList();
+            }
+
+            return Task.FromResult(metrics.AsEnumerable());
         }
 
         public Task<List<ContentRecommendation>> GetRecommendationsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
@@ -1122,6 +1375,7 @@ namespace MicroSaaS.IntegrationTests
                 new ContentRecommendation
                 {
                     Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
                     Title = "Aumentar frequência de postagem no Instagram",
                     Description = "Análise mostra que aumentar a frequência de postagem em 30% pode melhorar seu alcance",
                     Priority = RecommendationPriority.High,
@@ -1130,6 +1384,7 @@ namespace MicroSaaS.IntegrationTests
                 new ContentRecommendation
                 {
                     Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
                     Title = "Criar conteúdo em formato carrossel",
                     Description = "Conteúdos em formato carrossel têm engajamento 25% maior",
                     Priority = RecommendationPriority.Medium,

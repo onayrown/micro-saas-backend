@@ -21,12 +21,12 @@ public interface ISocialMediaIntegrationService
     // Gerenciamento de Posts
     Task PostContentAsync(ContentPost post);
     Task SchedulePostAsync(ContentPost post, DateTime scheduledTime);
-    Task CancelScheduledPostAsync(string postId);
+    Task CancelScheduledPostAsync(Guid postId);
     Task<IEnumerable<ContentPost>> GetScheduledPostsAsync(Guid creatorId);
     Task<IEnumerable<ContentPost>> GetPublishedPostsAsync(Guid creatorId);
 
     // Análise de Performance
-    Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(string postId);
+    Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(Guid postId);
     Task<IEnumerable<ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate);
     Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate);
     Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId);

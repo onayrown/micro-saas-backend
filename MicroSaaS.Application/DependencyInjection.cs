@@ -1,5 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Application.Services;
+using MicroSaaS.Application.Services.Recommendation;
+using MicroSaaS.Application.Services.Scheduler;
+using MicroSaaS.Application.Services.Dashboard;
 using MicroSaaS.Shared.Results;
 using System;
 using System.Collections.Generic;
@@ -11,55 +15,28 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // Adicionar ContentAnalysisService - implementação real estará na camada de Infra
-        services.AddScoped<IContentAnalysisService, FallbackContentAnalysisService>();
-        
+        // Adicionar ContentAnalysisService que agora está na camada correta (Application)
+        services.AddScoped<IContentAnalysisService, ContentAnalysisService>();
+
+        // Adicionar ContentPlanningService que agora está na camada correta (Application)
+        services.AddScoped<IContentPlanningService, ContentPlanningService>();
+
+        // Adicionar RecommendationService que agora está na camada correta (Application)
+        services.AddScoped<IRecommendationService, RecommendationService>();
+
+        // Adicionar SchedulerService que agora está na camada correta (Application)
+        services.AddSingleton<ISchedulerService, SchedulerService>();
+
+        // Adicionar DashboardService que agora está na camada correta (Application)
+        services.AddScoped<IDashboardService, DashboardService>();
+
+        // Adicionar registros para serviços cujas implementações estão na Application
+        services.AddScoped<IDashboardInsightsService, DashboardInsightsService>();
+        services.AddScoped<IPerformanceAnalysisService, PerformanceAnalysisService>();
+        services.AddScoped<IAuthService, AuthService>();
+
+        // Adicionar outros serviços específicos da Application aqui, se houver.
+
         return services;
-    }
-}
-
-/// <summary>
-/// Implementação temporária de fallback para quando a implementação real não está disponível
-/// </summary>
-public class FallbackContentAnalysisService : IContentAnalysisService
-{
-    public Task<Result<ContentInsightsDto>> GetContentInsightsAsync(Guid contentId)
-    {
-        return Task.FromResult(Result<ContentInsightsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<HighPerformancePatternDto>> AnalyzeHighPerformancePatternsAsync(Guid creatorId, int topPostsCount = 20)
-    {
-        return Task.FromResult(Result<HighPerformancePatternDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<AudienceSensitivityDto>> AnalyzeAudienceSensitivityAsync(Guid creatorId)
-    {
-        return Task.FromResult(Result<AudienceSensitivityDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-    
-    public Task<Result<ContentRecommendationsDto>> GenerateContentRecommendationsAsync(Guid creatorId)
-    {
-        return Task.FromResult(Result<ContentRecommendationsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<AudienceInsightsDto>> GetAudienceInsightsAsync(Guid creatorId, DateTime startDate, DateTime endDate)
-    {
-        return Task.FromResult(Result<AudienceInsightsDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<ContentComparisonDto>> CompareContentTypesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
-    {
-        return Task.FromResult(Result<ContentComparisonDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<ContentPredictionDto>> PredictContentPerformanceAsync(ContentPredictionRequestDto request)
-    {
-        return Task.FromResult(Result<ContentPredictionDto>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
-    }
-
-    public Task<Result<List<EngagementFactorDto>>> IdentifyEngagementFactorsAsync(Guid creatorId)
-    {
-        return Task.FromResult(Result<List<EngagementFactorDto>>.Fail("Esta é uma implementação de fallback. Use a implementação real na camada Infrastructure."));
     }
 } 

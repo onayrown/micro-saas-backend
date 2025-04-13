@@ -26,363 +26,373 @@ namespace MicroSaaS.IntegrationTests.Utils
         }
 
         [HttpGet("insights/{creatorId}")]
-        public async Task<ActionResult<DashboardInsights>> GetLatestInsights(Guid creatorId)
+        public async Task<ActionResult<DashboardInsights>> GetLatestInsights(string creatorId)
         {
             _logger.LogInformation("TestDashboardController.GetLatestInsights: Buscando insights para criador {CreatorId}", creatorId);
             
-            // Verificação do token de autenticação
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (authHeader.Contains("invalid-token"))
+            // Verificar se o ID do criador é válido
+            if (string.IsNullOrEmpty(creatorId) || !Guid.TryParse(creatorId, out Guid creatorGuid) || creatorGuid == Guid.Empty)
             {
-                // Usa StatusCode diretamente para evitar dependência de configuração de autenticação
-                return StatusCode(403);
+                return BadRequest("ID do criador inválido");
             }
+
+            // Verificar se o criador existe (normalmente isso seria feito pelo serviço)
+            var creatorExists = _insights.Any(i => i.CreatorId.ToString() == creatorId);
             
-            var insight = _insights.FirstOrDefault(i => i.CreatorId == creatorId);
+            var insight = _insights.FirstOrDefault(i => i.CreatorId.ToString() == creatorId);
+            
             if (insight == null)
             {
-                // Criar insights de exemplo se não existirem
-                var now = DateTime.UtcNow;
-                var startDate = now.AddDays(-30);
-                var endDate = now;
-                
+                // Criar insights de exemplo
                 insight = new DashboardInsights
                 {
                     Id = Guid.NewGuid(),
-                    CreatorId = creatorId,
-                    GeneratedDate = now,
-                    Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram, SocialMediaPlatform.YouTube },
-                    PeriodStart = startDate,
-                    PeriodEnd = endDate,
-                    GrowthRate = 3.5m,
-                    TotalRevenueInPeriod = 2500.00m,
-                    ComparisonWithPreviousPeriod = 12.5m,
-                    TopContentInsights = new List<ContentInsight>
+                    CreatorId = Guid.Parse(creatorId),
+                    PlatformsPerformance = new List<PlatformInsight>
                     {
-                        new ContentInsight
+                        new PlatformInsight
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Vídeo de tutorial tem alto engajamento",
-                            Type = InsightType.HighEngagement,
-                            Description = "Seus tutoriais estão gerando 2x mais engajamento que outros conteúdos",
-                            RecommendedAction = "Postar mais vídeos tutoriais"
+                            Platform = SocialMediaPlatform.Instagram,
+                            FollowerCount = 12500,
+                            FollowerGrowth = 340,
+                            EngagementRate = 4.7m,
+                            ReachGrowth = 8.2m,
+                            TopPerformingContent = "Foto de lifestyle mostrando setup de gravação"
                         },
-                        new ContentInsight
+                        new PlatformInsight
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Posts de dicas rápidas muito compartilhados",
-                            Type = InsightType.Performance,
-                            Description = "Conteúdos breves e diretos têm taxa de compartilhamento 40% maior",
-                            RecommendedAction = "Aumentar frequência de publicações de dicas"
-                        },
-                        new ContentInsight
-                        {
-                            Id = Guid.NewGuid(),
-                            Title = "Análises de tendências geram discussão",
-                            Type = InsightType.Engagement,
-                            Description = "Seus posts sobre análise de tendências geram 50% mais comentários",
-                            RecommendedAction = "Criar uma série de conteúdo sobre análise de tendências"
+                            Platform = SocialMediaPlatform.YouTube,
+                            FollowerCount = 25800,
+                            FollowerGrowth = 520,
+                            EngagementRate = 5.3m,
+                            ReachGrowth = 12.1m,
+                            TopPerformingContent = "Tutorial de edição de vídeo em 10 minutos"
                         }
                     },
-                    Recommendations = new List<ContentRecommendation>
+                    TotalRevenue = 2850.00m,
+                    RevenueGrowth = 15.5m,
+                    PostingConsistency = 85,
+                    AudionceDemographics = new AudienceDemographics
                     {
-                        new ContentRecommendation
+                        AgeGroups = new Dictionary<string, decimal>
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Aumentar frequência no Instagram",
-                            Description = "Aumente a frequência de publicações no Instagram para melhorar o alcance",
-                            Priority = RecommendationPriority.High,
-                            Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
+                            { "18-24", 32.5m },
+                            { "25-34", 45.8m },
+                            { "35-44", 15.2m },
+                            { "45+", 6.5m }
                         },
-                        new ContentRecommendation
+                        TopCountries = new Dictionary<string, decimal>
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Criar série de tutoriais",
-                            Description = "Desenvolva uma série de tutoriais conectados para aumentar retenção",
-                            Priority = RecommendationPriority.Medium,
-                            Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
+                            { "Brasil", 72.8m },
+                            { "Portugal", 12.5m },
+                            { "Estados Unidos", 6.3m },
+                            { "Outros", 8.4m }
                         },
-                        new ContentRecommendation
+                        Gender = new Dictionary<string, decimal>
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Experimente vídeos mais curtos no TikTok",
-                            Description = "Vídeos entre 15-30 segundos têm melhor desempenho nesta plataforma",
-                            Priority = RecommendationPriority.Medium,
-                            Type = MicroSaaS.Shared.Enums.RecommendationType.Platform
+                            { "Feminino", 68.2m },
+                            { "Masculino", 31.8m }
                         }
                     },
-                    BestTimeToPost = new List<PostTimeRecommendation>
+                    ContentTypePerformance = new Dictionary<string, decimal>
                     {
-                        new PostTimeRecommendation
+                        { "Tutorial", 9.3m },
+                        { "Review", 7.8m },
+                        { "Vlog", 6.5m },
+                        { "Lifestyle", 8.2m }
+                    },
+                    KeyInsights = new List<string>
+                    {
+                        "Seus tutoriais têm 25% mais engajamento que outros formatos",
+                        "Publicações às quintas-feiras têm melhor desempenho",
+                        "Conteúdos sobre produtividade geram mais conversões"
+                    },
+                    ActionRecommendations = new List<string>
+                    {
+                        "Aumente a frequência de tutoriais para 2x por semana",
+                        "Experimente lives aos domingos às 20h",
+                        "Crie uma série sobre ferramentas de produtividade"
+                    },
+                    GrowthOpportunities = new List<GrowthOpportunity>
+                    {
+                        new GrowthOpportunity
                         {
-                            DayOfWeek = DayOfWeek.Tuesday,
-                            TimeOfDay = new TimeSpan(18, 0, 0),
-                            EngagementScore = 9.5
+                            Title = "Parcerias com marcas de tecnologia",
+                            Description = "Existe potencial para parcerias com 3 marcas baseado no seu perfil de audiência",
+                            PotentialRevenueIncrease = 1500.00m
                         },
-                        new PostTimeRecommendation
+                        new GrowthOpportunity
                         {
-                            DayOfWeek = DayOfWeek.Sunday,
-                            TimeOfDay = new TimeSpan(12, 0, 0),
-                            EngagementScore = 8.7
+                            Title = "Criação de curso online",
+                            Description = "Um mini-curso sobre edição tem potencial baseado nas suas métricas de engajamento",
+                            PotentialRevenueIncrease = 3200.00m
                         }
                     },
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    Date = now.Date,
-                    TotalFollowers = 5000,
-                    TotalPosts = 120,
-                    TotalViews = 50000,
-                    TotalLikes = 15000,
-                    TotalComments = 3000,
-                    TotalShares = 1800,
-                    AverageEngagementRate = 4.5m,
-                    TotalRevenue = 2800.00m,
-                    Type = InsightType.Normal,
-                    Insights = new List<ContentInsight>
+                    CompetitorBenchmark = new List<CompetitorComparison>
                     {
-                        new ContentInsight
+                        new CompetitorComparison
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "Seguidores crescendo mais rápido no Instagram",
-                            Type = InsightType.Growth,
-                            Description = "Crescimento de seguidores no Instagram é 3x maior que no YouTube",
-                            RecommendedAction = "Focar esforços no Instagram para acelerar crescimento"
+                            Metric = "Engajamento",
+                            YourValue = 4.8m,
+                            AverageInNiche = 3.2m,
+                            Difference = 1.6m,
+                            IsPositive = true
                         },
-                        new ContentInsight
+                        new CompetitorComparison
                         {
-                            Id = Guid.NewGuid(),
-                            Title = "TikTok mostra potencial inexplorado",
-                            Type = InsightType.Trend,
-                            Description = "Taxa de conversão no TikTok é promissora apesar do menor volume",
-                            RecommendedAction = "Aumentar presença no TikTok com conteúdo nativo da plataforma"
+                            Metric = "Frequência de postagem",
+                            YourValue = 3.5m,
+                            AverageInNiche = 4.7m,
+                            Difference = -1.2m,
+                            IsPositive = false
                         }
-                    }
+                    },
+                    AnalysisPeriod = new DateRange
+                    {
+                        StartDate = DateTime.UtcNow.AddDays(-30),
+                        EndDate = DateTime.UtcNow
+                    },
+                    GeneratedAt = DateTime.UtcNow
                 };
+                
                 _insights.Add(insight);
             }
-
+            
             return Ok(insight);
         }
 
         [HttpGet("insights/{creatorId}/generate")]
         public async Task<ActionResult<DashboardInsights>> GenerateInsights(
-            Guid creatorId, 
+            string creatorId, 
             [FromQuery] DateTime? startDate = null, 
             [FromQuery] DateTime? endDate = null)
         {
             _logger.LogInformation("TestDashboardController.GenerateInsights: Gerando insights para criador {CreatorId}", creatorId);
             
-            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-            var end = endDate ?? DateTime.UtcNow;
-            var now = DateTime.UtcNow;
+            // Verificar se o ID do criador é válido
+            if (string.IsNullOrEmpty(creatorId) || !Guid.TryParse(creatorId, out Guid creatorGuid) || creatorGuid == Guid.Empty)
+            {
+                return BadRequest("ID do criador inválido");
+            }
+
+            // Verificar se o criador existe (normalmente isso seria feito pelo serviço)
+            var creatorExists = _insights.Any(i => i.CreatorId.ToString() == creatorId);
             
+            // Remover insights existentes
+            var existingInsight = _insights.FirstOrDefault(i => i.CreatorId.ToString() == creatorId);
+            if (existingInsight != null)
+            {
+                _insights.Remove(existingInsight);
+            }
+            
+            // Criar insights de exemplo
             var insight = new DashboardInsights
             {
                 Id = Guid.NewGuid(),
-                CreatorId = creatorId,
-                GeneratedDate = now,
-                Platforms = new List<SocialMediaPlatform> { SocialMediaPlatform.Instagram, SocialMediaPlatform.YouTube, SocialMediaPlatform.TikTok },
-                PeriodStart = start,
-                PeriodEnd = end,
-                GrowthRate = 4.2m,
-                TotalRevenueInPeriod = 2800.00m,
-                ComparisonWithPreviousPeriod = 15.2m,
-                TopContentInsights = new List<ContentInsight>
+                CreatorId = Guid.Parse(creatorId),
+                PlatformsPerformance = new List<PlatformInsight>
                 {
-                    new ContentInsight
+                    new PlatformInsight
                     {
-                        Id = Guid.NewGuid(),
-                        Title = "Vídeo de tutorial tem alto engajamento",
-                        Type = InsightType.HighEngagement,
-                        Description = "Seus tutoriais estão gerando 2x mais engajamento que outros conteúdos",
-                        RecommendedAction = "Postar mais vídeos tutoriais"
+                        Platform = SocialMediaPlatform.Instagram,
+                        FollowerCount = 12500,
+                        FollowerGrowth = 340,
+                        EngagementRate = 4.7m,
+                        ReachGrowth = 8.2m,
+                        TopPerformingContent = "Foto de lifestyle mostrando setup de gravação"
                     },
-                    new ContentInsight
+                    new PlatformInsight
                     {
-                        Id = Guid.NewGuid(),
-                        Title = "Posts de dicas rápidas muito compartilhados",
-                        Type = InsightType.Performance,
-                        Description = "Conteúdos breves e diretos têm taxa de compartilhamento 40% maior",
-                        RecommendedAction = "Aumentar frequência de publicações de dicas"
-                    },
-                    new ContentInsight
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Análises de tendências geram discussão",
-                        Type = InsightType.Engagement,
-                        Description = "Seus posts sobre análise de tendências geram 50% mais comentários",
-                        RecommendedAction = "Criar uma série de conteúdo sobre análise de tendências"
+                        Platform = SocialMediaPlatform.TikTok,
+                        FollowerCount = 8200,
+                        FollowerGrowth = 620,
+                        EngagementRate = 6.1m,
+                        ReachGrowth = 15.3m,
+                        TopPerformingContent = "Dicas rápidas de produtividade em 60 segundos"
                     }
                 },
-                Recommendations = new List<ContentRecommendation>
-                {
-                    new ContentRecommendation
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Aumentar frequência no Instagram",
-                        Description = "Aumente a frequência de publicações no Instagram para melhorar o alcance",
-                        Priority = RecommendationPriority.High,
-                        Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
-                    },
-                    new ContentRecommendation
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Criar série de tutoriais",
-                        Description = "Desenvolva uma série de tutoriais conectados para aumentar retenção",
-                        Priority = RecommendationPriority.Medium,
-                        Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
-                    },
-                    new ContentRecommendation
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = "Experimente vídeos mais curtos no TikTok",
-                        Description = "Vídeos entre 15-30 segundos têm melhor desempenho nesta plataforma",
-                        Priority = RecommendationPriority.Medium,
-                        Type = MicroSaaS.Shared.Enums.RecommendationType.Platform
-                    }
-                },
-                BestTimeToPost = new List<PostTimeRecommendation>
-                {
-                    new PostTimeRecommendation
-                    {
-                        DayOfWeek = DayOfWeek.Tuesday,
-                        TimeOfDay = new TimeSpan(18, 0, 0),
-                        EngagementScore = 9.5
-                    },
-                    new PostTimeRecommendation
-                    {
-                        DayOfWeek = DayOfWeek.Sunday,
-                        TimeOfDay = new TimeSpan(12, 0, 0),
-                        EngagementScore = 8.7
-                    },
-                    new PostTimeRecommendation
-                    {
-                        DayOfWeek = DayOfWeek.Thursday,
-                        TimeOfDay = new TimeSpan(20, 0, 0),
-                        EngagementScore = 8.2
-                    }
-                },
-                CreatedAt = now,
-                UpdatedAt = now,
-                Date = now.Date,
-                TotalFollowers = 5500,
-                TotalPosts = 140,
-                TotalViews = 75000,
-                TotalLikes = 22000,
-                TotalComments = 4500,
-                TotalShares = 2200,
-                AverageEngagementRate = 4.8m,
                 TotalRevenue = 3200.00m,
-                Type = InsightType.Normal,
-                Insights = new List<ContentInsight>
+                RevenueGrowth = 17.8m,
+                PostingConsistency = 90,
+                AudionceDemographics = new AudienceDemographics
                 {
-                    new ContentInsight
+                    AgeGroups = new Dictionary<string, decimal>
                     {
-                        Id = Guid.NewGuid(),
-                        Title = "Seguidores crescendo mais rápido no Instagram",
-                        Type = InsightType.Growth,
-                        Description = "Crescimento de seguidores no Instagram é 3x maior que no YouTube",
-                        RecommendedAction = "Focar esforços no Instagram para acelerar crescimento"
+                        { "18-24", 35.2m },
+                        { "25-34", 42.5m },
+                        { "35-44", 16.8m },
+                        { "45+", 5.5m }
                     },
-                    new ContentInsight
+                    TopCountries = new Dictionary<string, decimal>
                     {
-                        Id = Guid.NewGuid(),
-                        Title = "TikTok mostra potencial inexplorado",
-                        Type = InsightType.Trend,
-                        Description = "Taxa de conversão no TikTok é promissora apesar do menor volume",
-                        RecommendedAction = "Aumentar presença no TikTok com conteúdo nativo da plataforma"
+                        { "Brasil", 75.3m },
+                        { "Portugal", 10.2m },
+                        { "Estados Unidos", 7.1m },
+                        { "Outros", 7.4m }
+                    },
+                    Gender = new Dictionary<string, decimal>
+                    {
+                        { "Feminino", 65.7m },
+                        { "Masculino", 34.3m }
                     }
-                }
+                },
+                ContentTypePerformance = new Dictionary<string, decimal>
+                {
+                    { "Tutorial", 9.5m },
+                    { "Review", 8.1m },
+                    { "Vlog", 6.7m },
+                    { "Lifestyle", 8.5m }
+                },
+                KeyInsights = new List<string>
+                {
+                    "Conteúdo no TikTok teve crescimento 35% maior que outras plataformas",
+                    "Vídeos curtos de 60 segundos têm melhor taxa de finalização",
+                    "Público de 25-34 anos tem maior probabilidade de conversão para compras"
+                },
+                ActionRecommendations = new List<string>
+                {
+                    "Foque em vídeos curtos para crescimento no TikTok",
+                    "Desenvolva uma oferta específica para público de 25-34 anos",
+                    "Aumente frequência de colaborações com outras contas"
+                },
+                GrowthOpportunities = new List<GrowthOpportunity>
+                {
+                    new GrowthOpportunity
+                    {
+                        Title = "Criação de e-book sobre produtividade",
+                        Description = "Sua audiência demonstra interesse em conteúdo educacional sobre este tema",
+                        PotentialRevenueIncrease = 2200.00m
+                    },
+                    new GrowthOpportunity
+                    {
+                        Title = "Membros premium com conteúdo exclusivo",
+                        Description = "12% dos seguidores engajam profundamente e têm potencial para assinatura",
+                        PotentialRevenueIncrease = 4800.00m
+                    }
+                },
+                CompetitorBenchmark = new List<CompetitorComparison>
+                {
+                    new CompetitorComparison
+                    {
+                        Metric = "Crescimento de seguidores",
+                        YourValue = 7.5m,
+                        AverageInNiche = 4.3m,
+                        Difference = 3.2m,
+                        IsPositive = true
+                    },
+                    new CompetitorComparison
+                    {
+                        Metric = "Conversão de vendas",
+                        YourValue = 2.1m,
+                        AverageInNiche = 1.8m,
+                        Difference = 0.3m,
+                        IsPositive = true
+                    }
+                },
+                AnalysisPeriod = new DateRange
+                {
+                    StartDate = startDate ?? DateTime.UtcNow.AddDays(-30),
+                    EndDate = endDate ?? DateTime.UtcNow
+                },
+                GeneratedAt = DateTime.UtcNow
             };
             
             _insights.Add(insight);
+            
             return Ok(insight);
         }
 
         [HttpGet("metrics/{creatorId}")]
         public async Task<ActionResult<IEnumerable<PerformanceMetrics>>> GetMetrics(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] SocialMediaPlatform? platform = null)
         {
             _logger.LogInformation("TestDashboardController.GetMetrics: Buscando métricas para criador {CreatorId}", creatorId);
             
+            if (string.IsNullOrEmpty(creatorId) || !Guid.TryParse(creatorId, out Guid creatorGuid))
+            {
+                return BadRequest("ID do criador inválido");
+            }
+
             if (!_metrics.Any(m => m.CreatorId == creatorId))
             {
                 // Criar métricas de exemplo
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 30; i++)
                 {
-                    var date = DateTime.UtcNow.Date.AddDays(-i);
+                    var date = DateTime.UtcNow.AddDays(-i);
+                    
                     _metrics.Add(new PerformanceMetrics
                     {
-                        Id = Guid.NewGuid(),
+                        Id = Guid.NewGuid().ToString(),
                         CreatorId = creatorId,
                         Date = date,
-                        Platform = i % 2 == 0 ? SocialMediaPlatform.Instagram : SocialMediaPlatform.YouTube,
-                        Followers = 5000 + (i * 50),
-                        FollowersGrowth = i * 10,
-                        TotalViews = 1500 + (i * 100),
-                        TotalLikes = 750 + (i * 50),
-                        TotalComments = 120 + (i * 10),
-                        TotalShares = 60 + (i * 5),
-                        EngagementRate = 4.8m - (i * 0.1m),
-                        EstimatedRevenue = 350.00m + (i * 25.00m),
-                        CreatedAt = date,
-                        UpdatedAt = date
+                        Platform = i % 3 == 0 ? SocialMediaPlatform.Instagram : (i % 3 == 1 ? SocialMediaPlatform.YouTube : SocialMediaPlatform.TikTok),
+                        FollowerCount = 10000 + (i * 100),
+                        NewFollowers = 100 - (i % 30),
+                        Views = 5000 - (i * 50),
+                        Likes = 1000 - (i * 15),
+                        Comments = 200 - (i * 3),
+                        Shares = 150 - (i * 2),
+                        Saves = 80 - i,
+                        EngagementRate = 4.5m - (i * 0.05m),
+                        Reach = 8000 - (i * 80),
+                        Impressions = 12000 - (i * 100),
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
             }
             
-            // Filtrando
-            var result = _metrics.Where(m => m.CreatorId == creatorId);
-            
-            if (startDate.HasValue)
-                result = result.Where(m => m.Date >= startDate.Value);
+            // Filtrar por período e plataforma
+            var filteredMetrics = _metrics
+                .Where(m => m.CreatorId == creatorId)
+                .Where(m => !startDate.HasValue || m.Date >= startDate.Value)
+                .Where(m => !endDate.HasValue || m.Date <= endDate.Value)
+                .Where(m => !platform.HasValue || m.Platform == platform.Value)
+                .OrderByDescending(m => m.Date)
+                .ToList();
                 
-            if (endDate.HasValue)
-                result = result.Where(m => m.Date <= endDate.Value);
-                
-            if (platform.HasValue)
-                result = result.Where(m => m.Platform == platform.Value);
-            
-            return Ok(result.ToList());
+            return Ok(filteredMetrics);
         }
 
         [HttpGet("metrics/{creatorId}/daily")]
         public async Task<ActionResult<PerformanceMetrics>> GetDailyMetrics(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] DateTime? date = null,
             [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
         {
             _logger.LogInformation("TestDashboardController.GetDailyMetrics: Buscando métricas diárias para criador {CreatorId}", creatorId);
             
             var targetDate = date ?? DateTime.UtcNow.Date;
+            
             var metric = _metrics.FirstOrDefault(m => 
                 m.CreatorId == creatorId && 
-                m.Date.Date == targetDate.Date && 
+                m.Date.Date == targetDate.Date &&
                 m.Platform == platform);
-
+                
             if (metric == null)
             {
-                // Criar métrica de exemplo se não existir
+                // Criar métricas de exemplo
                 metric = new PerformanceMetrics
                 {
-                    Id = Guid.NewGuid(),
+                    Id = Guid.NewGuid().ToString(),
                     CreatorId = creatorId,
                     Date = targetDate,
                     Platform = platform,
-                    TotalViews = 1500,
-                    TotalLikes = 750,
-                    TotalComments = 120,
-                    TotalShares = 60,
-                    Followers = 5500,
-                    EngagementRate = 4.8m,
-                    EstimatedRevenue = 350.00m,
-                    TopPerformingContentIds = new List<string> { "post1", "post2" },
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    FollowerCount = 10000,
+                    NewFollowers = 85,
+                    Views = 4800,
+                    Likes = 950,
+                    Comments = 180,
+                    Shares = 145,
+                    Saves = 75,
+                    EngagementRate = 4.3m,
+                    Reach = 7850,
+                    Impressions = 11800,
+                    CreatedAt = DateTime.UtcNow
                 };
+                
                 _metrics.Add(metric);
             }
 
@@ -391,12 +401,13 @@ namespace MicroSaaS.IntegrationTests.Utils
 
         [HttpGet("content/{creatorId}/top")]
         public async Task<ActionResult<List<ContentPost>>> GetTopContent(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] int limit = 5)
         {
             _logger.LogInformation("TestDashboardController.GetTopContent: Buscando top conteúdos para criador {CreatorId}", creatorId);
             
-            if (!_contentPosts.Any(p => p.CreatorId == creatorId))
+            var guidCreatorId = Guid.Parse(creatorId);
+            if (!_contentPosts.Any(p => p.CreatorId == guidCreatorId))
             {
                 // Criar posts de exemplo
                 for (int i = 0; i < 10; i++)
@@ -404,7 +415,7 @@ namespace MicroSaaS.IntegrationTests.Utils
                     _contentPosts.Add(new ContentPost
                     {
                         Id = Guid.NewGuid(),
-                        CreatorId = creatorId,
+                        CreatorId = guidCreatorId,
                         Title = $"Post {i + 1} - Conteúdo de exemplo",
                         Content = $"Este é o conteúdo do post de exemplo {i + 1}",
                         MediaUrl = $"https://example.com/media/{i + 1}",
@@ -423,7 +434,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             }
             
             var topPosts = _contentPosts
-                .Where(p => p.CreatorId == creatorId)
+                .Where(p => p.CreatorId == guidCreatorId)
                 .OrderByDescending(p => p.EngagementRate)
                 .Take(limit)
                 .ToList();
@@ -433,11 +444,16 @@ namespace MicroSaaS.IntegrationTests.Utils
 
         [HttpGet("recommendations/{creatorId}/posting-times")]
         public async Task<ActionResult<List<PostTimeRecommendation>>> GetBestTimeToPost(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
         {
             _logger.LogInformation("TestDashboardController.GetBestTimeToPost: Buscando melhores horários para criador {CreatorId}", creatorId);
             
+            if (string.IsNullOrEmpty(creatorId) || !Guid.TryParse(creatorId, out _))
+            {
+                return BadRequest("ID do criador inválido");
+            }
+
             var recommendations = new List<PostTimeRecommendation>
             {
                 new PostTimeRecommendation
@@ -465,7 +481,7 @@ namespace MicroSaaS.IntegrationTests.Utils
 
         [HttpGet("analytics/{creatorId}/engagement")]
         public async Task<ActionResult<decimal>> GetAverageEngagementRate(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram)
         {
             _logger.LogInformation("TestDashboardController.GetAverageEngagementRate: Calculando taxa de engajamento para criador {CreatorId}", creatorId);
@@ -477,7 +493,7 @@ namespace MicroSaaS.IntegrationTests.Utils
 
         [HttpGet("analytics/{creatorId}/revenue-growth")]
         public async Task<ActionResult<decimal>> GetRevenueGrowth(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null)
         {
@@ -490,7 +506,7 @@ namespace MicroSaaS.IntegrationTests.Utils
 
         [HttpGet("analytics/{creatorId}/follower-growth")]
         public async Task<ActionResult<int>> GetFollowerGrowth(
-            Guid creatorId,
+            string creatorId,
             [FromQuery] SocialMediaPlatform platform = SocialMediaPlatform.Instagram,
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null)
@@ -507,9 +523,9 @@ namespace MicroSaaS.IntegrationTests.Utils
         {
             _logger.LogInformation("TestDashboardController.AddMetrics: Adicionando métricas para criador {CreatorId}", metrics.CreatorId);
             
-            if (metrics.Id == Guid.Empty)
+            if (string.IsNullOrEmpty(metrics.Id) || metrics.Id == Guid.Empty.ToString())
             {
-                metrics.Id = Guid.NewGuid();
+                metrics.Id = Guid.NewGuid().ToString();
             }
             
             _metrics.Add(metrics);
@@ -529,7 +545,7 @@ namespace MicroSaaS.IntegrationTests.Utils
             
             _contentPerformances.Add(performance);
             
-            return Created($"/api/Dashboard/content/{performance.CreatorId}/top", performance);
+            return Created($"/api/Dashboard/content/{performance.CreatorId.ToString()}/top", performance);
         }
     }
 } 

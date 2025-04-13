@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Database;
+using MicroSaaS.Infrastructure.MongoDB;
 using MicroSaaS.Infrastructure.Settings;
 using MongoDB.Driver;
 using System;
@@ -67,12 +67,13 @@ public class RevenueService : IRevenueService
 
     public async Task<decimal> GetTotalRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.And(
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Gte(p => p.Date, startDate),
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.And(
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Gte(p => p.Date, startDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Lte(p => p.Date, endDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.CreatorId, creatorId)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
             
@@ -212,12 +213,13 @@ public class RevenueService : IRevenueService
 
     public async Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.And(
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Gte(p => p.Date, startDate),
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.And(
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Gte(p => p.Date, startDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Lte(p => p.Date, endDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.CreatorId, creatorId)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
             
@@ -226,68 +228,72 @@ public class RevenueService : IRevenueService
 
     public async Task<Application.Interfaces.Services.RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.And(
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Gte(p => p.Date, startDate),
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.And(
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Gte(p => p.Date, startDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Lte(p => p.Date, endDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.CreatorId, creatorId)
         );
 
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
             
         var totalRevenue = performances.Sum(p => p.EstimatedRevenue);
         var totalViews = performances.Sum(p => p.Views);
         
+        var days = (endDate - startDate).TotalDays;
+        var estimatedMonthly = (days > 0) ? (totalRevenue / (decimal)days * 30m) : 0m;
+        
         return new Application.Interfaces.Services.RevenueSummary
         {
             TotalRevenue = totalRevenue,
-            EstimatedMonthlyRevenue = totalRevenue * 30 / (endDate - startDate).Days,
-            AverageRevenuePerView = totalViews > 0 ? totalRevenue / totalViews : 0
+            EstimatedMonthlyRevenue = estimatedMonthly,
+            AverageRevenuePerView = totalViews > 0 ? totalRevenue / (decimal)totalViews : 0
         };
     }
 
     public async Task<List<Application.Interfaces.Services.PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.And(
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Gte(p => p.Date, startDate),
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.And(
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Gte(p => p.Date, startDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Lte(p => p.Date, endDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.CreatorId, creatorId)
         );
-
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
-            
+
         return performances
             .GroupBy(p => p.Platform)
             .Select(g => new Application.Interfaces.Services.PlatformRevenue
             {
                 Platform = g.Key.ToString(),
                 Revenue = g.Sum(p => p.EstimatedRevenue),
-                Views = g.Sum(p => p.Views)
-            })
-            .ToList();
+                Views = (int)g.Sum(p => p.Views)
+            }).ToList();
     }
 
     public async Task<List<Application.Interfaces.Services.DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.And(
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Gte(p => p.Date, startDate),
-            Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Lte(p => p.Date, endDate)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.And(
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Gte(p => p.Date, startDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Lte(p => p.Date, endDate),
+            Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.CreatorId, creatorId)
         );
-
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
-            
+
         return performances
             .GroupBy(p => p.Date.Date)
             .Select(g => new Application.Interfaces.Services.DailyRevenue
             {
                 Date = g.Key,
-                Revenue = g.Sum(p => p.EstimatedRevenue),
-                Views = g.Sum(p => p.Views),
-                Amount = g.Sum(p => p.EstimatedRevenue)
+                Revenue = g.Sum(p => p.EstimatedRevenue)
             })
+            .OrderBy(d => d.Date)
             .ToList();
     }
 
@@ -361,59 +367,31 @@ public class RevenueService : IRevenueService
 
     public async Task<decimal> CalculateContentRevenueAsync(Guid contentId)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq("PostId", contentId.ToString());
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
+        var filter = Builders<MicroSaaS.Domain.Entities.ContentPerformance>.Filter.Eq(p => p.PostId, contentId);
+        var performances = await _context.PerformanceMetrics
             .Find(filter)
             .ToListAsync();
-            
         return performances.Sum(p => p.EstimatedRevenue);
     }
 
     public async Task<decimal> CalculateCreatorRevenueAsync(Guid creatorId)
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Eq(x => x.CreatorId, creatorId);
-        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>(CollectionNames.ContentPosts)
-            .Find(filter)
-            .ToListAsync();
-            
-        var postIds = posts.Select(p => p.Id).ToList();
-        
-        var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.In(x => x.PostId, postIds);
-        var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
-            .Find(performanceFilter)
-            .ToListAsync();
-            
-        return performances.Sum(p => p.EstimatedRevenue);
+        var endDate = DateTime.UtcNow;
+        var startDate = DateTime.MinValue;
+        return await GetTotalRevenueAsync(creatorId, startDate, endDate);
     }
 
     public async Task RefreshRevenueMetricsAsync()
     {
-        var filter = Builders<MicroSaaS.Infrastructure.Entities.ContentPostEntity>.Filter.Empty;
-        var posts = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPostEntity>(CollectionNames.ContentPosts)
-            .Find(filter)
-            .ToListAsync();
-            
-        foreach (var post in posts)
+        var creators = await _creatorRepository.GetAllAsync();
+        foreach (var creator in creators)
         {
-            var performanceFilter = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Filter.Eq(p => p.PostId, post.Id);
-            var performances = await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
-                .Find(performanceFilter)
-                .ToListAsync();
-                
-            foreach (var performance in performances)
+            if (creator.AdSenseSettings?.IsConnected == true && !string.IsNullOrEmpty(creator.AdSenseSettings.RefreshToken))
             {
-                // Em uma implementação real, você atualizaria as métricas de receita
-                // Por enquanto, apenas atualizamos o timestamp
-                performance.CollectedAt = DateTime.UtcNow;
-                var update = Builders<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>.Update
-                    .Set(p => p.CollectedAt, DateTime.UtcNow);
-                    
-                await _context.GetCollection<MicroSaaS.Infrastructure.Entities.ContentPerformanceEntity>(CollectionNames.ContentPerformances)
-                    .UpdateOneAsync(
-                        p => p.Id == performance.Id,
-                        update);
+                 await RefreshAdSenseTokenAsync(creator);
             }
         }
+        await Task.CompletedTask;
     }
 
     private async Task RefreshAdSenseTokenAsync(ContentCreator creator)

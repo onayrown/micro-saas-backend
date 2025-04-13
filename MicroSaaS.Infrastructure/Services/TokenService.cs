@@ -32,7 +32,8 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Name, user.Username)
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Role, user.Role ?? "user")
         };
 
         var token = new JwtSecurityToken(
@@ -105,12 +106,19 @@ public class TokenService : ITokenService
         // Em um ambiente real, você adicionaria o token a uma lista negra
     }
 
-    public Guid GetUserIdFromToken(string token)
+    public string GetUserIdFromToken(string token)
     {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var jwtToken = tokenHandler.ReadJwtToken(token);
-        var userId = jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
-        return Guid.Parse(userId);
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+            var userId = jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+            return userId;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public string GetUserEmailFromToken(string token)
@@ -120,14 +128,13 @@ public class TokenService : ITokenService
         return jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
     }
 
-    public bool ValidateToken(string token)
+    public ClaimsPrincipal ValidateToken(string token)
     {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
         try
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
-
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
+            var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -136,13 +143,17 @@ public class TokenService : ITokenService
                 ValidateAudience = true,
                 ValidAudience = _jwtSettings.Audience,
                 ClockSkew = TimeSpan.Zero
-            }, out SecurityToken validatedToken);
-
-            return true;
+            };
+            
+            return tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
         }
-        catch
+        catch (SecurityTokenExpiredException)
         {
-            return false;
+            return null; // Retorna null para tokens expirados em vez de relançar a exceção
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 } 

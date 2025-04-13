@@ -15,8 +15,10 @@ namespace MicroSaaS.IntegrationTests
     {
         private readonly HttpClient _client;
         private readonly string _validToken = "valid-token";
-        private readonly Guid _existingCreatorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        private readonly Guid _nonExistingCreatorId = Guid.Parse("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB");
+        
+        // IDs fixos consistentes com os definidos em TestSocialMediaAccountController
+        private readonly Guid _existingCreatorId = Guid.Parse("11111111-1111-1111-1111-111111111111"); // CREATOR_ID_1
+        private readonly Guid _nonExistingCreatorId = Guid.Parse("BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"); // NON_EXISTENT_CREATOR_ID
         private readonly JsonSerializerOptions _jsonOptions;
 
         public SocialMediaAccountTest_New(SimplifiedTestFactory factory)

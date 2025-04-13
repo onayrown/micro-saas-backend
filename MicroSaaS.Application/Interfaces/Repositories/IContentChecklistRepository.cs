@@ -1,5 +1,8 @@
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MicroSaaS.Application.Interfaces.Repositories;
 

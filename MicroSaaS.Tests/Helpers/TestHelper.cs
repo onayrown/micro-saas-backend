@@ -2,55 +2,92 @@ using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
+using MongoDB.Bson; // Para ObjectId
 
 namespace MicroSaaS.Tests.Helpers;
 
 public static class TestHelper
 {
-    public static User CreateTestUser(string username = "testuser", string email = "test@example.com")
+    public static User CreateTestUser(string id = null, string username = "testuser", string email = "test@example.com")
     {
+        Guid userId;
+        
+        if (id != null && Guid.TryParse(id, out Guid parsedId))
+        {
+            userId = parsedId;
+        }
+        else
+        {
+            userId = Guid.NewGuid();
+        }
+        
         return new User
         {
-            Id = Guid.NewGuid(),
+            Id = userId,
             Username = username,
+            Name = "Test User",
             Email = email,
-            PasswordHash = "hashedpassword",
+            PasswordHash = "hashedpassword", // Senha hash fictícia
+            Role = "user",
             IsActive = true,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow.AddDays(-7),
             UpdatedAt = DateTime.UtcNow
         };
     }
 
-    public static ContentCreator CreateTestContentCreator(Guid? userId = null)
+    public static ContentCreator CreateTestContentCreator(string? userId = null)
     {
-        userId ??= Guid.NewGuid();
-        
+        // Correção CS0019: Converter string? para Guid
+        Guid creatorGuid;
+        if (userId != null && Guid.TryParse(userId, out Guid parsedGuid))
+        {
+            creatorGuid = parsedGuid;
+        }
+        else
+        {
+            creatorGuid = Guid.NewGuid(); // Gerar novo Guid se userId for nulo ou inválido
+        }
+
         return new ContentCreator
         {
-            Id = Guid.NewGuid(),
-            UserId = userId.Value,
-            Name = "Test Creator",
-            Username = "testcreator",
+            Id = Guid.NewGuid(), 
+            UserId = creatorGuid, // Atribuir o Guid corrigido
+            Name = "Creator Name",
             Email = "creator@example.com",
-            Bio = "Test bio",
+            Username = "creator_username",
+            Bio = "Creator Bio",
+            ProfileImageUrl = "http://example.com/profile.jpg",
+            WebsiteUrl = "http://example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1),
+            IsActive = true,
             Niche = "Technology",
-            ContentType = "Blog",
-            SubscriptionPlan = CreateTestSubscriptionPlan(),
+            ContentType = "Videos",
             SocialMediaAccounts = new List<SocialMediaAccount>(),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            Posts = new List<ContentPost>()
         };
     }
 
-    public static Domain.Entities.SubscriptionPlan CreateTestSubscriptionPlan()
+    public static ContentPost CreateTestContentPost(Guid creatorId, PostStatus status = PostStatus.Draft)
     {
-        return new Domain.Entities.SubscriptionPlan
+        return new ContentPost
         {
-            Id = Guid.NewGuid(),
-            Name = "Test Plan",
-            Price = 9.99m,
-            MaxPosts = 10,
-            IsFreePlan = false
+            Id = Guid.NewGuid(), 
+            CreatorId = creatorId, 
+            Title = "Test Post Title",
+            Content = "This is the content of the test post.",
+            MediaUrl = "http://example.com/media.mp4",
+            Platform = SocialMediaPlatform.YouTube,
+            Status = status,
+            ScheduledTime = null,
+            PublishedAt = null,
+            Views = 0,
+            Likes = 0,
+            Comments = 0,
+            Shares = 0,
+            EngagementRate = 0m,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
@@ -58,76 +95,49 @@ public static class TestHelper
     {
         return new SocialMediaAccount
         {
-            Id = Guid.NewGuid(),
-            CreatorId = creatorId,
+            Id = Guid.NewGuid(), // SocialMediaAccount ID continua Guid
+            CreatorId = creatorId, // CreatorId continua Guid
             Platform = platform,
-            Username = "testaccount",
-            AccessToken = "test_access_token",
-            RefreshToken = "test_refresh_token",
-            TokenExpiresAt = DateTime.UtcNow.AddDays(30),
+            Username = $"{platform.ToString().ToLower()}_user",
+            AccessToken = "dummy_access_token",
+            RefreshToken = "dummy_refresh_token",
+            TokenExpiresAt = DateTime.UtcNow.AddHours(1),
             IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            FollowersCount = 1000,
+            ProfileUrl = $"http://{platform}.com/user",
+            ProfileImageUrl = $"http://{platform}.com/user/pic.jpg",
+            CreatedAt = DateTime.UtcNow.AddDays(-30),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
         };
     }
 
-    public static ContentPost CreateTestContentPost(Guid creatorId, PostStatus status = PostStatus.Draft)
+    public static ContentChecklist CreateTestContentChecklist(string? creatorId = null, string title = "Test Checklist")
     {
-        var now = DateTime.UtcNow;
-        var scheduledTime = now.Date.Add(TimeSpan.FromHours(12));
-
-        return new ContentPost
-        {
-            Id = Guid.NewGuid(),
-            CreatorId = creatorId,
-            Title = "Test Post",
-            Content = "Test content",
-            MediaUrl = "https://example.com/media.jpg",
-            Platform = SocialMediaPlatform.Instagram,
-            Status = status,
-            ScheduledTime = scheduledTime,
-            ScheduledFor = now.AddDays(1),
-            PublishedAt = status == PostStatus.Published ? now : null,
-            PostedTime = status == PostStatus.Published ? now : null,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-    }
-
-    public static ContentChecklist CreateTestContentChecklist(
-        Guid creatorId,
-        string? title = null,
-        ChecklistStatus status = ChecklistStatus.InProgress)
-    {
-        var creator = CreateTestContentCreator();
-        
+        var guidCreatorId = creatorId != null ? Guid.Parse(creatorId) : Guid.NewGuid();
         return new ContentChecklist
         {
-            Id = Guid.NewGuid(),
-            CreatorId = creatorId,
-            Creator = creator,
-            Title = title ?? "Test Checklist",
+            Id = Guid.NewGuid(), 
+            CreatorId = guidCreatorId, 
+            Title = title,
             Description = "Test checklist description",
-            Status = status,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            Items = new List<ChecklistItem>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    Title = "Test item 1",
-                    Description = "Test item 1 description",
-                    IsCompleted = false
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    Title = "Test item 2",
-                    Description = "Test item 2 description",
-                    IsCompleted = true
-                }
-            }
+            Status = ChecklistStatus.InProgress,
+            Items = new List<ChecklistItem> { CreateTestChecklistItem(), CreateTestChecklistItem("Item 2") },
+            CreatedAt = DateTime.UtcNow.AddDays(-3),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+    }
+
+    public static ChecklistItem CreateTestChecklistItem(string title = "Test Item 1", string description = "Item description")
+    {
+        return new ChecklistItem
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            Description = description,
+            IsCompleted = false,
+            IsRequired = false,
+            Order = 1,
+            CreatedAt = DateTime.UtcNow.AddHours(-5)
         };
     }
 } 

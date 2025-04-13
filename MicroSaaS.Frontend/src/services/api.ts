@@ -137,53 +137,86 @@ api.interceptors.response.use(
       return Promise.reject(networkError);
     }
 
-    // Tratamento específico para erro de autenticação (401)
+    // DEBUG: Log para verificar a URL da requisição original
+    // console.log('DEBUG: Original Request URL:', originalRequest.url); // Removido após diagnóstico
+
+    // Se for um erro 401 ESPECIFICAMENTE da rota de login, 
+    // rejeitar imediatamente com o erro original para que o AuthService.login o trate.
+    // Convertendo para minúsculas para comparação case-insensitive
+    const isLoginRoute = originalRequest.url?.toLowerCase().includes('auth/login');
+    
+    if (error.response.status === 401 && isLoginRoute) {
+        console.warn('Interceptador: Erro 401 na rota de login. Repassando erro original...');
+        // Rejeita com o erro Axios original, que contém error.response.data
+        return Promise.reject(error); 
+    }
+
+    // Tratamento específico para erro de autenticação (401) para OUTRAS rotas
     if (
       error.response.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes('auth/login') &&
       !originalRequest.url?.includes('auth/register') &&
       !originalRequest.url?.includes('auth/refresh-token')
     ) {
-      // Se já estiver fazendo refresh, adiciona a requisição atual à fila
-      if (isRefreshingToken) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(token => {
+        console.warn('Interceptador: Erro 401 (não login). Tentando refresh token...');
+        // Se já estiver fazendo refresh, adiciona a requisição atual à fila
+        if (isRefreshingToken) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(token => {
+              originalRequest.headers = {
+                ...originalRequest.headers,
+                Authorization: `Bearer ${token}`
+              };
+              return axios(originalRequest);
+            })
+            .catch(err => {
+              return Promise.reject(err);
+            });
+        }
+
+        // --- Bloco de Refresh Token (Reinserido no local correto) ---
+        // Marca como retry e inicia o processo de refresh
+        originalRequest._retry = true;
+        isRefreshingToken = true;
+
+        try {
+          // Tentar atualizar o token via AuthService
+          const newToken = await AuthService.refreshToken();
+
+          if (newToken) {
+            // Informa todas as requisições na fila que o token foi atualizado
+            processQueue(null, newToken);
+
+            // Refaz a requisição original com o novo token
             originalRequest.headers = {
               ...originalRequest.headers,
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${newToken}`
             };
+
             return axios(originalRequest);
-          })
-          .catch(err => {
-            return Promise.reject(err);
-          });
-      }
+          } else {
+            // Falha ao obter novo token, rejeita todas as requisições na fila
+            const refreshError = new Error('Falha ao renovar token de autenticação');
+            processQueue(refreshError);
 
-      // Marca como retry e inicia o processo de refresh
-      originalRequest._retry = true;
-      isRefreshingToken = true;
+            // Deslogar o usuário
+            await AuthService.logout();
 
-      try {
-        // Tentar atualizar o token via AuthService
-        const newToken = await AuthService.refreshToken();
+            // Se estiver em produção, redireciona para login
+            if (process.env.NODE_ENV === 'production') {
+              window.location.href = '/login';
+            }
 
-        if (newToken) {
-          // Informa todas as requisições na fila que o token foi atualizado
-          processQueue(null, newToken);
-
-          // Refaz a requisição original com o novo token
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: `Bearer ${newToken}`
-          };
-
-          return axios(originalRequest);
-        } else {
-          // Falha ao obter novo token, rejeita todas as requisições na fila
-          const refreshError = new Error('Falha ao renovar token de autenticação');
+            return Promise.reject({
+              message: 'Sessão expirada',
+              friendlyMessage: 'Sua sessão expirou. Por favor, faça login novamente.',
+              isAuthError: true
+            });
+          }
+        } catch (refreshError) {
+          // Erro no refresh token, rejeita todas as requisições na fila
           processQueue(refreshError);
 
           // Deslogar o usuário
@@ -195,31 +228,14 @@ api.interceptors.response.use(
           }
 
           return Promise.reject({
-            message: 'Sessão expirada',
+            message: refreshError instanceof Error ? refreshError.message : 'Erro ao atualizar token',
             friendlyMessage: 'Sua sessão expirou. Por favor, faça login novamente.',
             isAuthError: true
           });
+        } finally {
+          isRefreshingToken = false;
         }
-      } catch (refreshError) {
-        // Erro no refresh token, rejeita todas as requisições na fila
-        processQueue(refreshError);
-
-        // Deslogar o usuário
-        await AuthService.logout();
-
-        // Se estiver em produção, redireciona para login
-        if (process.env.NODE_ENV === 'production') {
-          window.location.href = '/login';
-        }
-
-        return Promise.reject({
-          message: refreshError instanceof Error ? refreshError.message : 'Erro ao atualizar token',
-          friendlyMessage: 'Sua sessão expirou. Por favor, faça login novamente.',
-          isAuthError: true
-        });
-      } finally {
-        isRefreshingToken = false;
-      }
+        // --- Fim do Bloco de Refresh Token ---
     }
 
     // Tratamento para outros códigos de erro HTTP comuns

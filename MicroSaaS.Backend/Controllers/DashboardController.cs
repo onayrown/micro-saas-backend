@@ -3,6 +3,7 @@ using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -10,24 +11,29 @@ namespace MicroSaaS.Backend.Controllers;
 /// Controlador responsável pelas operações relacionadas ao dashboard
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 //[Authorize]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;
     private readonly ITokenService _tokenService;
+    private readonly ILogger<DashboardController> _logger;
 
     /// <summary>
     /// Construtor do DashboardController
     /// </summary>
     /// <param name="dashboardService">Serviço de dashboard</param>
     /// <param name="tokenService">Serviço de validação de tokens</param>
+    /// <param name="logger">Logger para registro de erros</param>
     public DashboardController(
         IDashboardService dashboardService,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        ILogger<DashboardController> logger)
     {
         _dashboardService = dashboardService;
         _tokenService = tokenService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -46,21 +52,31 @@ public class DashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<DashboardInsights>> GetLatestInsights(Guid creatorId)
     {
-        // Verificar autenticação
-        var authHeader = HttpContext.Request.Headers["Authorization"].ToString();
-        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+        // Correção: Linha ~62 - Verificar se User não é null E se claim existe E corresponde ao creatorId
+        var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier);
+        // Aqui precisamos decidir a lógica exata: 
+        // 1. O usuário só pode ver seus próprios insights?
+        // 2. Existe um role 'Admin' que pode ver qualquer um?
+        // Assumindo que o usuário só pode ver o seu:
+        if (userIdClaim == null || userIdClaim.Value != creatorId.ToString()) 
         {
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            var isValidToken = _tokenService.ValidateToken(token);
-            
-            if (!isValidToken)
-            {
-                return Forbid();
-            }
+             return Forbid("Você não tem permissão para acessar insights deste criador.");
         }
-        
-        var insights = await _dashboardService.GetLatestInsightsAsync(creatorId);
-        return Ok(insights);
+
+        try
+        {
+            var insights = await _dashboardService.GetLatestInsightsAsync(creatorId);
+            if (insights == null)
+            {
+                return NotFound("Nenhum insight encontrado para este criador.");
+            }
+            return Ok(insights);
+        }
+        catch (Exception ex)
+        {
+             _logger.LogError(ex, "Erro ao buscar insights para o criador {CreatorId}", creatorId);
+             return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao buscar insights.");
+        }
     }
 
     /// <summary>
@@ -169,5 +185,32 @@ public class DashboardController : ControllerBase
     {
         var result = await _dashboardService.AddContentPerformanceAsync(performance);
         return CreatedAtAction(nameof(GetTopContent), new { creatorId = performance.CreatorId }, result);
+    }
+
+    [HttpGet("insights")]
+    public async Task<ActionResult<DashboardInsights>> GetDashboardInsights()
+    {
+        // Obter o ID do usuário do token JWT
+        var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid creatorId))
+        {
+            return Unauthorized("ID do usuário inválido ou não encontrado no token.");
+        }
+
+        try
+        {
+            // Assumindo que _dashboardService.GetLatestInsightsAsync(creatorId) retorna DashboardInsights
+            var insights = await _dashboardService.GetLatestInsightsAsync(creatorId); 
+            if (insights == null)
+            {
+                return NotFound("Nenhum insight encontrado para este criador.");
+            }
+            return Ok(insights);
+        }
+        catch (Exception ex)
+        {
+             _logger.LogError(ex, "Erro ao buscar insights para o criador {CreatorId}", creatorId);
+             return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao buscar insights.");
+        }
     }
 } 

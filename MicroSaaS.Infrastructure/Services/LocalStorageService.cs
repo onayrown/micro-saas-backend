@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using MicroSaaS.Application.Interfaces.Services;
-using MicroSaaS.Domain.Interfaces.Services;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -12,7 +11,7 @@ namespace MicroSaaS.Infrastructure.Services
     /// <summary>
     /// Implementação do serviço de armazenamento local
     /// </summary>
-    public class LocalStorageService : MicroSaaS.Application.Interfaces.Services.IStorageService, MicroSaaS.Domain.Interfaces.Services.IStorageService
+    public class LocalStorageService : MicroSaaS.Application.Interfaces.Services.IStorageService
     {
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;

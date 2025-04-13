@@ -7,9 +7,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.IntegrationTests.Utils;
+using MicroSaaS.Shared.DTOs;
 using Xunit;
 using Xunit.Abstractions;
 using FluentAssertions;
+using MongoDB.Bson;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MicroSaaS.IntegrationTests.Controllers
 {
@@ -18,6 +22,10 @@ namespace MicroSaaS.IntegrationTests.Controllers
         private readonly HttpClient _client;
         private readonly ITestOutputHelper _output;
         private string _authToken = string.Empty;
+        
+        // IDs fixos para testes convertidos para Guid
+        private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        private static readonly Guid CREATOR_ID_2 = Guid.Parse("22222222-2222-2222-2222-222222222222");
         
         public ContentChecklistControllerTests(SimplifiedTestFactory factory, ITestOutputHelper output)
         {
@@ -58,8 +66,9 @@ namespace MicroSaaS.IntegrationTests.Controllers
             // Arrange
             var request = new CreateChecklistRequest
             {
-                CreatorId = Guid.NewGuid(),
-                Title = "Teste de Checklist " + DateTime.UtcNow.Ticks
+                CreatorId = CREATOR_ID_1,
+                Title = "Teste de Checklist " + DateTime.UtcNow.Ticks,
+                Description = "Descrição do checklist de teste"
             };
             
             var json = JsonSerializer.Serialize(request);
@@ -68,13 +77,15 @@ namespace MicroSaaS.IntegrationTests.Controllers
             // Act
             var response = await _client.PostAsync("/api/ContentChecklist", content);
             
+            // Log the response content regardless of status code
+            var responseContent = await response.Content.ReadAsStringAsync();
+            _output.WriteLine($"Response status: {response.StatusCode}");
+            _output.WriteLine($"Response body: {responseContent}");
+            
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Created);
             
-            var responseContent = await response.Content.ReadAsStringAsync();
-            _output.WriteLine($"Response: {responseContent}");
-            
-            var result = JsonSerializer.Deserialize<ContentChecklist>(responseContent, 
+            var result = JsonSerializer.Deserialize<ContentChecklistDto>(responseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             result.Should().NotBeNull();
@@ -97,7 +108,9 @@ namespace MicroSaaS.IntegrationTests.Controllers
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             
             var responseContent = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ContentChecklist>(responseContent, 
+            _output.WriteLine($"Response from GetById: {responseContent}");
+            
+            var result = JsonSerializer.Deserialize<ContentChecklistDto>(responseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             result.Should().NotBeNull();
@@ -107,14 +120,15 @@ namespace MicroSaaS.IntegrationTests.Controllers
         [Fact]
         public async Task GetByCreatorId_WithValidId_ShouldReturnChecklists()
         {
-            // Arrange
-            var creatorId = Guid.NewGuid();
+            // Arrange - usar ID fixo
+            var creatorId = CREATOR_ID_1;
             
             // Criar uma checklist para o criador
             var request = new CreateChecklistRequest
             {
                 CreatorId = creatorId,
-                Title = "Checklist do Criador " + DateTime.UtcNow.Ticks
+                Title = "Checklist do Criador " + DateTime.UtcNow.Ticks,
+                Description = "Descrição do checklist do criador"
             };
             
             var json = JsonSerializer.Serialize(request);
@@ -134,7 +148,9 @@ namespace MicroSaaS.IntegrationTests.Controllers
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             
             var responseContent = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<List<ContentChecklist>>(responseContent, 
+            _output.WriteLine($"Response from GetByCreatorId: {responseContent}");
+            
+            var result = JsonSerializer.Deserialize<List<ContentChecklistDto>>(responseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             result.Should().NotBeNull();
@@ -161,15 +177,29 @@ namespace MicroSaaS.IntegrationTests.Controllers
             var response = await _client.PostAsync($"/api/ContentChecklist/{checklistId}/items", content);
             
             // Assert
+            _output.WriteLine($"AddItem status: {response.StatusCode}");
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             
             var responseContent = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ContentChecklist>(responseContent, 
+            _output.WriteLine($"AddItem response: {responseContent}");
+            
+            var result = JsonSerializer.Deserialize<ContentChecklistDto>(responseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             result.Should().NotBeNull();
             result!.Items.Should().NotBeNull();
             result.Items.Should().Contain(i => i.Description == request.Description);
+            
+            // Verificar se o checklist foi atualizado no servidor
+            var getResponse = await _client.GetAsync($"/api/ContentChecklist/{checklistId}");
+            getResponse.EnsureSuccessStatusCode();
+            
+            var getContent = await getResponse.Content.ReadAsStringAsync();
+            var checklist = JsonSerializer.Deserialize<ContentChecklistDto>(getContent, 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            checklist.Should().NotBeNull();
+            checklist!.Items.Should().Contain(i => i.Description == request.Description);
         }
         
         [Fact]
@@ -189,13 +219,20 @@ namespace MicroSaaS.IntegrationTests.Controllers
             var addContent = new StringContent(addJson, Encoding.UTF8, "application/json");
             
             var addResponse = await _client.PostAsync($"/api/ContentChecklist/{checklistId}/items", addContent);
+            
+            // Verificar se conseguimos adicionar o item
+            _output.WriteLine($"AddItem status: {addResponse.StatusCode}");
             addResponse.EnsureSuccessStatusCode();
             
             var addResponseContent = await addResponse.Content.ReadAsStringAsync();
-            var addResult = JsonSerializer.Deserialize<ContentChecklist>(addResponseContent, 
+            _output.WriteLine($"AddItem response: {addResponseContent}");
+            
+            var addResult = JsonSerializer.Deserialize<ContentChecklistDto>(addResponseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
-            var itemId = addResult!.Items.First(i => i.Description == addRequest.Description).Id;
+            addResult.Should().NotBeNull();
+            addResult!.Items.Should().NotBeEmpty();
+            var itemId = addResult.Items.First(i => i.Description == addRequest.Description).Id;
             
             // Criar request para atualizar
             var updateRequest = new UpdateItemRequest
@@ -210,7 +247,21 @@ namespace MicroSaaS.IntegrationTests.Controllers
             var response = await _client.PutAsync($"/api/ContentChecklist/{checklistId}/items/{itemId}", updateContent);
             
             // Assert
+            _output.WriteLine($"UpdateItem status: {response.StatusCode}");
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            
+            // Verificar se o item foi atualizado
+            var getResponse = await _client.GetAsync($"/api/ContentChecklist/{checklistId}");
+            getResponse.EnsureSuccessStatusCode();
+            
+            var getContent = await getResponse.Content.ReadAsStringAsync();
+            var checklist = JsonSerializer.Deserialize<ContentChecklistDto>(getContent, 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            checklist.Should().NotBeNull();
+            var updatedItem = checklist!.Items.FirstOrDefault(i => i.Id == itemId);
+            updatedItem.Should().NotBeNull();
+            updatedItem!.IsCompleted.Should().BeTrue();
         }
         
         [Fact]
@@ -228,6 +279,9 @@ namespace MicroSaaS.IntegrationTests.Controllers
             // Verificar que foi excluído
             var getResponse = await _client.GetAsync($"/api/ContentChecklist/{checklistId}");
             getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            
+            // Log do resultado para depuração
+            _output.WriteLine($"DeleteChecklist status: {response.StatusCode}, verificação após exclusão: {getResponse.StatusCode}");
         }
         
         // Classes para serialização e deserialização
@@ -249,6 +303,7 @@ namespace MicroSaaS.IntegrationTests.Controllers
         {
             public Guid CreatorId { get; set; }
             public string Title { get; set; }
+            public string Description { get; set; }
         }
         
         private class AddChecklistItemRequest

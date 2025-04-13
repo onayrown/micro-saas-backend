@@ -394,9 +394,9 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         post.UpdatedAt = DateTime.UtcNow;
     }
 
-    public async Task CancelScheduledPostAsync(string postId)
+    public async Task CancelScheduledPostAsync(Guid postId)
     {
-        if (string.IsNullOrEmpty(postId))
+        if (postId == Guid.Empty)
             throw new ArgumentException("ID do post é obrigatório", nameof(postId));
 
         // Em uma implementação real, você cancelaria o agendamento na API da plataforma
@@ -423,9 +423,9 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     }
 
     // Análise de Performance
-    public async Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(string postId)
+    public async Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(Guid postId)
     {
-        if (string.IsNullOrEmpty(postId))
+        if (postId == Guid.Empty)
             throw new ArgumentException("ID do post é obrigatório", nameof(postId));
 
         // Em uma implementação real, você obteria o desempenho do post da API da plataforma
@@ -464,7 +464,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
             performances.Add(new ContentPerformanceDto
             {
                 Id = Guid.NewGuid(),
-                PostId = $"post_{Guid.NewGuid()}",
+                PostId = Guid.NewGuid(),
                 AccountId = accountId,
                 Platform = SocialMediaPlatform.Instagram,
                 Views = Random.Shared.Next(1000, 100000),

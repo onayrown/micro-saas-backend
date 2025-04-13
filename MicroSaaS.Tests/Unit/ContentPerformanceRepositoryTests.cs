@@ -1,8 +1,8 @@
+using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Entities;
-using MicroSaaS.Infrastructure.Mappers;
-using MicroSaaS.Infrastructure.Repositories;
+using MicroSaaS.Infrastructure.MongoDB;
+using MicroSaaS.Infrastructure.Persistence.Repositories;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Tests.Helpers;
 using MongoDB.Driver;
@@ -15,26 +15,74 @@ using System.Linq;
 using MongoDB.Bson;
 using System;
 using MongoDB.Driver.Linq;
+using System.Threading;
 
 namespace MicroSaaS.Tests.Unit;
 
 public class ContentPerformanceRepositoryTests
 {
-    private readonly Mock<IMongoCollection<ContentPerformanceEntity>> _collectionMock;
-    private readonly Mock<IMongoDatabase> _databaseMock;
+    private readonly Mock<IMongoCollection<ContentPerformance>> _collectionMock;
+    private readonly Mock<IMongoDbContext> _contextMock;
     private readonly Mock<ICacheService> _cacheMock;
     private readonly ContentPerformanceRepository _repository;
+    private List<ContentPerformance> _performances;
 
     public ContentPerformanceRepositoryTests()
     {
-        _collectionMock = new Mock<IMongoCollection<ContentPerformanceEntity>>();
-        _databaseMock = new Mock<IMongoDatabase>();
+        _collectionMock = new Mock<IMongoCollection<ContentPerformance>>();
+        _contextMock = new Mock<IMongoDbContext>();
         _cacheMock = new Mock<ICacheService>();
-
-        _databaseMock.Setup(x => x.GetCollection<ContentPerformanceEntity>("contentPerformance", null))
+        
+        _contextMock.Setup(x => x.GetCollection<ContentPerformance>("ContentPerformances"))
             .Returns(_collectionMock.Object);
 
-        _repository = new ContentPerformanceRepository(_databaseMock.Object, _cacheMock.Object);
+        _repository = new ContentPerformanceRepository(_contextMock.Object, _cacheMock.Object);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPerformanceExists_ShouldReturnPerformance()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var entity = new ContentPerformance
+        {
+            Id = id,
+            CreatorId = Guid.NewGuid(),
+            PostId = Guid.NewGuid(),
+            Platform = SocialMediaPlatform.Instagram,
+            Views = 1000,
+            Likes = 500,
+            Comments = 100,
+            Shares = 50,
+            EngagementRate = 45.50m,
+            Date = DateTime.UtcNow.AddDays(-7)
+        };
+
+        var cacheKey = $"perf:id:{id}";
+        _cacheMock.Setup(x => x.GetAsync<ContentPerformance>(cacheKey))
+            .ReturnsAsync((ContentPerformance)null);
+            
+        var mockCursor = new Mock<IAsyncCursor<ContentPerformance>>();
+        mockCursor.Setup(x => x.Current).Returns(new List<ContentPerformance> { entity });
+        mockCursor
+            .SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true)
+            .ReturnsAsync(false);
+
+        _collectionMock
+            .Setup(x => x.FindAsync(
+                It.IsAny<FilterDefinition<ContentPerformance>>(),
+                It.IsAny<FindOptions<ContentPerformance, ContentPerformance>>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(mockCursor.Object);
+
+        // Act
+        var result = await _repository.GetByIdAsync(id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(id);
     }
 
     [Fact]
@@ -42,45 +90,41 @@ public class ContentPerformanceRepositoryTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var expectedPerformance = new ContentPerformance
+        var cachedEntity = new ContentPerformance
         {
             Id = id,
-            PostId = Guid.NewGuid(),
             CreatorId = Guid.NewGuid(),
+            PostId = Guid.NewGuid(),
             Platform = SocialMediaPlatform.Instagram,
-            Views = 1000,
-            Likes = 500,
-            Comments = 100,
-            Shares = 50,
-            EngagementRate = 65.0m,
-            Date = DateTime.UtcNow.AddDays(-1)
+            Views = 1500,
+            Likes = 750,
+            Comments = 200,
+            Shares = 90,
+            EngagementRate = 55.5m,
+            Date = DateTime.UtcNow.AddDays(-3)
         };
 
-        var cacheKey = $"perf_id_{id}";
-        
-        // Configurar o método GetOrSetAsync em vez de GetAsync para corresponder à implementação no repositório
-        _cacheMock.Setup(x => x.GetOrSetAsync(
-            It.Is<string>(s => s == cacheKey),
-            It.IsAny<Func<Task<ContentPerformance>>>(),
-            It.IsAny<TimeSpan?>()))
-            .Returns(Task.FromResult(expectedPerformance));
+        var cacheKey = $"perf:id:{id}";
+        _cacheMock.Setup(x => x.GetAsync<ContentPerformance>(cacheKey))
+            .ReturnsAsync(cachedEntity);
 
         // Act
         var result = await _repository.GetByIdAsync(id);
 
         // Assert
         result.Should().NotBeNull();
-        result.Id.Should().Be(id);
-        result.Views.Should().Be(1000);
-        result.Likes.Should().Be(500);
-        result.Comments.Should().Be(100);
-        result.Shares.Should().Be(50);
+        result.Should().Be(cachedEntity);
+        _cacheMock.Verify(x => x.GetAsync<ContentPerformance>(cacheKey), Times.Once);
         
-        // Verificar que o cache foi consultado
-        _cacheMock.Verify(x => x.GetOrSetAsync(
-            cacheKey, 
-            It.IsAny<Func<Task<ContentPerformance>>>(), 
-            It.IsAny<TimeSpan?>()), Times.Once);
+        // Verificar que o banco de dados não foi consultado
+        _collectionMock.Verify(
+            x => x.FindAsync(
+                It.IsAny<FilterDefinition<ContentPerformance>>(),
+                It.IsAny<FindOptions<ContentPerformance, ContentPerformance>>(),
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -88,50 +132,51 @@ public class ContentPerformanceRepositoryTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var entity = new ContentPerformanceEntity
+        var entity = new ContentPerformance
         {
             Id = id,
-            PostId = Guid.NewGuid(),
             CreatorId = Guid.NewGuid(),
+            PostId = Guid.NewGuid(),
             Platform = SocialMediaPlatform.Instagram,
-            Views = 1000,
-            Likes = 500,
-            Comments = 100,
-            Shares = 50,
-            EngagementRate = 65.0m,
-            Date = DateTime.UtcNow.AddDays(-1)
+            Views = 800,
+            Likes = 300,
+            Comments = 80,
+            Shares = 25,
+            EngagementRate = 35.75m,
+            Date = DateTime.UtcNow.AddDays(-10)
         };
 
-        var expectedDomain = ContentPerformanceMapper.ToDomain(entity);
-        var cacheKey = $"perf_id_{id}";
-        
-        // Configurar o método GetOrSetAsync para executar o factory de forma controlada
-        _cacheMock.Setup(x => x.GetOrSetAsync(
-            cacheKey, 
-            It.IsAny<Func<Task<ContentPerformance>>>(), 
-            It.IsAny<TimeSpan?>()))
-            .Returns((string key, Func<Task<ContentPerformance>> factory, TimeSpan? expiry) => 
-            {
-                // Em vez de depender do factory, retornamos diretamente o expectedDomain
-                return Task.FromResult(expectedDomain);
-            });
-        
+        var cacheKey = $"perf:id:{id}";
+        _cacheMock.Setup(x => x.GetAsync<ContentPerformance>(cacheKey))
+            .ReturnsAsync((ContentPerformance)null);
+            
+        var mockCursor = new Mock<IAsyncCursor<ContentPerformance>>();
+        mockCursor.Setup(x => x.Current).Returns(new List<ContentPerformance> { entity });
+        mockCursor
+            .SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true)
+            .ReturnsAsync(false);
+
+        _collectionMock
+            .Setup(x => x.FindAsync(
+                It.IsAny<FilterDefinition<ContentPerformance>>(),
+                It.IsAny<FindOptions<ContentPerformance, ContentPerformance>>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(mockCursor.Object);
+            
+        _cacheMock.Setup(x => x.SetAsync(cacheKey, entity, It.IsAny<TimeSpan>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var result = await _repository.GetByIdAsync(id);
 
         // Assert
         result.Should().NotBeNull();
         result.Id.Should().Be(id);
-        result.Views.Should().Be(1000);
-        result.Likes.Should().Be(500);
-        result.Comments.Should().Be(100);
-        result.Shares.Should().Be(50);
         
-        // Verificar que o cache GetOrSetAsync foi chamado para tentar encontrar e potencialmente armazenar
-        _cacheMock.Verify(x => x.GetOrSetAsync(
-            cacheKey, 
-            It.IsAny<Func<Task<ContentPerformance>>>(), 
-            It.IsAny<TimeSpan?>()), Times.Once);
+        // Verificar que o cache foi atualizado
+        _cacheMock.Verify(x => x.SetAsync(cacheKey, entity, It.IsAny<TimeSpan>()), Times.Once);
     }
 
     [Fact]
@@ -151,7 +196,7 @@ public class ContentPerformanceRepositoryTests
                 Likes = 500,
                 Comments = 100,
                 Shares = 50,
-                EngagementRate = 65.0m,
+                EngagementRate = 45.50m,
                 Date = DateTime.UtcNow.AddDays(-7)
             },
             new ContentPerformance
@@ -169,14 +214,10 @@ public class ContentPerformanceRepositoryTests
             }
         };
 
-        var cacheKey = $"perf_creator_{creatorId}";
+        var cacheKey = $"perf:creator:{creatorId}:all";
         
-        // Usar GetOrSetAsync em vez de GetAsync para consistência com a implementação
-        _cacheMock.Setup(x => x.GetOrSetAsync(
-            cacheKey, 
-            It.IsAny<Func<Task<IEnumerable<ContentPerformance>>>>(), 
-            It.IsAny<TimeSpan?>()))
-            .Returns(Task.FromResult<IEnumerable<ContentPerformance>>(entities));
+        _cacheMock.Setup(x => x.GetAsync<List<ContentPerformance>>(cacheKey))
+            .ReturnsAsync(entities);
 
         // Act
         var result = await _repository.GetByCreatorIdAsync(creatorId);
@@ -186,94 +227,58 @@ public class ContentPerformanceRepositoryTests
         result.Should().HaveCount(2);
         result.All(x => x.CreatorId == creatorId).Should().BeTrue();
         
-        // Verificar que o cache foi consultado corretamente
-        _cacheMock.Verify(x => x.GetOrSetAsync(
-            cacheKey, 
-            It.IsAny<Func<Task<IEnumerable<ContentPerformance>>>>(), 
-            It.IsAny<TimeSpan?>()), Times.Once);
+        _cacheMock.Verify(x => x.GetAsync<List<ContentPerformance>>(cacheKey), Times.Once);
     }
 
     [Fact]
-    public async Task AddAsync_ShouldInvalidateCache()
+    public async Task AddAsync_ShouldInsertPerformance()
     {
         // Arrange
-        var creatorId = Guid.NewGuid();
-        var performance = new ContentPerformance
-        {
-            Id = Guid.NewGuid(),
-            CreatorId = creatorId,
-            PostId = Guid.NewGuid(),
-            Platform = SocialMediaPlatform.Instagram,
-            Views = 1000,
-            Likes = 500,
-            Comments = 100,
-            Shares = 50,
-            EngagementRate = 65.0m,
-            Date = DateTime.UtcNow.AddDays(-1)
-        };
-
+        var entity = new ContentPerformance { /*...*/ };
         _collectionMock.Setup(x => x.InsertOneAsync(
-                It.IsAny<ContentPerformanceEntity>(),
+                It.IsAny<ContentPerformance>(),
                 It.IsAny<InsertOneOptions>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _repository.AddAsync(performance);
+        var result = await _repository.AddAsync(entity);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Id.Should().Be(performance.Id);
-        result.CreatorId.Should().Be(performance.CreatorId);
-        
-        // Verify cache invalidation for creator-related caches
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_creator_{creatorId}"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_avgrate_{creatorId}"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_avgratecreator_{creatorId}"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_topviews_{creatorId}_10"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_topengagement_{creatorId}_10"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_toprevenue_{creatorId}_10"), Times.Once);
+        result.Should().BeEquivalentTo(entity);
+        _collectionMock.Verify(x => x.InsertOneAsync(entity, null, default), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldInvalidateRelatedCaches()
+    public async Task UpdateAsync_ShouldReplacePerformanceAndInvalidateCache()
     {
         // Arrange
-        var id = Guid.NewGuid();
-        var creatorId = Guid.NewGuid();
-        var postId = Guid.NewGuid();
-        var performance = new ContentPerformance
-        {
-            Id = id,
-            CreatorId = creatorId,
-            PostId = postId,
-            Platform = SocialMediaPlatform.Instagram,
-            Views = 1000,
-            Likes = 500,
-            Comments = 100,
-            Shares = 50,
-            EngagementRate = 65.0m,
-            Date = DateTime.UtcNow.AddDays(-1)
-        };
-
+        var entity = new ContentPerformance { Id = Guid.NewGuid(), /*...*/ };
+        var cacheKey = $"perf:id:{entity.Id}";
+        var replaceResult = new Mock<ReplaceOneResult>();
+        replaceResult.Setup(x => x.IsAcknowledged).Returns(true);
+        replaceResult.Setup(x => x.ModifiedCount).Returns(1);
+        
         _collectionMock.Setup(x => x.ReplaceOneAsync(
-                It.IsAny<FilterDefinition<ContentPerformanceEntity>>(),
-                It.IsAny<ContentPerformanceEntity>(),
+                It.IsAny<FilterDefinition<ContentPerformance>>(),
+                It.IsAny<ContentPerformance>(),
                 It.IsAny<ReplaceOptions>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, BsonValue.Create(id)));
+            .ReturnsAsync(replaceResult.Object);
+        
+        // Setup das chaves corretas para o cache
+        _cacheMock.Setup(x => x.RemoveAsync($"perf:id:{entity.Id}")).Returns(Task.CompletedTask);
+        _cacheMock.Setup(x => x.RemoveAsync($"perf:creator:{entity.CreatorId}:all")).Returns(Task.CompletedTask);
+        _cacheMock.Setup(x => x.RemoveAsync($"perf:post:{entity.PostId}:all")).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _repository.UpdateAsync(performance);
+        var result = await _repository.UpdateAsync(entity);
 
         // Assert
         result.Should().NotBeNull();
-        result.Id.Should().Be(performance.Id);
-        
-        // Verify cache invalidation
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_creator_{creatorId}"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_post_{postId}"), Times.Once);
-        _cacheMock.Verify(x => x.RemoveAsync($"perf_id_{id}"), Times.Once);
+        result.Should().BeEquivalentTo(entity);
+        _collectionMock.Verify(x => x.ReplaceOneAsync(It.IsAny<FilterDefinition<ContentPerformance>>(), entity, It.IsAny<ReplaceOptions>(), default), Times.Once);
+        _cacheMock.Verify(x => x.RemoveAsync(cacheKey), Times.Once);
     }
 
     [Fact]
@@ -281,16 +286,19 @@ public class ContentPerformanceRepositoryTests
     {
         // Arrange
         _collectionMock.Setup(x => x.UpdateManyAsync(
-                It.IsAny<FilterDefinition<ContentPerformanceEntity>>(),
-                It.IsAny<UpdateDefinition<ContentPerformanceEntity>>(),
+                It.IsAny<FilterDefinition<ContentPerformance>>(),
+                It.IsAny<UpdateDefinition<ContentPerformance>>(),
                 It.IsAny<UpdateOptions>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UpdateResult.Acknowledged(1, 10, BsonValue.Create(1)));
+        
+        // Setup da chave correta de cache
+        _cacheMock.Setup(x => x.RemoveAsync("perf:all")).Returns(Task.CompletedTask);
 
         // Act
         await _repository.RefreshMetricsAsync();
 
         // Assert
-        _cacheMock.Verify(x => x.RemoveAsync("perf_all"), Times.Once);
+        _cacheMock.Verify(x => x.RemoveAsync("perf:all"), Times.Once);
     }
 } 

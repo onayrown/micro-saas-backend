@@ -1,9 +1,8 @@
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Infrastructure.Entities;
-using MicroSaaS.Infrastructure.Mappers;
-using MicroSaaS.Infrastructure.Repositories;
-using MicroSaaS.Infrastructure.Database;
+// using MicroSaaS.Infrastructure.Entities;
+using MicroSaaS.Infrastructure.MongoDB;
+using MicroSaaS.Infrastructure.Persistence.Repositories;
 using MicroSaaS.Tests.Helpers;
 using MongoDB.Driver;
 using Moq;
@@ -15,20 +14,22 @@ using System.Linq;
 using MongoDB.Bson;
 using System;
 using System.Threading;
+using MicroSaaS.Application.Interfaces.Repositories;
 
 namespace MicroSaaS.Tests.Unit;
 
 public class UserRepositoryTests
 {
-    private readonly Mock<IMongoCollection<UserEntity>> _collectionMock;
+    private readonly Mock<IMongoCollection<User>> _collectionMock;
     private readonly Mock<IMongoDbContext> _contextMock;
     private readonly Mock<ICacheService> _cacheMock;
     private readonly Mock<ILoggingService> _loggingServiceMock;
-    private readonly UserRepository _repository;
+    private readonly IUserRepository _repository;
+    private List<User> _users;
 
     public UserRepositoryTests()
     {
-        _collectionMock = new Mock<IMongoCollection<UserEntity>>();
+        _collectionMock = new Mock<IMongoCollection<User>>();
         _contextMock = new Mock<IMongoDbContext>();
         _cacheMock = new Mock<ICacheService>();
         _loggingServiceMock = new Mock<ILoggingService>();
@@ -37,7 +38,7 @@ public class UserRepositoryTests
         _contextMock.Setup(x => x.Users).Returns(_collectionMock.Object);
         
         // Configurar a chamada GetCollection também para casos onde possa ser usada
-        _contextMock.Setup(x => x.GetCollection<UserEntity>("users"))
+        _contextMock.Setup(x => x.GetCollection<User>("users"))
             .Returns(_collectionMock.Object);
 
         _repository = new UserRepository(_contextMock.Object);
@@ -48,18 +49,18 @@ public class UserRepositoryTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var user = new UserEntity
+        var user = new User
         {
-            Id = userId.ToString(),
+            Id = userId,
             Email = "test@example.com",
             Username = "testuser",
             PasswordHash = "hashedpassword",
             CreatedAt = DateTime.UtcNow
         };
 
-        var users = new List<UserEntity> { user };
+        var users = new List<User> { user };
         
-        var mockCursor = new Mock<IAsyncCursor<UserEntity>>();
+        var mockCursor = new Mock<IAsyncCursor<User>>();
         mockCursor.Setup(x => x.Current).Returns(users);
         mockCursor
             .SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
@@ -68,8 +69,8 @@ public class UserRepositoryTests
 
         _collectionMock
             .Setup(x => x.FindAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<FindOptions<UserEntity, UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
                 It.IsAny<CancellationToken>()
             ))
             .ReturnsAsync(mockCursor.Object);
@@ -89,16 +90,16 @@ public class UserRepositoryTests
         // Arrange
         var userId = Guid.NewGuid();
         
-        var mockCursor = new Mock<IAsyncCursor<UserEntity>>();
-        mockCursor.Setup(x => x.Current).Returns(new List<UserEntity>());
+        var mockCursor = new Mock<IAsyncCursor<User>>();
+        mockCursor.Setup(x => x.Current).Returns(new List<User>());
         mockCursor
             .SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _collectionMock
             .Setup(x => x.FindAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<FindOptions<UserEntity, UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
                 It.IsAny<CancellationToken>()
             ))
             .ReturnsAsync(mockCursor.Object);
@@ -117,9 +118,9 @@ public class UserRepositoryTests
         var username = "testuser";
         var cacheKey = $"user_username_{username.ToLower()}";
         
-        var userEntity = new UserEntity
+        var user = new User
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             Username = username,
             Email = "test@example.com",
             PasswordHash = "hashedpassword",
@@ -131,15 +132,15 @@ public class UserRepositoryTests
         _cacheMock.Setup(x => x.GetAsync<User>(cacheKey))
             .ReturnsAsync((User)null);
 
-        var cursor = new Mock<IAsyncCursor<UserEntity>>();
-        cursor.Setup(x => x.Current).Returns(new List<UserEntity> { userEntity });
+        var cursor = new Mock<IAsyncCursor<User>>();
+        cursor.Setup(x => x.Current).Returns(new List<User> { user });
         cursor.SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .ReturnsAsync(false);
 
         _collectionMock.Setup(x => x.FindAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<FindOptions<UserEntity, UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor.Object);
 
@@ -159,9 +160,9 @@ public class UserRepositoryTests
         var email = "test@example.com";
         var cacheKey = $"user_email_{email.ToLower()}";
         
-        var userEntity = new UserEntity
+        var user = new User
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             Username = "testuser",
             Email = email,
             PasswordHash = "hashedpassword",
@@ -173,15 +174,15 @@ public class UserRepositoryTests
         _cacheMock.Setup(x => x.GetAsync<User>(cacheKey))
             .ReturnsAsync((User)null);
 
-        var cursor = new Mock<IAsyncCursor<UserEntity>>();
-        cursor.Setup(x => x.Current).Returns(new List<UserEntity> { userEntity });
+        var cursor = new Mock<IAsyncCursor<User>>();
+        cursor.Setup(x => x.Current).Returns(new List<User> { user });
         cursor.SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .ReturnsAsync(false);
 
         _collectionMock.Setup(x => x.FindAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<FindOptions<UserEntity, UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor.Object);
 
@@ -209,22 +210,17 @@ public class UserRepositoryTests
         };
 
         _collectionMock.Setup(x => x.InsertOneAsync(
-                It.IsAny<UserEntity>(),
+                It.IsAny<User>(),
                 It.IsAny<InsertOneOptions>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _repository.AddAsync(user);
+        await _repository.AddAsync(user);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Id.Should().Be(user.Id);
-        result.Username.Should().Be(user.Username);
-        result.Email.Should().Be(user.Email);
-
         _collectionMock.Verify(x => x.InsertOneAsync(
-            It.IsAny<UserEntity>(),
+            It.IsAny<User>(),
             It.IsAny<InsertOneOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -249,24 +245,19 @@ public class UserRepositoryTests
         replaceResult.Setup(x => x.ModifiedCount).Returns(1);
 
         _collectionMock.Setup(x => x.ReplaceOneAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<UserEntity>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<User>(),
                 It.IsAny<ReplaceOptions>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(replaceResult.Object);
 
         // Act
-        var result = await _repository.UpdateAsync(user);
+        await _repository.UpdateAsync(user);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Id.Should().Be(user.Id);
-        result.Username.Should().Be(user.Username);
-        result.Email.Should().Be(user.Email);
-
         _collectionMock.Verify(x => x.ReplaceOneAsync(
-            It.IsAny<FilterDefinition<UserEntity>>(),
-            It.IsAny<UserEntity>(),
+            It.IsAny<FilterDefinition<User>>(),
+            It.IsAny<User>(),
             It.IsAny<ReplaceOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -282,18 +273,16 @@ public class UserRepositoryTests
         deleteResult.Setup(x => x.DeletedCount).Returns(1);
 
         _collectionMock.Setup(x => x.DeleteOneAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(deleteResult.Object);
 
         // Act
-        var result = await _repository.DeleteAsync(userId);
+        await _repository.DeleteAsync(userId);
 
         // Assert
-        result.Should().BeTrue();
-
         _collectionMock.Verify(x => x.DeleteOneAsync(
-            It.IsAny<FilterDefinition<UserEntity>>(),
+            It.IsAny<FilterDefinition<User>>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -301,39 +290,21 @@ public class UserRepositoryTests
     public async Task GetAllAsync_ShouldReturnAllActiveUsers()
     {
         // Arrange
-        var users = new List<UserEntity>
+        var users = new List<User>
         {
-            new UserEntity
-            {
-                Id = Guid.NewGuid().ToString(),
-                Username = "user1",
-                Email = "user1@example.com",
-                PasswordHash = "hashedpassword",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow.AddDays(-5)
-            },
-            new UserEntity
-            {
-                Id = Guid.NewGuid().ToString(),
-                Username = "user2",
-                Email = "user2@example.com",
-                PasswordHash = "hashedpassword",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                UpdatedAt = DateTime.UtcNow.AddDays(-2)
-            }
+            new User { Id = Guid.NewGuid(), IsActive = true, Username = "user1" },
+            new User { Id = Guid.NewGuid(), IsActive = true, Username = "user2" }
         };
 
-        var cursor = new Mock<IAsyncCursor<UserEntity>>();
+        var cursor = new Mock<IAsyncCursor<User>>();
         cursor.Setup(x => x.Current).Returns(users);
         cursor.SetupSequence(x => x.MoveNextAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .ReturnsAsync(false);
 
         _collectionMock.Setup(x => x.FindAsync(
-                It.IsAny<FilterDefinition<UserEntity>>(),
-                It.IsAny<FindOptions<UserEntity, UserEntity>>(),
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor.Object);
 

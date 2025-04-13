@@ -6,7 +6,7 @@ namespace MicroSaaS.Application.DTOs;
 public class ContentPerformanceDto
 {
     public Guid Id { get; set; }
-    public string? PostId { get; set; }
+    public Guid? PostId { get; set; }
     public Guid? AccountId { get; set; }
     public SocialMediaPlatform Platform { get; set; }
     public long Views { get; set; }

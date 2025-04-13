@@ -113,23 +113,37 @@ class AuthService {
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
 
-      // Tratar formato de erro simples { message: string } ou AuthResponse
+      // Verificar se há resposta e dados da API
       if (error.response && error.response.data) {
-         // Se a resposta tiver 'success' e 'message', assume AuthResponse
-        if (typeof error.response.data.success !== 'undefined') {
-           return error.response.data as AuthResponse;
-        }
-        // Senão, assume o formato { message: string } e cria um AuthResponse
-        return {
-          success: false,
-          message: error.response.data.message || 'Credenciais inválidas ou erro desconhecido',
-        };
+        // LOG ADICIONAL PARA DEBUG:
+        console.log('DEBUG: error.response.data no catch do AuthService:', JSON.stringify(error.response.data));
+
+        const errorData = error.response.data;
+
+        // Verificar se a resposta tem o formato Result<T> (success e errorMessage)
+        if (typeof errorData.success === 'boolean' && typeof errorData.errorMessage !== 'undefined') {
+          // É um Result<T> de erro vindo do backend
+          return {
+            success: false,
+            message: errorData.errorMessage || 'Erro de autenticação desconhecido.', // Usar a mensagem do backend
+            token: undefined, // Garantir que não haja token
+            user: undefined   // Garantir que não haja usuário
+          };
+        } 
+        // Tratar outros formatos de erro inesperados, se necessário
+        else if (errorData.message) {
+           // Tentativa de tratar formato { message: string }
+           return {
+             success: false,
+             message: errorData.message,
+           };
+         }
       }
 
-      // Erro sem resposta da API (ex: rede)
+      // Erro genérico (rede, etc.) ou formato de erro não reconhecido
       return {
         success: false,
-        message: error.message || 'Erro ao fazer login',
+        message: error.message || 'Não foi possível conectar ao servidor ou ocorreu um erro inesperado.',
       };
     }
   }

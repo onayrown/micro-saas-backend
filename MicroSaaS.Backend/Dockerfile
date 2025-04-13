@@ -2,32 +2,41 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 80
+EXPOSE 443
 
 
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["MicroSaaS.Backend/MicroSaaS.Backend.csproj", "MicroSaaS.Backend/"]
-COPY ["MicroSaaS.Application/MicroSaaS.Application.csproj", "MicroSaaS.Application/"]
-COPY ["MicroSaaS.Domain/MicroSaaS.Domain.csproj", "MicroSaaS.Domain/"]
-COPY ["MicroSaaS.Shared/MicroSaaS.Shared.csproj", "MicroSaaS.Shared/"]
-COPY ["MicroSaaS.Infrastructure/MicroSaaS.Infrastructure.csproj", "MicroSaaS.Infrastructure/"]
-RUN dotnet restore "./MicroSaaS.Backend/MicroSaaS.Backend.csproj"
-COPY . .
+
+# Primeiro copiamos os arquivos de projeto para restaurar as dependências
+COPY ["MicroSaaS.Backend.csproj", "MicroSaaS.Backend/"]
+COPY ["../MicroSaaS.Domain/MicroSaaS.Domain.csproj", "MicroSaaS.Domain/"]
+COPY ["../MicroSaaS.Shared/MicroSaaS.Shared.csproj", "MicroSaaS.Shared/"]
+COPY ["../MicroSaaS.Application/MicroSaaS.Application.csproj", "MicroSaaS.Application/"]
+COPY ["../MicroSaaS.Infrastructure/MicroSaaS.Infrastructure.csproj", "MicroSaaS.Infrastructure/"]
+
+# Restaurar as dependências
+RUN dotnet restore "MicroSaaS.Backend/MicroSaaS.Backend.csproj"
+
+# Copiar os arquivos fonte
+COPY . "MicroSaaS.Backend/"
+COPY ../MicroSaaS.Domain/ "MicroSaaS.Domain/"
+COPY ../MicroSaaS.Shared/ "MicroSaaS.Shared/"
+COPY ../MicroSaaS.Application/ "MicroSaaS.Application/"
+COPY ../MicroSaaS.Infrastructure/ "MicroSaaS.Infrastructure/"
+
+# Construir o projeto
 WORKDIR "/src/MicroSaaS.Backend"
-RUN dotnet build "./MicroSaaS.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "MicroSaaS.Backend.csproj" -c Release -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
+# Stage de publicação
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./MicroSaaS.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "MicroSaaS.Backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+# Final stage
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .

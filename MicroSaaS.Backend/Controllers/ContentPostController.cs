@@ -13,6 +13,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using MicroSaaS.Application.DTOs;
+// Alias para o namespace específico do ContentPost DTO
+using PostDTOs = MicroSaaS.Application.DTOs.ContentPost;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -81,18 +84,18 @@ public class ContentPostController : ControllerBase
     /// <response code="404">Criador não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet("scheduled/{creatorId}")]
-    [ProducesResponseType(typeof(List<ContentPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<PostDTOs.ContentPostDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<List<ContentPostDto>>> GetScheduledPosts(Guid creatorId)
+    public async Task<ActionResult<List<PostDTOs.ContentPostDto>>> GetScheduledPosts(Guid creatorId)
     {
         try
         {
             var creator = await _creatorRepository.GetByIdAsync(creatorId);
             if (creator == null)
-                return NotFound(new ApiResponse<List<ContentPostDto>>
+                return NotFound(new ApiResponse<List<PostDTOs.ContentPostDto>>
                 {
                     Success = false,
                     Message = "Criador de conteúdo não encontrado"
@@ -101,7 +104,7 @@ public class ContentPostController : ControllerBase
             var posts = await _repository.GetScheduledByCreatorIdAsync(creatorId);
             var postsDto = posts.Select(ContentPostMapper.ToDto).ToList();
 
-            return Ok(new ApiResponse<List<ContentPostDto>>
+            return Ok(new ApiResponse<List<PostDTOs.ContentPostDto>>
             {
                 Success = true,
                 Data = postsDto,
@@ -110,7 +113,7 @@ public class ContentPostController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new ApiResponse<List<ContentPostDto>>
+            return StatusCode(500, new ApiResponse<List<PostDTOs.ContentPostDto>>
             {
                 Success = false,
                 Message = "Erro ao recuperar posts agendados"
@@ -131,13 +134,13 @@ public class ContentPostController : ControllerBase
     /// <response code="404">Criador não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<List<ContentPostDto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<List<ContentPostDto>>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<List<PostDTOs.ContentPostDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<PostDTOs.ContentPostDto>>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<List<ContentPostDto>>>> GetPosts([FromQuery] Guid creatorId, [FromQuery] string? status = null)
+    public async Task<ActionResult<ApiResponse<List<PostDTOs.ContentPostDto>>>> GetPosts([FromQuery] Guid creatorId, [FromQuery] string? status = null)
     {
         // TODO: Adicionar verificação se o usuário autenticado pode ver os posts deste creatorId
         // var authenticatedUserId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -148,7 +151,7 @@ public class ContentPostController : ControllerBase
             var creator = await _creatorRepository.GetByIdAsync(creatorId);
             if (creator == null)
             {
-                return NotFound(new ApiResponse<List<ContentPostDto>>
+                return NotFound(new ApiResponse<List<PostDTOs.ContentPostDto>>
                 {
                     Success = false,
                     Message = "Criador de conteúdo não encontrado"
@@ -170,7 +173,7 @@ public class ContentPostController : ControllerBase
                 }
                 else
                 {
-                    return BadRequest(new ApiResponse<List<ContentPostDto>>
+                    return BadRequest(new ApiResponse<List<PostDTOs.ContentPostDto>>
                     {
                         Success = false,
                         Message = $"Status inválido: {status}. Valores possíveis: Draft, Scheduled, Published, Failed."
@@ -181,7 +184,7 @@ public class ContentPostController : ControllerBase
             // Mapear apenas os posts filtrados (ou todos se nenhum status foi dado)
             var postsDto = filteredPosts.Select(ContentPostMapper.ToDto).ToList();
 
-            return Ok(new ApiResponse<List<ContentPostDto>>
+            return Ok(new ApiResponse<List<PostDTOs.ContentPostDto>>
             {
                 Success = true,
                 Data = postsDto,
@@ -191,7 +194,7 @@ public class ContentPostController : ControllerBase
         catch (Exception ex)
         {
             // Logar o erro ex
-            return StatusCode(500, new ApiResponse<List<ContentPostDto>>
+            return StatusCode(500, new ApiResponse<List<PostDTOs.ContentPostDto>>
             {
                 Success = false,
                 Message = "Erro ao recuperar posts"
@@ -230,19 +233,19 @@ public class ContentPostController : ControllerBase
     /// <response code="404">Criador de conteúdo não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<ContentPostDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<ContentPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<PostDTOs.ContentPostDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PostDTOs.ContentPostDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ContentPostDto>> Create([FromBody] CreatePostRequest request)
+    public async Task<ActionResult<PostDTOs.ContentPostDto>> Create([FromBody] PostDTOs.CreatePostRequest request)
     {
         try
         {
             var creator = await _creatorRepository.GetByIdAsync(request.CreatorId);
             if (creator == null)
-                return BadRequest(new ApiResponse<ContentPostDto>
+                return BadRequest(new ApiResponse<PostDTOs.ContentPostDto>
                 {
                     Success = false,
                     Message = "Criador de conteúdo não encontrado"
@@ -251,7 +254,7 @@ public class ContentPostController : ControllerBase
             // Validação de conteúdo
             if (string.IsNullOrEmpty(request.Title) || string.IsNullOrEmpty(request.Content))
             {
-                return BadRequest(new ApiResponse<ContentPostDto>
+                return BadRequest(new ApiResponse<PostDTOs.ContentPostDto>
                 {
                     Success = false,
                     Message = "Título e conteúdo são obrigatórios"
@@ -259,7 +262,6 @@ public class ContentPostController : ControllerBase
             }
 
             var postEntity = ContentPostMapper.ToEntity(request);
-            postEntity.Creator = creator;
 
             var post = await _contentPlanningService.CreatePostAsync(postEntity);
             var postDto = ContentPostMapper.ToDto(post);
@@ -267,7 +269,7 @@ public class ContentPostController : ControllerBase
             return CreatedAtAction(
                 nameof(GetById), 
                 new { id = post.Id }, 
-                new ApiResponse<ContentPostDto>
+                new ApiResponse<PostDTOs.ContentPostDto>
                 {
                     Success = true,
                     Data = postDto,
@@ -276,7 +278,7 @@ public class ContentPostController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new ApiResponse<ContentPostDto>
+            return StatusCode(500, new ApiResponse<PostDTOs.ContentPostDto>
             {
                 Success = false,
                 Message = "Erro ao criar post"
@@ -322,26 +324,26 @@ public class ContentPostController : ControllerBase
     /// <response code="404">Post não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet("{id}")]
-    [ProducesResponseType(typeof(ApiResponse<ContentPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PostDTOs.ContentPostDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ContentPostDto>> GetById(Guid id)
+    public async Task<ActionResult<PostDTOs.ContentPostDto>> GetById(Guid id)
     {
         try
         {
             var post = await _repository.GetByIdAsync(id);
 
             if (post == null)
-                return NotFound(new ApiResponse<ContentPostDto>
+                return NotFound(new ApiResponse<PostDTOs.ContentPostDto>
                 {
                     Success = false,
                     Message = "Post não encontrado"
                 });
 
             var postDto = ContentPostMapper.ToDto(post);
-            return Ok(new ApiResponse<ContentPostDto>
+            return Ok(new ApiResponse<PostDTOs.ContentPostDto>
             {
                 Success = true,
                 Data = postDto,
@@ -350,7 +352,7 @@ public class ContentPostController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new ApiResponse<ContentPostDto>
+            return StatusCode(500, new ApiResponse<PostDTOs.ContentPostDto>
             {
                 Success = false,
                 Message = "Erro ao recuperar post"
@@ -398,7 +400,7 @@ public class ContentPostController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePostRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] PostDTOs.UpdatePostRequest request)
     {
         try
         {
@@ -495,13 +497,13 @@ public class ContentPostController : ControllerBase
     /// <response code="404">Post não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpPost("{id}/publish")]
-    [ProducesResponseType(typeof(ApiResponse<ContentPostDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<ContentPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<PostDTOs.ContentPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PostDTOs.ContentPostDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<ContentPostDto>>> PublishPost(Guid id)
+    public async Task<ActionResult<ApiResponse<PostDTOs.ContentPostDto>>> PublishPost(Guid id)
     {
         // TODO: Adicionar verificação se o usuário autenticado pode publicar este post
 
@@ -510,12 +512,12 @@ public class ContentPostController : ControllerBase
             var post = await _repository.GetByIdAsync(id);
             if (post == null)
             {
-                return NotFound(new ApiResponse<ContentPostDto> { Success = false, Message = "Post não encontrado." });
+                return NotFound(new ApiResponse<PostDTOs.ContentPostDto> { Success = false, Message = "Post não encontrado." });
             }
 
             if (post.Status == PostStatus.Published)
             {
-                 return BadRequest(new ApiResponse<ContentPostDto> { Success = false, Message = "Post já está publicado." });
+                 return BadRequest(new ApiResponse<PostDTOs.ContentPostDto> { Success = false, Message = "Post já está publicado." });
             }
 
             // Se estava agendado, cancelar o job antigo (opcional, dependendo da implementação do SchedulerService)
@@ -535,12 +537,33 @@ public class ContentPostController : ControllerBase
             
             var postDto = ContentPostMapper.ToDto(post); // Mapper deve lidar com PublishedDate/ScheduledDate se existirem no DTO
 
-            return Ok(new ApiResponse<ContentPostDto> { Success = true, Data = postDto, Message = "Post publicado com sucesso." });
+            return Ok(new ApiResponse<PostDTOs.ContentPostDto> { Success = true, Data = postDto, Message = "Post publicado com sucesso." });
         }
         catch (Exception ex)
         {
            // Logar erro ex
-            return StatusCode(500, new ApiResponse<ContentPostDto> { Success = false, Message = "Erro ao publicar o post." });
+            return StatusCode(500, new ApiResponse<PostDTOs.ContentPostDto> { Success = false, Message = "Erro ao publicar o post." });
         }
+    }
+
+    // GET api/contentpost/creator/{creatorId}
+    [HttpGet("creator/{creatorId}")]
+    public async Task<ActionResult<IEnumerable<PostDTOs.ContentPostDto>>> GetByCreator(Guid creatorId)
+    {
+        var posts = await _repository.GetByCreatorIdAsync(creatorId);
+        
+        var response = posts.Select(post => new PostDTOs.ContentPostDto 
+        {
+            Id = post.Id,
+            CreatorId = post.CreatorId,
+            Title = post.Title,
+            Content = post.Content,
+            Platform = post.Platform,
+            Status = post.Status,
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt
+        });
+
+        return Ok(response);
     }
 }

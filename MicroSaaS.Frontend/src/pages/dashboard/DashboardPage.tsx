@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container,
   Grid,
@@ -18,6 +18,12 @@ import {
   LinearProgress,
   Button,
   Alert,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -31,6 +37,7 @@ import {
   Notifications as NotificationsIcon,
   Schedule as ScheduleIcon,
   Launch as LaunchIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -45,50 +52,19 @@ import {
   Legend,
 } from 'recharts';
 import api from '../../services/api';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { Dayjs } from 'dayjs';
+import { useAuth } from '../../hooks/useAuth';
+import DashboardService, { PerformanceMetrics, SocialMediaPlatform } from '../../services/DashboardService';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 
-// Dados simulados
-const revenueData = [
-  { name: 'Jan', receita: 4000 },
-  { name: 'Fev', receita: 3000 },
-  { name: 'Mar', receita: 5000 },
-  { name: 'Abr', receita: 7000 },
-  { name: 'Mai', receita: 6000 },
-  { name: 'Jun', receita: 8000 },
-  { name: 'Jul', receita: 10000 },
-];
+dayjs.locale('pt-br');
 
-const followersData = [
-  { platform: 'Facebook', seguidores: 5200, crescimento: 120, cor: '#1877F2' },
-  { platform: 'Twitter', seguidores: 3100, crescimento: -50, cor: '#1DA1F2' },
-  { platform: 'Instagram', seguidores: 12500, crescimento: 340, cor: '#E4405F' },
-  { platform: 'YouTube', seguidores: 8700, crescimento: 220, cor: '#FF0000' },
-  { platform: 'LinkedIn', seguidores: 2800, crescimento: 90, cor: '#0A66C2' },
-];
-
-const engagementData = [
-  { name: 'Jan', facebook: 65, twitter: 45, instagram: 85, youtube: 55, linkedin: 35 },
-  { name: 'Fev', facebook: 70, twitter: 50, instagram: 80, youtube: 60, linkedin: 40 },
-  { name: 'Mar', facebook: 75, twitter: 55, instagram: 90, youtube: 65, linkedin: 45 },
-  { name: 'Abr', facebook: 80, twitter: 60, instagram: 95, youtube: 70, linkedin: 50 },
-  { name: 'Mai', facebook: 85, twitter: 65, instagram: 100, youtube: 75, linkedin: 55 },
-  { name: 'Jun', facebook: 90, twitter: 70, instagram: 105, youtube: 80, linkedin: 60 },
-  { name: 'Jul', facebook: 95, twitter: 75, instagram: 110, youtube: 85, linkedin: 65 },
-];
-
-// Notificações simuladas
-const notifications = [
-  { id: 1, message: 'Nova assinatura Premium adquirida', time: '10 minutos atrás' },
-  { id: 2, message: 'Publicação agendada foi publicada', time: '1 hora atrás' },
-  { id: 3, message: 'Aviso de cobrança: sua fatura vence em 3 dias', time: '5 horas atrás' },
-  { id: 4, message: 'Post no Instagram alcançou 5.000 curtidas', time: '1 dia atrás' },
-];
-
-// Publicações agendadas simuladas
-const scheduledPosts = [
-  { id: 1, title: 'Lançamento de produto', platform: 'Instagram', time: 'Hoje, 18:00' },
-  { id: 2, title: 'Webinar de marketing', platform: 'LinkedIn', time: 'Amanhã, 15:30' },
-  { id: 3, title: 'Dicas de crescimento', platform: 'Twitter', time: '23/05, 09:00' },
-];
+// Lista de plataformas (mantida para o filtro, pode ser ajustada se necessário)
+// const platforms = ['Todos', 'Instagram', 'YouTube', 'TikTok', 'Facebook', 'Twitter', 'LinkedIn'];
 
 // Função para obter o ícone da plataforma
 const getPlatformIcon = (platform: string) => {
@@ -108,19 +84,94 @@ const getPlatformIcon = (platform: string) => {
   }
 };
 
+// Função para obter a cor da plataforma (NOVA)
+const getPlatformColor = (platform: SocialMediaPlatform): string => {
+  switch (platform) {
+    case SocialMediaPlatform.Facebook:
+      return '#1877F2';
+    case SocialMediaPlatform.Twitter:
+      return '#1DA1F2';
+    case SocialMediaPlatform.Instagram:
+      return '#E4405F';
+    case SocialMediaPlatform.YouTube:
+      return '#FF0000';
+    case SocialMediaPlatform.LinkedIn:
+      return '#0A66C2';
+    case SocialMediaPlatform.TikTok:
+      return '#000000'; // TikTok pode ter várias cores, usar preto como padrão
+    case SocialMediaPlatform.Pinterest:
+        return '#E60023';
+    case SocialMediaPlatform.Snapchat:
+        return '#FFFC00'; // Amarelo
+    default:
+      return '#808080'; // Cinza padrão
+  }
+};
+
 const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false);
   const [apiStatus, setApiStatus] = useState<string | null>(null);
   const [isTestingApi, setIsTestingApi] = useState(false);
 
-  // Simula o carregamento de dados
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
+  // Estados para os filtros
+  const [startDate, setStartDate] = useState<Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<Dayjs | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>(SocialMediaPlatform.All);
 
-    return () => clearTimeout(timer);
+  // Estado para os dados das métricas
+  const [metricsData, setMetricsData] = useState<PerformanceMetrics[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Função para buscar métricas
+  const fetchMetrics = useCallback(async () => {
+    if (!user?.id) {
+      console.error("ID do criador não encontrado no contexto de autenticação.");
+      setFetchError("Não foi possível identificar o usuário para buscar os dados.");
+      return;
+    }
+
+    setLoadingMetrics(true);
+    setFetchError(null);
+    console.log('Buscando métricas com filtros:', { startDate, endDate, selectedPlatform });
+
+    try {
+      // Chama o serviço, que agora retorna o array diretamente ou vazio em caso de erro
+      const data = await DashboardService.getDashboardMetrics(
+        user.id,
+        startDate,
+        endDate,
+        selectedPlatform
+      );
+      
+      // Atualiza o estado com os dados recebidos (pode ser um array vazio)
+      console.log('Métricas recebidas no componente:', data);
+      setMetricsData(data); 
+
+      // Limpa erro anterior se a busca for bem-sucedida (mesmo com array vazio)
+      setFetchError(null); 
+
+    } catch (error: any) { // O catch aqui só pegaria erros lançados pelo serviço (se o fizéssemos)
+      console.error('Erro crítico ao buscar métricas (componente):', error);
+      setFetchError('Erro de conexão ao buscar dados do dashboard.');
+      setMetricsData([]); // Limpar dados em caso de erro crítico
+    } finally {
+      setLoadingMetrics(false);
+    }
+  }, [user, startDate, endDate, selectedPlatform]); // Dependências do useCallback
+
+  // Buscar dados iniciais ao montar o componente
+  useEffect(() => {
+    setLoading(true);
+    fetchMetrics().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handler para o botão "Aplicar Filtros"
+  const handleApplyFilters = () => {
+    fetchMetrics();
+  };
 
   const testApiConnection = async () => {
     setIsTestingApi(true);
@@ -179,6 +230,65 @@ const DashboardPage: React.FC = () => {
     window.open('https://localhost:7171/swagger/index.html', '_blank');
   };
 
+  // Processar dados para o gráfico de receita mensal
+  const monthlyRevenueData = useMemo(() => {
+    if (!metricsData || metricsData.length === 0) {
+      return [];
+    }
+
+    const revenueByMonth: { [key: string]: number } = {};
+
+    metricsData.forEach(metric => {
+      // Usar dayjs para formatar a data como 'YYYY-MM' para agrupar
+      const monthKey = dayjs(metric.date).format('YYYY-MM');
+      if (!revenueByMonth[monthKey]) {
+        revenueByMonth[monthKey] = 0;
+      }
+      revenueByMonth[monthKey] += metric.estimatedRevenue;
+    });
+
+    // Converter para o formato esperado pelo gráfico e ordenar por mês
+    return Object.entries(revenueByMonth)
+      .map(([monthKey, revenue]) => ({
+        // Usar dayjs para formatar o nome do mês (ex: 'Jan/24')
+        monthName: dayjs(monthKey + '-01').format('MMM/YY'),
+        revenue: parseFloat(revenue.toFixed(2)) // Arredondar para 2 casas decimais
+      }))
+      .sort((a, b) => dayjs(a.monthName, 'MMM/YY').valueOf() - dayjs(b.monthName, 'MMM/YY').valueOf()); // Ordenar
+
+  }, [metricsData]); // Recalcular apenas quando metricsData mudar
+
+  // Processar dados para a lista de seguidores por plataforma (NOVO)
+  const followersByPlatformData = useMemo(() => {
+    if (!metricsData || metricsData.length === 0) {
+      return [];
+    }
+
+    // Agrupar métricas por plataforma
+    const metricsByPlatform: { [key in SocialMediaPlatform]?: PerformanceMetrics[] } = {};
+    metricsData.forEach(metric => {
+      if (!metricsByPlatform[metric.platform]) {
+        metricsByPlatform[metric.platform] = [];
+      }
+      metricsByPlatform[metric.platform]?.push(metric);
+    });
+
+    // Para cada plataforma, encontrar a métrica mais recente e extrair os seguidores
+    const latestFollowers = Object.entries(metricsByPlatform).map(([platform, platformMetrics]) => {
+      // Ordenar por data descendente e pegar a primeira (mais recente)
+      const latestMetric = platformMetrics?.sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf())[0];
+      return {
+        platform: platform as SocialMediaPlatform,
+        followers: latestMetric?.followers ?? 0, // Usar 0 se não houver métrica
+        color: getPlatformColor(platform as SocialMediaPlatform)
+      };
+    });
+
+    // Ordenar por número de seguidores descendente
+    return latestFollowers.sort((a, b) => b.followers - a.followers);
+
+  }, [metricsData]);
+
   if (loading) {
     return (
       <Box
@@ -199,294 +309,197 @@ const DashboardPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" gutterBottom>
-          Dashboard
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="outlined" 
-            color="primary"
-            onClick={openSwagger}
-            startIcon={<LaunchIcon />}
-          >
-            Documentação API
-          </Button>
-          
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={testApiConnection}
-            disabled={isTestingApi}
-          >
-            {isTestingApi ? 'Testando...' : 'Testar Conexão com API'}
-          </Button>
-        </Box>
-      </Box>
-      
-      {apiStatus && (
-        <Alert 
-          severity={apiStatus.includes('sucesso') ? 'success' : 'error'}
-          sx={{ mb: 3 }}
-        >
-          {apiStatus}
-        </Alert>
-      )}
-
-      {/* Resumo financeiro */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 140,
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Receita Total (Mensal)
-            </Typography>
-            <Typography component="p" variant="h4">
-              R$ 38.000,00
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <TrendingUpIcon sx={{ color: 'success.main', mr: 1 }} />
-              <Typography variant="body2" color="success.main">
-                +12% desde o mês passado
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 140,
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Seguidores Totais
-            </Typography>
-            <Typography component="p" variant="h4">
-              32.300
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <TrendingUpIcon sx={{ color: 'success.main', mr: 1 }} />
-              <Typography variant="body2" color="success.main">
-                +720 nos últimos 30 dias
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 140,
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Taxa de Engajamento
-            </Typography>
-            <Typography component="p" variant="h4">
-              3.8%
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <TrendingDownIcon sx={{ color: 'error.main', mr: 1 }} />
-              <Typography variant="body2" color="error.main">
-                -0.2% desde o mês passado
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Gráficos */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={8}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Receita Mensal
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis
-                  tickFormatter={(value) => `R$ ${value.toLocaleString()}`}
-                />
-                <Tooltip
-                  formatter={(value: any) => [`R$ ${value.toLocaleString()}`, 'Receita']}
-                />
-                <Legend />
-                <Bar dataKey="receita" fill="#3f51b5" name="Receita (R$)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Seguidores por Plataforma
-            </Typography>
-            <Box sx={{ height: 300, overflow: 'auto' }}>
-              {followersData.map((platform) => (
-                <Box key={platform.platform} sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {getPlatformIcon(platform.platform)}
-                      <Typography variant="body1" sx={{ ml: 1 }}>
-                        {platform.platform}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="body2">
-                        {platform.seguidores.toLocaleString()}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        icon={
-                          platform.crescimento > 0 ? (
-                            <TrendingUpIcon fontSize="small" />
-                          ) : (
-                            <TrendingDownIcon fontSize="small" />
-                          )
-                        }
-                        label={`${platform.crescimento > 0 ? '+' : ''}${platform.crescimento}`}
-                        color={platform.crescimento > 0 ? 'success' : 'error'}
-                        sx={{ ml: 1 }}
-                      />
-                    </Box>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={(platform.seguidores / 15000) * 100}
-                    sx={{
-                      height: 8,
-                      borderRadius: 5,
-                      bgcolor: 'rgba(0,0,0,0.1)',
-                      '& .MuiLinearProgress-bar': { bgcolor: platform.cor },
-                    }}
-                  />
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Engajamento por Plataforma
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={engagementData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="facebook" stroke="#1877F2" name="Facebook" />
-                <Line type="monotone" dataKey="twitter" stroke="#1DA1F2" name="Twitter" />
-                <Line type="monotone" dataKey="instagram" stroke="#E4405F" name="Instagram" />
-                <Line type="monotone" dataKey="youtube" stroke="#FF0000" name="YouTube" />
-                <Line type="monotone" dataKey="linkedin" stroke="#0A66C2" name="LinkedIn" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <NotificationsIcon color="primary" />
-                    <Typography variant="h6" sx={{ ml: 1 }}>
-                      Notificações Recentes
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  <List sx={{ maxHeight: 200, overflow: 'auto' }}>
-                    {notifications.map((notification) => (
-                      <React.Fragment key={notification.id}>
-                        <ListItem alignItems="flex-start">
-                          <ListItemAvatar>
-                            <Avatar sx={{ bgcolor: 'primary.main' }}>
-                              <NotificationsIcon />
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText
-                            primary={notification.message}
-                            secondary={notification.time}
-                          />
-                        </ListItem>
-                        <Divider variant="inset" component="li" />
-                      </React.Fragment>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        {/* Seção de Filtros e Teste API */}
+        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Filtros e Status
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={3}>
+              <DatePicker
+                label="Data Início"
+                value={startDate}
+                onChange={(newValue) => setStartDate(newValue)}
+                // renderInput={(params) => <TextField {...params} fullWidth margin="dense" />} // Verificar se isso é necessário com a versão atual do MUI
+              />
             </Grid>
-            <Grid item xs={12}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <ScheduleIcon color="primary" />
-                    <Typography variant="h6" sx={{ ml: 1 }}>
-                      Publicações Agendadas
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  <List sx={{ maxHeight: 200, overflow: 'auto' }}>
-                    {scheduledPosts.map((post) => (
-                      <React.Fragment key={post.id}>
-                        <ListItem alignItems="flex-start">
-                          <ListItemAvatar>
-                            <Avatar sx={{ bgcolor: 'info.main' }}>
-                              {getPlatformIcon(post.platform)}
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText
-                            primary={post.title}
-                            secondary={
-                              <React.Fragment>
-                                <Typography
-                                  sx={{ display: 'inline' }}
-                                  component="span"
-                                  variant="body2"
-                                  color="text.primary"
-                                >
-                                  {post.platform}
-                                </Typography>
-                                {` — ${post.time}`}
-                              </React.Fragment>
-                            }
-                          />
-                        </ListItem>
-                        <Divider variant="inset" component="li" />
-                      </React.Fragment>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
+            <Grid item xs={12} sm={6} md={3}>
+              <DatePicker
+                label="Data Fim"
+                value={endDate}
+                onChange={(newValue) => setEndDate(newValue)}
+                // renderInput={(params) => <TextField {...params} fullWidth margin="dense" />}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Plataforma</InputLabel>
+                <Select
+                  value={selectedPlatform}
+                  label="Plataforma"
+                  onChange={(e) => setSelectedPlatform(e.target.value)}
+                >
+                  {/* Usar o enum SocialMediaPlatform para gerar as opções */}
+                  {Object.values(SocialMediaPlatform).map((platformValue) => (
+                    <MenuItem key={platformValue} value={platformValue}>
+                      {platformValue}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button
+                variant="contained"
+                startIcon={<FilterListIcon />}
+                onClick={handleApplyFilters}
+                disabled={loadingMetrics}
+                sx={{ flexGrow: 1 }}
+              >
+                {loadingMetrics ? <CircularProgress size={24} /> : 'Aplicar Filtros'}
+              </Button>
+              <Button onClick={openSwagger} size="small">Swagger</Button>
+              <Button onClick={testApiConnection} disabled={isTestingApi} size="small">
+                {isTestingApi ? <CircularProgress size={20} /> : 'API Test'}
+              </Button>
             </Grid>
           </Grid>
-        </Grid>
-      </Grid>
-    </Container>
+          {/* Exibir status da API */}
+          {apiStatus && (
+             <Alert severity={apiStatus.includes('❌') ? 'error' : 'success'} sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
+               {apiStatus}
+             </Alert>
+           )}
+          {/* Exibir erro de fetch */}
+          {fetchError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {fetchError}
+            </Alert>
+          )}
+        </Paper>
+
+        {/* Grid Principal para os Cards/Gráficos */}
+        <Grid container spacing={3}>
+
+          {/* Card: Receita Mensal */}
+          <Grid item xs={12} md={6}> {/* Ocupa 12 colunas em extra-small, 6 em medium+ */}
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 300 }}>
+              <Typography variant="h6" gutterBottom>
+                Receita Mensal Estimada
+              </Typography>
+              {loadingMetrics ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <CircularProgress />
+                  </Box>
+              ) : monthlyRevenueData.length > 0 ? (
+                  <ResponsiveContainer>
+                    <LineChart data={monthlyRevenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      {/* Usar monthName para o eixo X */}
+                      <XAxis dataKey="monthName" />
+                      <YAxis />
+                      <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Receita"]} />
+                      <Legend />
+                      {/* Usar revenue para a linha */}
+                      <Line type="monotone" dataKey="revenue" stroke="#8884d8" name="Receita Estimada" />
+                    </LineChart>
+                  </ResponsiveContainer>
+              ) : (
+                  <Typography sx={{ textAlign: 'center', mt: 4 }}>
+                    Sem dados de receita para o período selecionado.
+                  </Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Card: Seguidores por Plataforma (ATUALIZADO) */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 300 }}>
+              <Typography variant="h6" gutterBottom>
+                Seguidores por Plataforma (Último dado)
+              </Typography>
+              {loadingMetrics ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress />
+                </Box>
+              ) : followersByPlatformData.length > 0 ? (
+                <List dense sx={{ overflow: 'auto', flexGrow: 1 }}> {/* Adicionado overflow e flexGrow */}
+                  {followersByPlatformData.map((data) => (
+                    <ListItem key={data.platform} divider>
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: data.color, width: 32, height: 32 }}> {/* Usar cor e ajustar tamanho */} 
+                          {getPlatformIcon(data.platform)} 
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={data.platform}
+                        secondary={`${data.followers.toLocaleString()} seguidores`}
+                      />
+                      {/* Opcional: Adicionar uma barra ou indicador visual */}
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography sx={{ textAlign: 'center', mt: 4 }}>
+                  Sem dados de seguidores para o período selecionado.
+                </Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Card: Taxa de Engajamento (REMOVIDO/TODO) */}
+          {/*
+          <Grid item xs={12} md={6}>
+             <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 300 }}>
+              <Typography variant="h6" gutterBottom>
+                Taxa de Engajamento Média // TODO: Implementar com dados reais
+              </Typography>
+             // TODO: Adicionar gráfico ou visualização com dados de engagementRate de metricsData
+             <Typography sx={{ textAlign: 'center', mt: 4 }}>
+                Visualização de engajamento pendente.
+             </Typography>
+            </Paper>
+          </Grid>
+          */}
+
+          {/* Card: Notificações (REMOVIDO/TODO) */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="h6" gutterBottom>
+                Notificações // TODO: Implementar com API real
+              </Typography>
+              {/* TODO: Substituir por componente que busca e exibe notificações da API */}
+              <Typography sx={{ textAlign: 'center', mt: 2, color: 'text.secondary' }}>
+                Funcionalidade de notificações pendente.
+              </Typography>
+              {/* <List dense>
+                {notifications.map((notif) => ( ... ))}
+              </List> */}
+            </Paper>
+          </Grid>
+
+          {/* Card: Publicações Agendadas (REMOVIDO/TODO) */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="h6" gutterBottom>
+                Publicações Agendadas // TODO: Implementar com API real
+              </Typography>
+              {/* TODO: Substituir por componente que busca e exibe posts agendados da API */}
+              <Typography sx={{ textAlign: 'center', mt: 2, color: 'text.secondary' }}>
+                Funcionalidade de posts agendados pendente.
+              </Typography>
+              {/* <List dense>
+                {scheduledPosts.map((post) => ( ... ))}
+              </List> */}
+            </Paper>
+          </Grid>
+
+        </Grid> {/* Fim do Grid Principal */}
+
+      </Container>
+    </LocalizationProvider>
   );
 };
 

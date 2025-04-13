@@ -1,5 +1,8 @@
-using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
+using MicroSaaS.Application.Interfaces.Repositories;
+using MicroSaaS.Application.Services;
+using MicroSaaS.Application.DTOs;
+using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Infrastructure.Services;
 using MicroSaaS.Shared.Enums;
@@ -46,7 +49,7 @@ public class TestableContentAnalysisService : ContentAnalysisService
                     Description = "Descrição do padrão de teste",
                     ConfidenceScore = 0.85,
                     AverageEngagement = 0.75,
-                    ExampleContentIds = new List<string> { Guid.NewGuid().ToString() },
+                    ExampleContentIds = new List<Guid> { Guid.NewGuid() },
                     Attributes = new List<string> { "Atributo Teste" }
                 }
             }
@@ -111,22 +114,23 @@ public class ContentAnalysisServiceTests
     public async Task GetContentInsightsAsync_WhenValidData_ShouldReturnInsights()
     {
         // Arrange
-        var contentId = Guid.NewGuid();
         var creatorId = Guid.NewGuid();
-        
+        var contentId = Guid.NewGuid();
         var post = TestHelper.CreateTestContentPost(creatorId, PostStatus.Published);
         post.Id = contentId;
-        post.Views = 1500;
-        post.Likes = 600;
-        post.Comments = 120;
-        post.Shares = 60;
+        post.Title = "Test Post";
+        post.Views = 1000;
+        post.Likes = 500;
+        post.Comments = 100;
+        post.Shares = 50;
         
         var performance = new ContentPerformance
         {
+            Id = Guid.NewGuid(),
             PostId = contentId,
             CreatorId = creatorId,
             Platform = SocialMediaPlatform.Instagram,
-            Views = 1500,
+            Views = 1200,
             Likes = 600,
             Comments = 120,
             Shares = 60,
@@ -135,7 +139,7 @@ public class ContentAnalysisServiceTests
         };
 
         // Configurar o repositório de criadores para retornar um criador válido
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _creatorRepositoryMock.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
 
@@ -161,7 +165,7 @@ public class ContentAnalysisServiceTests
     {
         // Arrange
         var creatorId = Guid.NewGuid();
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         
         // Criar pelo menos 10 posts para satisfazer a validação de dados suficientes
         var posts = new List<ContentPost>();
@@ -228,7 +232,7 @@ public class ContentAnalysisServiceTests
                     Description = "Conteúdos com elementos visuais fortes obtêm maior engajamento",
                     ConfidenceScore = 0.85,
                     AverageEngagement = 0.75,
-                    ExampleContentIds = posts.Take(3).Select(p => p.Id.ToString()).ToList(),
+                    ExampleContentIds = posts.Take(3).Select(p => p.Id).ToList(),
                     Attributes = new List<string> { "Visual", "Impactante", "Colorido" }
                 }
             },
@@ -261,7 +265,7 @@ public class ContentAnalysisServiceTests
     {
         // Arrange
         var creatorId = Guid.NewGuid();
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         var startDate = DateTime.UtcNow.AddMonths(-1);
         var endDate = DateTime.UtcNow;
         
@@ -410,15 +414,15 @@ public class ContentAnalysisServiceTests
     {
         // Arrange
         var creatorId = Guid.NewGuid();
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         
         var request = new ContentPredictionRequestDto
         {
-            CreatorId = creatorId,
+            CreatorId = creatorId.ToString(),
             TargetPlatform = SocialMediaPlatform.Instagram,
-            Type = ContentType.Video,
-            Title = "Test Prediction",
-            Tags = new List<string> { "test", "prediction" },
+            Type = ContentType.SocialMedia,
+            Title = "Test Content Prediction",
+            Tags = new List<string> { "test", "content", "prediction" },
             PostDay = DayOfWeek.Monday,
             PostTime = new TimeSpan(18, 0, 0)  // 6 PM
         };
@@ -552,7 +556,7 @@ public class ContentAnalysisServiceTests
     {
         // Arrange
         var creatorId = Guid.NewGuid();
-        var creator = TestHelper.CreateTestContentCreator(creatorId);
+        var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         
         // Configurar dados históricos suficientes
         var posts = new List<ContentPost>();

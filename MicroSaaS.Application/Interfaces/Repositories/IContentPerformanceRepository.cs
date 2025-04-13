@@ -7,7 +7,7 @@ public interface IContentPerformanceRepository
 {
     Task<ContentPerformance> GetByIdAsync(Guid id);
     Task<IEnumerable<ContentPerformance>> GetAllAsync();
-    Task<IEnumerable<ContentPerformance>> GetByPostIdAsync(string postId);
+    Task<IEnumerable<ContentPerformance>> GetByPostIdAsync(string? postId);
     Task<IEnumerable<ContentPerformance>> GetByCreatorIdAsync(Guid creatorId);
     Task<IEnumerable<ContentPerformance>> GetByPlatformAsync(SocialMediaPlatform platform);
     Task<IEnumerable<ContentPerformance>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);

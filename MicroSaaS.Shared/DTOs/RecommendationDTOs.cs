@@ -84,7 +84,7 @@ namespace MicroSaaS.Shared.DTOs
         public decimal ConfidenceScore { get; set; }
 
         [JsonPropertyName("exampleContentIds")]
-        public List<string> ExampleContentIds { get; set; } = new List<string>();
+        public List<Guid> ExampleContentIds { get; set; } = new List<Guid>();
 
         [JsonPropertyName("suggestedHashtags")]
         public List<string> SuggestedHashtags { get; set; } = new List<string>();

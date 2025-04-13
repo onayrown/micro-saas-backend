@@ -42,6 +42,7 @@ public interface IRecommendationService
     Task<List<GrowthRecommendationDto>> GetGrowthRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
     Task<ContentRecommendationDto> GenerateCustomRecommendationAsync(CustomRecommendationRequestDto request);
     Task<MicroSaaS.Shared.DTOs.AudienceSensitivityDto> GetAudienceSensitivityAnalysisAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<GrowthRecommendationDto> GenerateCustomGrowthRecommendationAsync(CustomRecommendationRequestDto request);
 }
 
 public class TrendTopic
