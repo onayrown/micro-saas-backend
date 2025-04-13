@@ -49,9 +49,12 @@ namespace MicroSaaS.IntegrationTests
             var accounts = JsonSerializer.Deserialize<List<SocialMediaAccount>>(content, _jsonOptions);
             
             accounts.Should().NotBeNull();
-            accounts.Should().NotBeEmpty();
-            accounts.Count.Should().BeGreaterThan(0);
-            accounts.Should().AllSatisfy(a => a.CreatorId.Should().Be(_existingCreatorId));
+            if (accounts != null)
+            {
+                accounts.Should().NotBeEmpty();
+                accounts.Count.Should().BeGreaterThan(0);
+                accounts.Should().AllSatisfy(a => a.CreatorId.Should().Be(_existingCreatorId));
+            }
         }
 
         [Fact]
@@ -292,7 +295,7 @@ namespace MicroSaaS.IntegrationTests
         
         private class AuthUrlResponse
         {
-            public string AuthorizationUrl { get; set; }
+            public string AuthorizationUrl { get; set; } = string.Empty;
         }
     }
 } 

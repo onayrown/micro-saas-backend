@@ -44,7 +44,7 @@ namespace MicroSaaS.IntegrationTests.Utils
         }
 
         [HttpGet("{creatorId}")]
-        public async Task<ActionResult<List<SocialMediaAccount>>> GetAccounts(Guid creatorId)
+        public ActionResult<List<SocialMediaAccount>> GetAccounts(Guid creatorId)
         {
             _logger.LogInformation("TestSocialMediaAccountController.GetAccounts: Buscando contas para criador {CreatorId}", creatorId);
             

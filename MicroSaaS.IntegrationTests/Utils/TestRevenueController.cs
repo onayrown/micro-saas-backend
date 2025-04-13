@@ -418,7 +418,7 @@ namespace MicroSaaS.IntegrationTests.Utils
 
     public class ConnectAdSenseRequest
     {
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
     }
 
     public class RevenueSummary
@@ -469,15 +469,15 @@ namespace MicroSaaS.IntegrationTests.Utils
         public decimal RevenuePerPost { get; set; }
         public decimal RevenuePerView { get; set; }
         public decimal EngagementToRevenueRatio { get; set; }
-        public List<RevenueContentPerformance> BestPerformingContent { get; set; }
-        public Dictionary<SocialMediaPlatform, decimal> RevenueByPlatform { get; set; }
-        public List<string> MonetizationSuggestions { get; set; }
+        public List<RevenueContentPerformance> BestPerformingContent { get; set; } = new List<RevenueContentPerformance>();
+        public Dictionary<SocialMediaPlatform, decimal> RevenueByPlatform { get; set; } = new Dictionary<SocialMediaPlatform, decimal>();
+        public List<string> MonetizationSuggestions { get; set; } = new List<string>();
     }
 
     public class RevenueContentPerformance
     {
-        public string ContentId { get; set; }
-        public string Title { get; set; }
+        public string ContentId { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
         public decimal Revenue { get; set; }
         public int Views { get; set; }
         public decimal EngagementRate { get; set; }

@@ -1066,17 +1066,17 @@ namespace MicroSaaS.IntegrationTests
             return Task.FromResult(post);
         }
 
-        public Task<ScheduledPostDto> GetScheduledPostAsync(Guid id)
+        public Task<ScheduledPostDto?> GetScheduledPostAsync(Guid id)
         {
             var post = _scheduledPosts.FirstOrDefault(p => p.Id == id);
             return Task.FromResult(post);
         }
 
-        public Task<ScheduledPostDto> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request)
+        public Task<ScheduledPostDto?> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request)
         {
             var post = _scheduledPosts.FirstOrDefault(p => p.Id == id);
             if (post == null)
-                return Task.FromResult<ScheduledPostDto>(null);
+                return Task.FromResult<ScheduledPostDto?>(null);
 
             if (request.Title != null)
                 post.Title = request.Title;
@@ -1095,7 +1095,7 @@ namespace MicroSaaS.IntegrationTests
             
             post.UpdatedAt = DateTime.UtcNow;
             
-            return Task.FromResult(post);
+            return Task.FromResult<ScheduledPostDto?>(post);
         }
 
         public Task<List<ScheduledPostDto>> GetScheduledPostsInRangeDtoAsync(DateTime startDate, DateTime endDate)

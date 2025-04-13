@@ -58,7 +58,7 @@ public interface ISchedulerService
     /// </summary>
     /// <param name="id">ID da postagem agendada</param>
     /// <returns>DTO da postagem agendada</returns>
-    Task<ScheduledPostDto> GetScheduledPostAsync(Guid id);
+    Task<ScheduledPostDto?> GetScheduledPostAsync(Guid id);
     
     /// <summary>
     /// Atualiza uma postagem agendada.
@@ -66,7 +66,7 @@ public interface ISchedulerService
     /// <param name="id">ID da postagem agendada</param>
     /// <param name="request">DTO com dados atualizados</param>
     /// <returns>DTO da postagem atualizada</returns>
-    Task<ScheduledPostDto> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request);
+    Task<ScheduledPostDto?> UpdateScheduledPostAsync(Guid id, UpdateScheduledPostDto request);
     
     /// <summary>
     /// Retorna todas as postagens agendadas para um período específico como uma lista de DTOs.

@@ -57,6 +57,11 @@ namespace MicroSaaS.IntegrationTests.Controllers
             var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseContent, 
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
+            if (authResponse == null)
+            {
+                throw new InvalidOperationException("Falha ao desserializar resposta de autenticação");
+            }
+            
             _authToken = authResponse.Token;
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authToken);
         }
@@ -288,27 +293,27 @@ namespace MicroSaaS.IntegrationTests.Controllers
         private class AuthResponse
         {
             public bool Success { get; set; }
-            public string Token { get; set; }
-            public UserDto User { get; set; }
+            public string Token { get; set; } = string.Empty;
+            public UserDto User { get; set; } = new UserDto();
         }
         
         private class UserDto
         {
             public Guid Id { get; set; }
-            public string Name { get; set; }
-            public string Email { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
         }
         
         private class CreateChecklistRequest
         {
             public Guid CreatorId { get; set; }
-            public string Title { get; set; }
-            public string Description { get; set; }
+            public string Title { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
         }
         
         private class AddChecklistItemRequest
         {
-            public string Description { get; set; }
+            public string Description { get; set; } = string.Empty;
             public bool IsRequired { get; set; }
         }
         
