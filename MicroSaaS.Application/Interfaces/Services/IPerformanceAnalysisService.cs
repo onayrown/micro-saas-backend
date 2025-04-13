@@ -16,6 +16,6 @@ public interface IPerformanceAnalysisService
     Task<int> CalculateFollowerGrowthAsync(Guid creatorId, SocialMediaPlatform platform, DateTime startDate, DateTime endDate);
     Task<DashboardMetricsDto> GetDashboardMetricsAsync();
     Task<ContentMetricsDto> GetContentMetricsAsync(string contentId);
-    Task<CreatorMetricsDto> GetCreatorMetricsAsync(string creatorId);
+    Task<CreatorMetricsDto> GetCreatorMetricsAsync(Guid creatorId);
     Task RefreshMetricsAsync();
 } 

@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MicroSaaS.Application.Interfaces.Services;
@@ -41,7 +43,12 @@ public class PerformanceMetricsController : ControllerBase
     [Cache("performance:creator:{creatorId}", minutes: 30)]
     public async Task<IActionResult> GetCreatorMetrics(string creatorId)
     {
-        var metrics = await _performanceService.GetCreatorMetricsAsync(creatorId);
+        if (!Guid.TryParse(creatorId, out Guid creatorGuid))
+        {
+            return BadRequest("O ID do criador fornecido não é válido. Deve ser um GUID válido.");
+        }
+        
+        var metrics = await _performanceService.GetCreatorMetricsAsync(creatorGuid);
         return Ok(metrics);
     }
 

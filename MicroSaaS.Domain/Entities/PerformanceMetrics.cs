@@ -10,32 +10,32 @@ public class PerformanceMetrics
 {
     public PerformanceMetrics()
     {
-        Id = Guid.NewGuid().ToString();
-        CreatorId = string.Empty;
+        Id = Guid.NewGuid();
+        CreatorId = Guid.Empty;
         Date = DateTime.UtcNow;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
-        TopPerformingContentIds = new List<string>();
+        TopPerformingContentIds = new List<Guid>();
     }
 
-    public PerformanceMetrics(string creatorId, SocialMediaPlatform platform)
+    public PerformanceMetrics(Guid creatorId, SocialMediaPlatform platform)
     {
-        Id = Guid.NewGuid().ToString();
+        Id = Guid.NewGuid();
         CreatorId = creatorId;
         Platform = platform;
         Date = DateTime.UtcNow;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
-        TopPerformingContentIds = new List<string>();
+        TopPerformingContentIds = new List<Guid>();
     }
 
     [BsonId]
     [BsonRepresentation(BsonType.String)]
-    public string Id { get; set; }
+    public Guid Id { get; set; }
 
     [BsonElement("creatorId")]
     [BsonRepresentation(BsonType.String)]
-    public string CreatorId { get; set; }
+    public Guid CreatorId { get; set; }
 
     [BsonElement("platform")]
     public SocialMediaPlatform Platform { get; set; }
@@ -95,7 +95,8 @@ public class PerformanceMetrics
     public decimal EstimatedRevenue { get; set; }
 
     [BsonElement("topPerformingContentIds")]
-    public List<string> TopPerformingContentIds { get; set; } = new();
+    [BsonRepresentation(BsonType.String)]
+    public List<Guid> TopPerformingContentIds { get; set; } = new();
 
     [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; }

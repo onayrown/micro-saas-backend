@@ -110,7 +110,7 @@ namespace MicroSaaS.IntegrationTests
             var creatorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             
             // Act
-            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId.ToString()}");
+            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId}");
             
             // Assert
             response.EnsureSuccessStatusCode();
@@ -122,7 +122,7 @@ namespace MicroSaaS.IntegrationTests
             
             Assert.NotNull(metrics);
             Assert.NotEmpty(metrics);
-            Assert.All(metrics, m => Assert.Equal(creatorId.ToString(), m.CreatorId));
+            Assert.All(metrics, m => Assert.Equal(creatorId, m.CreatorId));
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace MicroSaaS.IntegrationTests
             var platform = SocialMediaPlatform.Instagram;
             
             // Act
-            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId.ToString()}?platform={platform}");
+            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId}?platform={platform}");
             
             // Assert
             response.EnsureSuccessStatusCode();
@@ -156,7 +156,7 @@ namespace MicroSaaS.IntegrationTests
             var date = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
             
             // Act
-            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId.ToString()}/daily?date={date}");
+            var response = await _client.GetAsync($"/api/Dashboard/metrics/{creatorId}/daily/{date}");
             
             // Assert
             response.EnsureSuccessStatusCode();
@@ -167,7 +167,7 @@ namespace MicroSaaS.IntegrationTests
             });
             
             Assert.NotNull(metric);
-            Assert.Equal(creatorId.ToString(), metric.CreatorId);
+            Assert.Equal(creatorId, metric.CreatorId);
             Assert.Equal(DateTime.Parse(date).Date, metric.Date.Date);
         }
 
@@ -255,7 +255,7 @@ namespace MicroSaaS.IntegrationTests
             var creatorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             var newMetrics = new PerformanceMetrics
             {
-                CreatorId = creatorId.ToString(),
+                CreatorId = creatorId,
                 Platform = SocialMediaPlatform.Instagram,
                 Date = DateTime.UtcNow,
                 Followers = 12500,
@@ -284,8 +284,8 @@ namespace MicroSaaS.IntegrationTests
             });
             
             Assert.NotNull(savedMetrics);
-            Assert.NotNull(savedMetrics.Id);
-            Assert.Equal(creatorId.ToString(), savedMetrics.CreatorId);
+            Assert.NotEqual(Guid.Empty, savedMetrics.Id);
+            Assert.Equal(creatorId, savedMetrics.CreatorId);
             Assert.Equal(newMetrics.Platform, savedMetrics.Platform);
         }
 

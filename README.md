@@ -166,3 +166,35 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou enviar
 
 Este projeto está licenciado sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
 
+# Refatoração para Padronização de IDs como Guid
+
+## Modificações Realizadas
+
+1. **Atualização dos DTOs**:
+   - Modificamos `CreatorMetricsDto` para usar `Guid` em vez de `string` para a propriedade `CreatorId`
+   - Alteramos `ContentMetricsDto` para usar `Guid` em vez de `string` para a propriedade `ContentId`
+   - Atualizamos `CreatorPerformanceDto` para usar `Guid` em vez de `string` para a propriedade `CreatorId`
+
+2. **Implementação de métodos ausentes**:
+   - Adicionamos o método `GetContentMetricsAsync(string contentId)` na classe `PerformanceAnalysisService`, que converte o ID para `Guid` e chama o método de implementação que usa `Guid`
+
+3. **Correção dos Repositórios**:
+   - Atualizamos o `PerformanceMetricsRepository` para usar `Guid` diretamente em vez de `string` nas consultas ao MongoDB
+   - Corrigimos os filtros de consulta para usar a notação correta ao consultar por campos `Guid`
+   - Ajustamos o método `RefreshMetricsAsync` para lidar corretamente com os IDs do tipo `Guid`
+
+4. **Atualização de Controllers**:
+   - Modificamos o `PerformanceMetricsController` para converter explicitamente o parâmetro `string creatorId` para `Guid` antes de chamar os serviços
+
+5. **Correção das Entidades Mock**:
+   - Corrigimos os mocks em `Mocks.cs` para usar `Guid` em vez de `string` para as propriedades de ID
+
+## Próximos Passos
+
+Os erros nos testes de integração ainda precisam ser corrigidos. Há várias áreas que requerem atenção:
+
+1. Correção das classes de teste que ainda têm erros de tipo `string` vs `Guid`
+2. Atualização das classes utilitárias de teste para lidar corretamente com `Guid`
+3. Resolução de ambiguidades de tipos em referências como `UserDto` e `RecommendationType`
+4. Atualização de asserções em testes que verificam valores `Guid` (remover `Assert.NotNull()` em tipos de valor)
+

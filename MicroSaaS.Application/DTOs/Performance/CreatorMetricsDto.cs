@@ -2,7 +2,7 @@ namespace MicroSaaS.Application.DTOs.Performance;
 
 public class CreatorMetricsDto
 {
-    public string CreatorId { get; set; } = string.Empty;
+    public Guid CreatorId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public DateTime JoinedAt { get; set; }

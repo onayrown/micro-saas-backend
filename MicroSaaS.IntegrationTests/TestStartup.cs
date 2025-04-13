@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.IntegrationTests.Controllers;
+using MicroSaaS.IntegrationTests.Mocks;
+using MicroSaaS.IntegrationTests.Mocks.Repositories;
+using MicroSaaS.IntegrationTests.Mocks.Services;
 using MicroSaaS.IntegrationTests.Utils;
 using MongoDB.Driver;
 using Moq;
@@ -36,12 +39,17 @@ namespace MicroSaaS.IntegrationTests
             // Adicionar o suporte ao versionamento de API de forma simplificada
             services.AddApiVersioning();
 
+            // Adicionar mock repositories
+            services.AddScoped<IUserRepository, MockUserRepository>();
+            services.AddScoped<ISocialMediaAccountRepository, MockSocialMediaAccountRepository>();
+
             // Adicionar mock services
             services.AddScoped<IAuthService, MockAuthService>();
             services.AddScoped<ILoggingService, MockLoggingService>();
             services.AddScoped<ITokenService, MockTokenService>();
-            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
+            services.AddScoped<IDashboardService, MockDashboardService>();
             services.AddScoped<IRecommendationService, MockRecommendationService>();
+            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
             services.AddScoped<ISchedulerService, MockSchedulerService>();
 
             // Configurar serviços MVC

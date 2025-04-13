@@ -42,7 +42,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
 
         public async Task DeleteAsync(Guid id)
         {
-            var filter = Builders<PerformanceMetrics>.Filter.Eq(m => m.Id, id.ToString());
+            var filter = Builders<PerformanceMetrics>.Filter.Eq("_id", id);
             var metrics = await _collection.Find(filter).FirstOrDefaultAsync();
             
             if (metrics != null)
@@ -54,7 +54,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
 
         public async Task<PerformanceMetrics> GetByIdAsync(Guid id)
         {
-            var filter = Builders<PerformanceMetrics>.Filter.Eq(m => m.Id, id.ToString());
+            var filter = Builders<PerformanceMetrics>.Filter.Eq("_id", id);
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -69,7 +69,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             var cachedData = await _cacheService.GetAsync<List<PerformanceMetrics>>(cacheKey);
             if (cachedData != null) return cachedData;
 
-            var filter = Builders<PerformanceMetrics>.Filter.Eq(m => m.CreatorId, creatorId.ToString());
+            var filter = Builders<PerformanceMetrics>.Filter.Eq("creatorId", creatorId);
             var data = await _collection.Find(filter).ToListAsync();
 
             await _cacheService.SetAsync(cacheKey, data, TimeSpan.FromHours(1));
@@ -83,7 +83,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             if (cachedData != null) return cachedData;
 
             var filter = Builders<PerformanceMetrics>.Filter.And(
-                Builders<PerformanceMetrics>.Filter.Eq(m => m.CreatorId, creatorId.ToString()),
+                Builders<PerformanceMetrics>.Filter.Eq("creatorId", creatorId),
                 Builders<PerformanceMetrics>.Filter.Eq(m => m.Platform, platform)
             );
             var data = await _collection.Find(filter).ToListAsync();
@@ -99,7 +99,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             if (cachedData != null) return cachedData;
 
             var filter = Builders<PerformanceMetrics>.Filter.And(
-                Builders<PerformanceMetrics>.Filter.Eq(m => m.CreatorId, creatorId.ToString()),
+                Builders<PerformanceMetrics>.Filter.Eq("creatorId", creatorId),
                 Builders<PerformanceMetrics>.Filter.Gte(m => m.Date, startDate),
                 Builders<PerformanceMetrics>.Filter.Lte(m => m.Date, endDate)
             );
@@ -116,7 +116,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             if (cachedData != null) return cachedData;
 
             var filter = Builders<PerformanceMetrics>.Filter.And(
-                Builders<PerformanceMetrics>.Filter.Eq(m => m.CreatorId, creatorId.ToString()),
+                Builders<PerformanceMetrics>.Filter.Eq("creatorId", creatorId),
                 Builders<PerformanceMetrics>.Filter.Eq(m => m.Date.Date, date.Date),
                 Builders<PerformanceMetrics>.Filter.Eq(m => m.Platform, platform)
             );
@@ -149,7 +149,7 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             var cachedData = await _cacheService.GetAsync<decimal?>(cacheKey);
             if (cachedData.HasValue) return cachedData.Value;
 
-            var filter = Builders<PerformanceMetrics>.Filter.Eq(m => m.CreatorId, creatorId.ToString());
+            var filter = Builders<PerformanceMetrics>.Filter.Eq("creatorId", creatorId);
             var metrics = await _collection.Find(filter).ToListAsync();
             if (!metrics.Any()) return 0;
 
@@ -164,12 +164,17 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             // Esta implementação pode variar dependendo dos requisitos específicos
             // Por exemplo, pode envolver a busca de dados de APIs externas de mídia social
             
-            // Por enquanto, apenas invalide o cache
-            var allCreators = await _collection.Distinct(m => m.CreatorId, _ => true).ToListAsync();
-            foreach (var creatorId in allCreators)
+            // Por enquanto, apenas invalide o cache para todos os criadores
+            var allMetrics = await _collection.Find(_ => true).ToListAsync();
+            var distinctCreatorIds = allMetrics.Select(m => m.CreatorId).Distinct();
+            
+            foreach (var creatorId in distinctCreatorIds)
             {
                 await InvalidateCacheAsync(creatorId);
             }
+            
+            // Invalide também o cache global
+            await _cacheService.RemoveAsync("metrics:avgEngagement:all");
         }
 
         public async Task<IEnumerable<PerformanceMetrics>> GetByCreatorIdBetweenDatesAsync(Guid creatorId, DateTime startDate, DateTime endDate)
@@ -187,28 +192,35 @@ namespace MicroSaaS.Infrastructure.Persistence.Repositories
             var cachedData = await _cacheService.GetAsync<List<PerformanceMetrics>>(cacheKey);
             if (cachedData != null) return cachedData;
 
-            // Procurando por métricas que possuem o PostId em TopPerformingContentIds
-            var filter = Builders<PerformanceMetrics>.Filter.AnyEq(m => m.TopPerformingContentIds, postId);
-            var data = await _collection.Find(filter).ToListAsync();
+            // Convertemos o postId para Guid para usar com TopPerformingContentIds
+            if (Guid.TryParse(postId, out Guid postGuid))
+            {
+                // Usamos FindInMemory porque não temos um índice direto para isso
+                var allMetrics = await _collection.Find(_ => true).ToListAsync();
+                var matchingMetrics = allMetrics
+                    .Where(m => m.TopPerformingContentIds.Contains(postGuid))
+                    .ToList();
 
-            await _cacheService.SetAsync(cacheKey, data, TimeSpan.FromHours(1));
-            return data;
+                await _cacheService.SetAsync(cacheKey, matchingMetrics, TimeSpan.FromHours(1));
+                return matchingMetrics;
+            }
+            
+            return Enumerable.Empty<PerformanceMetrics>();
         }
 
-        private async Task InvalidateCacheAsync(string creatorId)
+        private async Task InvalidateCacheAsync(Guid creatorId)
         {
             await _cacheService.RemoveAsync($"metrics:creator:{creatorId}:all");
-            await _cacheService.RemoveAsync($"metrics:avgEngagement:creator:{creatorId}");
-            await _cacheService.RemoveAsync("metrics:avgEngagement:all");
             
-            // Remover outros padrões de cache relacionados
-            var platforms = Enum.GetValues(typeof(SocialMediaPlatform))
-                .Cast<SocialMediaPlatform>();
-            
-            foreach (var platform in platforms)
+            // Remover cache para todas as plataformas comuns
+            foreach (SocialMediaPlatform platform in Enum.GetValues(typeof(SocialMediaPlatform)))
             {
                 await _cacheService.RemoveAsync($"metrics:creator:{creatorId}:platform:{platform}");
             }
+            
+            // Remover todos os caches de data-range começando com este creatorId
+            await _cacheService.RemoveAsync($"metrics:avgEngagement:creator:{creatorId}");
+            await _cacheService.RemoveAsync("metrics:avgEngagement:all");
         }
     }
 } 

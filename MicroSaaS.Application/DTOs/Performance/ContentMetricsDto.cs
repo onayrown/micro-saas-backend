@@ -2,7 +2,7 @@ namespace MicroSaaS.Application.DTOs.Performance;
 
 public class ContentMetricsDto
 {
-    public string ContentId { get; set; } = string.Empty;
+    public Guid ContentId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string CreatorName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

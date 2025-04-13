@@ -952,7 +952,7 @@ namespace MicroSaaS.IntegrationTests
                     CreatorId = creatorId,
                     Title = "Aumentar frequência de postagem no Instagram",
                     Description = "Análise mostra que aumentar a frequência de postagem em 30% pode melhorar seu alcance",
-                    Priority = RecommendationPriority.High,
+                    Priority = MicroSaaS.Shared.Enums.RecommendationPriority.High,
                     Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
                 },
                 new ContentRecommendation
@@ -961,7 +961,7 @@ namespace MicroSaaS.IntegrationTests
                     CreatorId = creatorId,
                     Title = "Criar conteúdo em formato carrossel",
                     Description = "Conteúdos em formato carrossel têm engajamento 25% maior",
-                    Priority = RecommendationPriority.Medium,
+                    Priority = MicroSaaS.Shared.Enums.RecommendationPriority.Medium,
                     Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
                 }
             };
@@ -1141,8 +1141,8 @@ namespace MicroSaaS.IntegrationTests
             {
                 _metrics.Add(new PerformanceMetrics
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    CreatorId = creatorId.ToString(),
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
                     Date = DateTime.UtcNow.AddDays(-i),
                     Platform = i % 2 == 0 ? SocialMediaPlatform.Instagram : SocialMediaPlatform.YouTube,
                     Followers = 5000 + (i * 50),
@@ -1216,7 +1216,8 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<PerformanceMetrics> AddMetricsAsync(PerformanceMetrics metrics)
         {
-            metrics.Id = Guid.NewGuid().ToString();
+            metrics.Id = Guid.NewGuid();
+            metrics.CreatorId = metrics.CreatorId;
             metrics.CreatedAt = DateTime.UtcNow;
             metrics.UpdatedAt = DateTime.UtcNow;
             
@@ -1277,7 +1278,7 @@ namespace MicroSaaS.IntegrationTests
         {
             var targetDate = date ?? DateTime.UtcNow.Date;
             var metric = _metrics.FirstOrDefault(m => 
-                m.CreatorId == creatorId.ToString() && 
+                m.CreatorId == creatorId && 
                 m.Date.Date == targetDate.Date && 
                 m.Platform == platform);
                 
@@ -1286,8 +1287,8 @@ namespace MicroSaaS.IntegrationTests
                 // Criar um exemplo se não encontrar
                 metric = new PerformanceMetrics
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    CreatorId = creatorId.ToString(),
+                    Id = Guid.NewGuid(),
+                    CreatorId = creatorId,
                     Date = targetDate,
                     Platform = platform,
                     Followers = 5000,
@@ -1351,21 +1352,18 @@ namespace MicroSaaS.IntegrationTests
 
         public Task<IEnumerable<PerformanceMetrics>> GetMetricsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null, SocialMediaPlatform? platform = null)
         {
-            var metrics = _metrics
-                .Where(m => m.CreatorId == creatorId.ToString())
-                .ToList();
-
+            var metrics = _metrics.Where(m => m.CreatorId == creatorId).AsEnumerable();
+            
+            if (startDate.HasValue)
+                metrics = metrics.Where(m => m.Date >= startDate.Value);
+                
+            if (endDate.HasValue)
+                metrics = metrics.Where(m => m.Date <= endDate.Value);
+                
             if (platform.HasValue)
-            {
-                metrics = metrics.Where(m => m.Platform == platform.Value).ToList();
-            }
-
-            if (startDate.HasValue && endDate.HasValue)
-            {
-                metrics = metrics.Where(m => m.Date >= startDate.Value && m.Date <= endDate.Value).ToList();
-            }
-
-            return Task.FromResult(metrics.AsEnumerable());
+                metrics = metrics.Where(m => m.Platform == platform.Value);
+                
+            return Task.FromResult(metrics);
         }
 
         public Task<List<ContentRecommendation>> GetRecommendationsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null)
@@ -1378,7 +1376,7 @@ namespace MicroSaaS.IntegrationTests
                     CreatorId = creatorId,
                     Title = "Aumentar frequência de postagem no Instagram",
                     Description = "Análise mostra que aumentar a frequência de postagem em 30% pode melhorar seu alcance",
-                    Priority = RecommendationPriority.High,
+                    Priority = MicroSaaS.Shared.Enums.RecommendationPriority.High,
                     Type = MicroSaaS.Shared.Enums.RecommendationType.PostingFrequency
                 },
                 new ContentRecommendation
@@ -1387,7 +1385,7 @@ namespace MicroSaaS.IntegrationTests
                     CreatorId = creatorId,
                     Title = "Criar conteúdo em formato carrossel",
                     Description = "Conteúdos em formato carrossel têm engajamento 25% maior",
-                    Priority = RecommendationPriority.Medium,
+                    Priority = MicroSaaS.Shared.Enums.RecommendationPriority.Medium,
                     Type = MicroSaaS.Shared.Enums.RecommendationType.ContentFormat
                 }
             };
