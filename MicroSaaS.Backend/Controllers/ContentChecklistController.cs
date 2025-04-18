@@ -1,215 +1,272 @@
-using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
-using MicroSaaS.Domain.Entities;
+using MicroSaaS.Application.DTOs.Checklist;
+using MicroSaaS.Shared.DTOs;
+using MicroSaaS.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MicroSaaS.Backend.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 public class ContentChecklistController : ControllerBase
 {
     private readonly IContentPlanningService _contentPlanningService;
-    private readonly IContentChecklistRepository _checklistRepository;
 
     public ContentChecklistController(
-        IContentPlanningService contentPlanningService,
-        IContentChecklistRepository checklistRepository)
+        IContentPlanningService contentPlanningService)
     {
         _contentPlanningService = contentPlanningService;
-        _checklistRepository = checklistRepository;
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ContentChecklist>> GetById(Guid id)
+    [ProducesResponseType(typeof(ContentChecklistDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ContentChecklistDto>> GetById(Guid id)
     {
-        var checklist = await _checklistRepository.GetByIdAsync(id);
-        if (checklist == null)
+        var checklistDto = await _contentPlanningService.GetChecklistByIdAsync(id);
+        if (checklistDto == null)
             return NotFound();
 
-        return Ok(checklist);
+        return Ok(checklistDto);
     }
 
     [HttpGet("creator/{creatorId}")]
-    public async Task<ActionResult<List<ContentChecklist>>> GetByCreatorId(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentChecklistDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ContentChecklistDto>>> GetByCreatorId(Guid creatorId)
     {
-        var checklists = await _checklistRepository.GetByCreatorIdAsync(creatorId);
-        return Ok(checklists);
+        var checklistsDto = await _contentPlanningService.GetChecklistsByCreatorIdAsync(creatorId);
+        return Ok(checklistsDto);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ContentChecklist>> Create([FromBody] CreateChecklistRequest request)
+    [ProducesResponseType(typeof(ContentChecklistDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ContentChecklistDto>> Create([FromBody] CreateChecklistRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
         try
         {
-            var checklist = await _contentPlanningService.CreateChecklistAsync(request.CreatorId, request.Title, request.Description);
-            return CreatedAtAction(nameof(GetById), new { id = checklist.Id }, checklist);
+            var checklistDto = await _contentPlanningService.CreateChecklistAsync(request.CreatorId, request.Title, request.Description);
+            return CreatedAtAction(nameof(GetById), new { id = checklistDto.Id }, checklistDto);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao criar checklist.");
         }
     }
 
     [HttpPost("{checklistId}/items")]
-    public async Task<ActionResult<ContentChecklist>> AddItem(Guid checklistId, [FromBody] AddChecklistItemRequest request)
+    [ProducesResponseType(typeof(ContentChecklistDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ContentChecklistDto>> AddItem(Guid checklistId, [FromBody] AddChecklistItemRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         try
         {
-            var updatedChecklist = await _contentPlanningService.AddChecklistItemAsync(
-                checklistId, 
-                request.Description, 
+            var updatedChecklistDto = await _contentPlanningService.AddChecklistItemAsync(
+                checklistId,
+                request.Description,
                 request.IsRequired);
-                
-            return Ok(updatedChecklist);
+
+            if (updatedChecklistDto == null)
+                return NotFound("Checklist não encontrada para adicionar item.");
+
+            return Ok(updatedChecklistDto);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao adicionar item ao checklist.");
+        }
     }
 
     [HttpPut("{checklistId}/items/{itemId}")]
-    public async Task<IActionResult> UpdateItem(Guid checklistId, Guid itemId, [FromBody] UpdateItemRequest request)
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateItem(Guid checklistId, Guid itemId, [FromBody] UpdateItemRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         try
         {
             await _contentPlanningService.UpdateChecklistItemAsync(checklistId, itemId, request.IsCompleted);
             return NoContent();
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao atualizar item do checklist.");
         }
     }
 
     [HttpPut("{checklistId}/items/{itemId}/duedate")]
-    public async Task<ActionResult<ChecklistItem>> SetItemDueDate(Guid checklistId, Guid itemId, [FromBody] SetDueDateRequest request)
+    [ProducesResponseType(typeof(ChecklistItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChecklistItemDto>> SetItemDueDate(Guid checklistId, Guid itemId, [FromBody] SetDueDateRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         try
         {
-            var item = await _contentPlanningService.SetItemDueDateAsync(checklistId, itemId, request.DueDate);
-            return Ok(item);
+            var itemDto = await _contentPlanningService.SetItemDueDateAsync(checklistId, itemId, request.DueDate);
+            return Ok(itemDto);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao definir data do item.");
+        }
     }
-    
+
     [HttpPut("{checklistId}/items/{itemId}/reminder")]
-    public async Task<ActionResult<ChecklistItem>> SetItemReminder(Guid checklistId, Guid itemId, [FromBody] SetReminderRequest request)
+    [ProducesResponseType(typeof(ChecklistItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChecklistItemDto>> SetItemReminder(Guid checklistId, Guid itemId, [FromBody] SetReminderRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         try
         {
-            var item = await _contentPlanningService.SetItemReminderAsync(checklistId, itemId, request.ReminderDate);
-            return Ok(item);
+            var itemDto = await _contentPlanningService.SetItemReminderAsync(checklistId, itemId, request.ReminderDate);
+            return Ok(itemDto);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao definir lembrete do item.");
+        }
     }
-    
+
     [HttpPut("{checklistId}/items/{itemId}/priority")]
-    public async Task<ActionResult<ChecklistItem>> SetItemPriority(Guid checklistId, Guid itemId, [FromBody] SetPriorityRequest request)
+    [ProducesResponseType(typeof(ChecklistItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChecklistItemDto>> SetItemPriority(Guid checklistId, Guid itemId, [FromBody] SetPriorityRequestDto request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         try
         {
-            var item = await _contentPlanningService.SetItemPriorityAsync(checklistId, itemId, request.Priority);
-            return Ok(item);
+            var itemDto = await _contentPlanningService.SetItemPriorityAsync(checklistId, itemId, request.Priority);
+            return Ok(itemDto);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao definir prioridade do item.");
+        }
     }
-    
+
     [HttpGet("creator/{creatorId}/upcoming")]
-    public async Task<ActionResult<IEnumerable<ChecklistItem>>> GetUpcomingDeadlines(Guid creatorId, [FromQuery] int daysAhead = 7)
+    [ProducesResponseType(typeof(IEnumerable<ChecklistItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IEnumerable<ChecklistItemDto>>> GetUpcomingDeadlines(Guid creatorId, [FromQuery] int daysAhead = 7)
     {
         try
         {
-            var items = await _contentPlanningService.GetItemsWithUpcomingDeadlinesAsync(creatorId, daysAhead);
-            return Ok(items);
+            var itemsDto = await _contentPlanningService.GetItemsWithUpcomingDeadlinesAsync(creatorId, daysAhead);
+            return Ok(itemsDto);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao buscar itens futuros.");
+        }
     }
-    
+
     [HttpGet("creator/{creatorId}/due")]
-    public async Task<ActionResult<IEnumerable<ChecklistItem>>> GetDueItems(Guid creatorId)
+    [ProducesResponseType(typeof(IEnumerable<ChecklistItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IEnumerable<ChecklistItemDto>>> GetDueItems(Guid creatorId)
     {
         try
         {
-            var items = await _contentPlanningService.GetDueItemsAsync(creatorId);
-            return Ok(items);
+            var itemsDto = await _contentPlanningService.GetDueItemsAsync(creatorId);
+            return Ok(itemsDto);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao buscar itens do dia.");
         }
     }
-    
+
     [HttpGet("creator/{creatorId}/overdue")]
-    public async Task<ActionResult<IEnumerable<ChecklistItem>>> GetOverdueItems(Guid creatorId)
+    [ProducesResponseType(typeof(IEnumerable<ChecklistItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IEnumerable<ChecklistItemDto>>> GetOverdueItems(Guid creatorId)
     {
         try
         {
-            var items = await _contentPlanningService.GetOverdueItemsAsync(creatorId);
-            return Ok(items);
+            var itemsDto = await _contentPlanningService.GetOverdueItemsAsync(creatorId);
+            return Ok(itemsDto);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno ao buscar itens atrasados.");
         }
     }
 
     [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var checklist = await _checklistRepository.GetByIdAsync(id);
-        if (checklist == null)
+        var success = await _contentPlanningService.DeleteChecklistAsync(id);
+        if (!success)
             return NotFound();
 
-        await _checklistRepository.DeleteAsync(id);
         return NoContent();
     }
 }
 
-public class CreateChecklistRequest
-{
-    public Guid CreatorId { get; set; }
-    public string Title { get; set; }
-    public string Description { get; set; }
-}
-
-public class AddChecklistItemRequest
-{
-    public string Description { get; set; }
-    public bool IsRequired { get; set; }
-}
-
-public class UpdateItemRequest
-{
-    public bool IsCompleted { get; set; }
-}
-
-public class SetDueDateRequest
-{
-    public DateTime DueDate { get; set; }
-}
-
-public class SetReminderRequest
-{
-    public DateTime ReminderDate { get; set; }
-}
-
-public class SetPriorityRequest
-{
-    public TaskPriority Priority { get; set; }
-} 

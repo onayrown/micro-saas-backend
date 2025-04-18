@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using MicroSaaS.Application.DTOs.Revenue;
+using MicroSaaS.Shared.Enums;
 
 namespace MicroSaaS.Backend.Controllers;
 
@@ -26,145 +28,6 @@ public class RevenueController : ControllerBase
     public RevenueController(IRevenueService revenueService)
     {
         _revenueService = revenueService;
-    }
-
-    /// <summary>
-    /// Inicia o processo de conexão com o Google AdSense para um criador
-    /// </summary>
-    /// <param name="creatorId">ID do criador de conteúdo</param>
-    /// <param name="request">Dados necessários para conexão</param>
-    /// <returns>URL de autorização do Google AdSense</returns>
-    /// <remarks>
-    /// Exemplo de requisição:
-    /// 
-    /// ```json
-    /// {
-    ///   "email": "criador@exemplo.com"
-    /// }
-    /// ```
-    /// 
-    /// Exemplo de resposta:
-    /// 
-    /// ```json
-    /// {
-    ///   "success": true,
-    ///   "data": {
-    ///     "authorizationUrl": "https://accounts.google.com/o/oauth2/auth?client_id=..."
-    ///   },
-    ///   "message": "URL de autorização gerada com sucesso"
-    /// }
-    /// ```
-    /// </remarks>
-    /// <response code="200">URL de autorização gerada com sucesso</response>
-    /// <response code="400">Dados inválidos para conexão</response>
-    /// <response code="401">Usuário não autenticado</response>
-    /// <response code="403">Usuário não tem permissão para conectar esta conta</response>
-    /// <response code="404">Criador não encontrado</response>
-    /// <response code="500">Erro interno do servidor</response>
-    [HttpPost("connect-adsense/{creatorId}")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ConnectAdSense(
-        Guid creatorId,
-        [FromBody] ConnectAdSenseRequest request)
-    {
-        try
-        {
-            // Validar o request
-            if (string.IsNullOrEmpty(request.Email))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Email é obrigatório"
-                });
-            }
-
-            // Iniciar processo de conexão com AdSense
-            var authUrl = await _revenueService.GetAdSenseAuthUrlAsync(
-                creatorId,
-                Url.Action(nameof(AdSenseCallback), new { creatorId })
-            );
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Data = new { authorizationUrl = authUrl },
-                Message = "URL de autorização gerada com sucesso"
-            });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado"
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Erro ao conectar com AdSense"
-            });
-        }
-    }
-
-    /// <summary>
-    /// Callback que recebe o código de autorização do Google AdSense após autenticação
-    /// </summary>
-    /// <param name="creatorId">ID do criador de conteúdo</param>
-    /// <param name="code">Código de autorização do Google</param>
-    /// <returns>Redirecionamento para a aplicação frontend</returns>
-    /// <remarks>
-    /// Este endpoint é chamado pelo Google após o usuário conceder permissão.
-    /// O usuário será redirecionado para a aplicação frontend.
-    /// </remarks>
-    /// <response code="302">Redirecionamento para frontend após conexão bem-sucedida</response>
-    /// <response code="400">Parâmetros inválidos</response>
-    /// <response code="404">Criador não encontrado</response>
-    /// <response code="500">Erro ao processar callback</response>
-    [HttpGet("adsense-callback")]
-    [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status302Found)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> AdSenseCallback(
-        [FromQuery] Guid creatorId,
-        [FromQuery] string code)
-    {
-        try
-        {
-            // Validar parâmetros
-            if (creatorId == Guid.Empty || string.IsNullOrEmpty(code))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "ID do criador e código de autorização são obrigatórios"
-                });
-            }
-
-            // Finalizar a conexão com AdSense
-            await _revenueService.ConnectAdSenseAsync(creatorId, code);
-
-            // Redirecionar para a aplicação frontend
-            return Redirect($"https://seuapp.com/revenue/adsense-connected?success=true");
-        }
-        catch (KeyNotFoundException)
-        {
-            return Redirect($"https://seuapp.com/revenue/adsense-connected?success=false&error=creator-not-found");
-        }
-        catch (Exception)
-        {
-            return Redirect($"https://seuapp.com/revenue/adsense-connected?success=false&error=internal-error");
-        }
     }
 
     /// <summary>
@@ -206,13 +69,13 @@ public class RevenueController : ControllerBase
     /// <response code="404">Criador não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet("revenue/{creatorId}")]
-    [ProducesResponseType(typeof(ApiResponse<MicroSaaS.Shared.Models.RevenueSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RevenueSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<MicroSaaS.Shared.Models.RevenueSummary>>> GetRevenueSummary(
+    public async Task<ActionResult<ApiResponse<RevenueSummaryDto>>> GetRevenueSummary(
         Guid creatorId,
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
@@ -222,64 +85,36 @@ public class RevenueController : ControllerBase
             // Validar parâmetros
             if (startDate >= endDate)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "A data de início deve ser anterior à data de fim"
-                });
+                return BadRequest(new ApiResponse<RevenueSummaryDto> { Success = false, Message = "A data de início deve ser anterior à data de fim" });
             }
 
-            // Obter dados de receita
-            var serviceRevenueSummary = await _revenueService.GetRevenueAsync(
+            // Obter dados de receita (serviço já retorna o tipo Shared)
+            var revenueSummaryDto = await _revenueService.GetRevenueAsync(
                 creatorId,
                 startDate,
                 endDate);
                 
-            // Converter para o modelo da camada Shared
-            var revenueSummary = ConvertToSharedRevenueSummary(serviceRevenueSummary);
+            if (revenueSummaryDto == null) // Adicionar verificação de nulo
+            {
+                return NotFound(new ApiResponse<RevenueSummaryDto> { Success = false, Message = "Resumo de receitas não encontrado para o período." });
+            }
 
-            return Ok(new ApiResponse<MicroSaaS.Shared.Models.RevenueSummary>
+            return Ok(new ApiResponse<RevenueSummaryDto>
             {
                 Success = true,
-                Data = revenueSummary,
+                Data = revenueSummaryDto, // Usar diretamente o objeto retornado pelo serviço
                 Message = "Resumo de receitas recuperado com sucesso"
             });
         }
-        catch (KeyNotFoundException)
+        catch (KeyNotFoundException) // Se o serviço lançar essa exceção
         {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado"
-            });
+            return NotFound(new ApiResponse<RevenueSummaryDto> { Success = false, Message = "Criador não encontrado" });
         }
-        catch (Exception ex)
+        catch (Exception ex) // Logar exceção
         {
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Erro ao recuperar dados de receita"
-            });
+            // _logger?.LogError(ex, "Erro ao recuperar resumo de receitas para {CreatorId}", creatorId); // Adicionar logger se necessário
+            return StatusCode(500, new ApiResponse<RevenueSummaryDto> { Success = false, Message = "Erro interno ao recuperar resumo de receitas." });
         }
-    }
-
-    /// <summary>
-    /// Converte RevenueSummary do serviço para o modelo da camada Shared
-    /// </summary>
-    private MicroSaaS.Shared.Models.RevenueSummary ConvertToSharedRevenueSummary(
-        MicroSaaS.Application.Interfaces.Services.RevenueSummary serviceSummary)
-    {
-        // Implementar conversão de propriedades
-        return new MicroSaaS.Shared.Models.RevenueSummary
-        {
-            // Mapear somente as propriedades que existem no modelo Shared
-            TotalRevenue = serviceSummary.TotalRevenue,
-            MonthlyRecurringRevenue = serviceSummary.EstimatedMonthlyRevenue,
-            AverageRevenuePerUser = serviceSummary.AverageRevenuePerView,
-            // Definir valores padrão para as propriedades restantes
-            AnnualRecurringRevenue = serviceSummary.EstimatedMonthlyRevenue * 12,
-            TotalSubscribers = 0 // Valor padrão, pois não temos essa informação no modelo de serviço
-        };
     }
 
     /// <summary>
@@ -330,13 +165,13 @@ public class RevenueController : ControllerBase
     /// <response code="404">Criador não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet("revenue/{creatorId}/by-platform")]
-    [ProducesResponseType(typeof(ApiResponse<List<MicroSaaS.Shared.Models.PlatformRevenue>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<PlatformRevenueDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<List<MicroSaaS.Shared.Models.PlatformRevenue>>>> GetRevenueByPlatform(
+    public async Task<ActionResult<ApiResponse<List<PlatformRevenueDto>>>> GetRevenueByPlatform(
         Guid creatorId,
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
@@ -346,68 +181,31 @@ public class RevenueController : ControllerBase
             // Validar parâmetros
             if (startDate >= endDate)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "A data de início deve ser anterior à data de fim"
-                });
+                 return BadRequest(new ApiResponse<List<PlatformRevenueDto>> { Success = false, Message = "A data de início deve ser anterior à data de fim" });
             }
 
-            // Obter dados de receita por plataforma
-            var servicePlatformRevenue = await _revenueService.GetRevenueByPlatformAsync(
+            // Obter dados de receita por plataforma (serviço já retorna o tipo Shared)
+            var platformRevenueDtos = await _revenueService.GetRevenueByPlatformAsync(
                 creatorId,
                 startDate,
                 endDate);
                 
-            // Converter para o modelo da camada Shared
-            var platformRevenue = ConvertToSharedPlatformRevenue(servicePlatformRevenue);
-
-            return Ok(new ApiResponse<List<MicroSaaS.Shared.Models.PlatformRevenue>>
+            return Ok(new ApiResponse<List<PlatformRevenueDto>>
             {
                 Success = true,
-                Data = platformRevenue,
+                Data = platformRevenueDtos.ToList(), // Usar diretamente o objeto retornado pelo serviço
                 Message = "Receitas por plataforma recuperadas com sucesso"
             });
         }
         catch (KeyNotFoundException)
         {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado"
-            });
+            return NotFound(new ApiResponse<List<PlatformRevenueDto>> { Success = false, Message = "Criador não encontrado" });
         }
-        catch (Exception ex)
+        catch (Exception ex) // Logar exceção
         {
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Erro ao recuperar dados de receita por plataforma"
-            });
+             // _logger?.LogError(ex, "Erro ao recuperar receitas por plataforma para {CreatorId}", creatorId);
+            return StatusCode(500, new ApiResponse<List<PlatformRevenueDto>> { Success = false, Message = "Erro ao recuperar dados de receita por plataforma" });
         }
-    }
-    
-    /// <summary>
-    /// Converte lista de PlatformRevenue do serviço para o modelo da camada Shared
-    /// </summary>
-    private List<MicroSaaS.Shared.Models.PlatformRevenue> ConvertToSharedPlatformRevenue(
-        List<MicroSaaS.Application.Interfaces.Services.PlatformRevenue> servicePlatformRevenues)
-    {
-        var result = new List<MicroSaaS.Shared.Models.PlatformRevenue>();
-        
-        foreach (var serviceRevenue in servicePlatformRevenues)
-        {
-            result.Add(new MicroSaaS.Shared.Models.PlatformRevenue
-            {
-                // Mapear somente as propriedades que existem no modelo Shared
-                Platform = serviceRevenue.Platform,
-                Amount = serviceRevenue.Revenue,
-                Currency = "USD",
-                Subscribers = 0 // Valor padrão
-            });
-        }
-        
-        return result;
     }
 
     /// <summary>
@@ -458,13 +256,13 @@ public class RevenueController : ControllerBase
     /// <response code="404">Criador não encontrado</response>
     /// <response code="500">Erro interno do servidor</response>
     [HttpGet("revenue/{creatorId}/by-day")]
-    [ProducesResponseType(typeof(ApiResponse<List<MicroSaaS.Shared.Models.DailyRevenue>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<DailyRevenueDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ApiResponse<List<MicroSaaS.Shared.Models.DailyRevenue>>>> GetRevenueByDay(
+    public async Task<ActionResult<ApiResponse<List<DailyRevenueDto>>>> GetRevenueByDay(
         Guid creatorId,
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
@@ -474,78 +272,38 @@ public class RevenueController : ControllerBase
             // Validar parâmetros
             if (startDate >= endDate)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "A data de início deve ser anterior à data de fim"
-                });
+                 return BadRequest(new ApiResponse<List<DailyRevenueDto>> { Success = false, Message = "A data de início deve ser anterior à data de fim" });
             }
 
-            // Limitar o período para no máximo 90 dias
+            // Limitar o período (manter validação se necessário)
             var maxPeriod = TimeSpan.FromDays(90);
             if (endDate - startDate > maxPeriod)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "O período de análise não pode exceder 90 dias"
-                });
+                 return BadRequest(new ApiResponse<List<DailyRevenueDto>> { Success = false, Message = "O período de análise não pode exceder 90 dias" });
             }
 
-            // Obter dados de receita por dia
-            var serviceDailyRevenue = await _revenueService.GetRevenueByDayAsync(
+            // Obter dados de receita por dia (serviço já retorna o tipo Shared)
+            var dailyRevenueDtos = await _revenueService.GetRevenueByDayAsync(
                 creatorId,
                 startDate,
                 endDate);
                 
-            // Converter para o modelo da camada Shared
-            var dailyRevenue = ConvertToSharedDailyRevenue(serviceDailyRevenue);
-
-            return Ok(new ApiResponse<List<MicroSaaS.Shared.Models.DailyRevenue>>
+            return Ok(new ApiResponse<List<DailyRevenueDto>>
             {
                 Success = true,
-                Data = dailyRevenue,
+                Data = dailyRevenueDtos.ToList(), // Usar diretamente o objeto retornado pelo serviço
                 Message = "Receitas diárias recuperadas com sucesso"
             });
         }
         catch (KeyNotFoundException)
         {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado"
-            });
+             return NotFound(new ApiResponse<List<DailyRevenueDto>> { Success = false, Message = "Criador não encontrado" });
         }
-        catch (Exception ex)
+        catch (Exception ex) // Logar exceção
         {
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Erro ao recuperar dados de receita diária"
-            });
+             // _logger?.LogError(ex, "Erro ao recuperar receitas diárias para {CreatorId}", creatorId);
+            return StatusCode(500, new ApiResponse<List<DailyRevenueDto>> { Success = false, Message = "Erro ao recuperar dados de receita diária" });
         }
-    }
-    
-    /// <summary>
-    /// Converte lista de DailyRevenue do serviço para o modelo da camada Shared
-    /// </summary>
-    private List<MicroSaaS.Shared.Models.DailyRevenue> ConvertToSharedDailyRevenue(
-        List<MicroSaaS.Application.Interfaces.Services.DailyRevenue> serviceDailyRevenues)
-    {
-        var result = new List<MicroSaaS.Shared.Models.DailyRevenue>();
-        
-        foreach (var serviceRevenue in serviceDailyRevenues)
-        {
-            result.Add(new MicroSaaS.Shared.Models.DailyRevenue
-            {
-                // Mapear somente as propriedades que existem no modelo Shared
-                Date = serviceRevenue.Date,
-                Amount = serviceRevenue.Revenue,
-                Currency = "USD"
-            });
-        }
-        
-        return result;
     }
 
     /// <summary>
@@ -610,18 +368,19 @@ public class RevenueController : ControllerBase
             // Validar parâmetros
             if (startDate >= endDate)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "A data de início deve ser anterior à data de fim"
-                });
+                 return BadRequest(new ApiResponse<MonetizationMetricsDto> { Success = false, Message = "A data de início deve ser anterior à data de fim" });
             }
 
-            // Obter métricas avançadas de monetização
+            // Obter métricas (Serviço já retorna DTO)
             var metrics = await _revenueService.GetMonetizationMetricsAsync(
                 creatorId,
                 startDate,
                 endDate);
+            
+             if (metrics == null) // Adicionar verificação de nulo
+            {
+                return NotFound(new ApiResponse<MonetizationMetricsDto> { Success = false, Message = "Métricas de monetização não encontradas." });
+            }
 
             return Ok(new ApiResponse<MonetizationMetricsDto>
             {
@@ -632,110 +391,13 @@ public class RevenueController : ControllerBase
         }
         catch (KeyNotFoundException)
         {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado"
-            });
+            return NotFound(new ApiResponse<MonetizationMetricsDto> { Success = false, Message = "Criador não encontrado" });
         }
-        catch (Exception ex)
+        catch (Exception ex) // Logar exceção e tratar
         {
-            return BadRequest(new ApiResponse<object>
-            {
-                Success = false,
-                Message = ex.Message
-            });
+             // _logger?.LogError(ex, "Erro ao recuperar métricas de monetização para {CreatorId}", creatorId);
+             // Retornar BadRequest pode expor detalhes internos, considerar 500
+            return StatusCode(500, new ApiResponse<MonetizationMetricsDto> { Success = false, Message = "Erro interno ao recuperar métricas de monetização." /* + ex.Message */ }); 
         }
     }
-
-    /// <summary>
-    /// Atualiza os dados de receita do AdSense para um criador
-    /// </summary>
-    /// <param name="creatorId">ID do criador de conteúdo</param>
-    /// <returns>Status da atualização</returns>
-    /// <remarks>
-    /// Este endpoint força a atualização dos dados de receita do AdSense,
-    /// buscando os dados mais recentes diretamente da API do Google.
-    /// 
-    /// Exemplo de resposta:
-    /// 
-    /// ```json
-    /// {
-    ///   "success": true,
-    ///   "data": {
-    ///     "lastUpdated": "2023-06-15T14:30:00Z",
-    ///     "status": "Completed"
-    ///   },
-    ///   "message": "Dados do AdSense atualizados com sucesso"
-    /// }
-    /// ```
-    /// </remarks>
-    /// <response code="200">Dados atualizados com sucesso</response>
-    /// <response code="400">Requisição inválida</response>
-    /// <response code="401">Usuário não autenticado</response>
-    /// <response code="403">Usuário não tem permissão para atualizar estes dados</response>
-    /// <response code="404">Criador não encontrado ou não tem conta AdSense conectada</response>
-    /// <response code="429">Taxa de requisições excedida</response>
-    /// <response code="500">Erro interno do servidor</response>
-    [HttpPost("adsense/refresh/{creatorId}")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> RefreshAdSenseData(Guid creatorId)
-    {
-        try
-        {
-            // Atualizar os dados do AdSense
-            await _revenueService.RefreshRevenueMetricsAsync();
-            
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Data = new { 
-                    lastUpdated = DateTime.UtcNow,
-                    status = "Completed"
-                },
-                Message = "Dados do AdSense atualizados com sucesso"
-            });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Criador não encontrado ou não tem conta AdSense conectada"
-            });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("rate limit"))
-        {
-            return StatusCode(429, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Taxa de requisições excedida. Tente novamente mais tarde."
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new ApiResponse<object>
-            {
-                Success = false,
-                Message = ex.Message
-            });
-        }
-    }
-}
-
-/// <summary>
-/// Modelo para requisição de conexão com AdSense
-/// </summary>
-public class ConnectAdSenseRequest
-{
-    /// <summary>
-    /// Email associado à conta do Google AdSense
-    /// </summary>
-    public string Email { get; set; }
 } 

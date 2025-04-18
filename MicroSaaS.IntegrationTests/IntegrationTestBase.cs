@@ -11,6 +11,7 @@ using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Shared.Results;
 using System.Collections.Generic;
+using MicroSaaS.IntegrationTests.Mocks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;

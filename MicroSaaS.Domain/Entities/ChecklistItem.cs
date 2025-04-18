@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using MicroSaaS.Shared.Enums;
 using System;
 
 namespace MicroSaaS.Domain.Entities;
@@ -44,10 +45,10 @@ public class ChecklistItem
     public bool IsRequired { get; set; }
     public int Order { get; set; }
     public DateTime CreatedAt { get; set; }
-    
+
     [BsonElement("updated_at")]
     public DateTime UpdatedAt { get; set; }
-    
+
     // Novos campos para prazos e lembretes
     public DateTime? DueDate { get; set; }
     public bool HasReminder { get; set; }
@@ -55,10 +56,4 @@ public class ChecklistItem
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
 }
 
-public enum TaskPriority
-{
-    Low = 0,
-    Medium = 1,
-    High = 2,
-    Urgent = 3
-}
+

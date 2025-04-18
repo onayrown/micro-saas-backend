@@ -20,7 +20,7 @@ public class ScheduledPostDto
     public string Content { get; set; } = string.Empty;
 
     [JsonPropertyName("scheduledFor")]
-    public DateTime ScheduledFor { get; set; }
+    public DateTime? ScheduledFor { get; set; }
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }

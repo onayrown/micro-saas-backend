@@ -12,7 +12,7 @@ public class CreatorMetricsDto
     public decimal TotalRevenue { get; set; }
     public List<PlatformFollowersDto> PlatformFollowers { get; set; } = new();
     public List<MonthlyRevenueDto> MonthlyRevenue { get; set; } = new();
-    public List<ContentPerformanceDto> TopPerformingContent { get; set; } = new();
+    public List<ContentPerformanceSummaryDto> TopPerformingContent { get; set; } = new();
 }
 
 public class PlatformFollowersDto
@@ -29,4 +29,4 @@ public class MonthlyRevenueDto
     public decimal Revenue { get; set; }
     public decimal Growth { get; set; }
     public decimal GrowthRate { get; set; }
-} 
+}

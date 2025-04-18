@@ -46,18 +46,18 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         {
             TotalCreators = creators.Count(),
             // Note: TotalPosts calculation might be inefficient if Posts is lazy loaded. Consider a dedicated count method.
-            TotalPosts = creators.Sum(c => c.Posts?.Count ?? 0) 
+            TotalPosts = creators.Sum(c => c.Posts?.Count ?? 0)
         };
 
         var creatorPerformances = new List<CreatorPerformanceDto>();
         foreach (var creator in creators)
         {
             // Assuming Creator entity fetched via GetAllAsync includes Posts. If not, this needs adjustment.
-            var posts = creator.Posts ?? new List<ContentPost>(); 
+            var posts = creator.Posts ?? new List<ContentPost>();
             long totalViewsLong = posts.Sum(p => p.Views);
             long totalLikesLong = posts.Sum(p => p.Likes);
             long totalCommentsLong = posts.Sum(p => p.Comments);
-            
+
             // Potential overflow if sums exceed int.MaxValue. Consider using long in DTO if necessary.
             int totalViews = (int)totalViewsLong;
             int totalLikes = (int)totalLikesLong;
@@ -166,7 +166,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     public async Task<PerformanceMetrics> GetDailyMetricsAsync(Guid creatorId, SocialMediaPlatform platform, DateTime date)
     {
         var metrics = await _metricsRepository.GetByCreatorAndDateAsync(creatorId, date, platform);
-        
+
         if (metrics == null)
         {
             // Returning a new empty metric seems reasonable for non-existent data points.
@@ -197,7 +197,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         Guid creatorId, DateTime startDate, DateTime endDate, SocialMediaPlatform? platform = null)
     {
         var metrics = await _metricsRepository.GetByDateRangeAsync(creatorId, startDate, endDate);
-        
+
         if (platform.HasValue)
         {
             metrics = metrics.Where(m => m.Platform == platform.Value);
@@ -218,7 +218,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         // Fetch necessary data
         var metrics = await _metricsRepository.GetByDateRangeAsync(creatorId, startDate, endDate);
         var platforms = metrics.Select(m => m.Platform).Distinct().ToList();
-        
+
         var performances = await _contentPerformanceRepository.GetByCreatorIdAsync(creatorId);
         var periodPerformances = performances
             .Where(p => p.Date >= startDate && p.Date <= endDate) // Assuming ContentPerformance has a Date
@@ -227,17 +227,17 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         // Perform calculations
         var growthRate = CalculateFollowerGrowthRate(metrics); // Renamed for clarity
         var totalRevenue = periodPerformances.Sum(p => p.EstimatedRevenue);
-        
+
         var topPerformingPeriodPerformances = periodPerformances
             .OrderByDescending(p => p.Views)
             .Take(5)
             .ToList();
-        
+
         var contentInsights = new List<ContentInsight>();
         foreach (var performance in topPerformingPeriodPerformances)
         {
             // Consider fetching posts in bulk if performance is high
-            var post = await _contentRepository.GetByIdAsync(Guid.Parse(performance.PostId.ToString())); 
+            var post = await _contentRepository.GetByIdAsync(Guid.Parse(performance.PostId.ToString()));
             if (post != null)
             {
                  contentInsights.Add(new ContentInsight
@@ -254,11 +254,11 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
                  });
             }
         }
-        
+
         // Generate recommendations (placeholder logic)
         var recommendations = GenerateRecommendations(periodPerformances, platforms);
         var bestTimes = await GetBestTimeToPostAsync(creatorId, platforms.FirstOrDefault()); // Placeholder logic
-        
+
         var insights = new DashboardInsights
         {
             Id = Guid.NewGuid(),
@@ -276,9 +276,9 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        
+
         // Save the newly generated insights
-        await _insightsRepository.AddAsync(insights); 
+        await _insightsRepository.AddAsync(insights);
         return insights;
     }
 
@@ -289,7 +289,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     {
         var topPerformances = await _contentPerformanceRepository.GetTopPerformingByViewsAsync(creatorId, limit);
         var result = new List<ContentPost>();
-        
+
         // Consider fetching posts in bulk by ID list for efficiency
         foreach (var performance in topPerformances)
         {
@@ -299,7 +299,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
                 result.Add(post);
             }
         }
-        
+
         return result;
     }
 
@@ -313,48 +313,48 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
             new PostTimeRecommendation { DayOfWeek = DayOfWeek.Monday, TimeOfDay = new TimeSpan(18, 0, 0), EngagementScore = 8.5 },
             new PostTimeRecommendation { DayOfWeek = DayOfWeek.Wednesday, TimeOfDay = new TimeSpan(12, 0, 0), EngagementScore = 9.0 },
         };
-        
+
         return recommendations;
     }
 
     public async Task<decimal> CalculateAverageEngagementRateAsync(Guid creatorId, SocialMediaPlatform platform)
     {
         var performances = await _contentPerformanceRepository.GetByCreatorIdAsync(creatorId);
-        
+
         // Filtrar pela plataforma específica
         var filteredPerformances = performances.Where(p => p.Platform == platform);
-       
-        var performanceList = filteredPerformances.ToList(); 
+
+        var performanceList = filteredPerformances.ToList();
 
         if (!performanceList.Any())
         {
             return 0;
         }
-        
+
         // Ensure CalculateEngagementRate handles potential division by zero
-        var totalEngagementRateSum = performanceList.Sum(p => CalculateEngagementRate(p)); 
+        var totalEngagementRateSum = performanceList.Sum(p => CalculateEngagementRate(p));
         return totalEngagementRateSum / performanceList.Count;
     }
 
     public async Task<decimal> CalculateRevenueGrowthAsync(Guid creatorId, DateTime startDate, DateTime endDate)
     {
         var currentPeriodRevenue = await _revenueService.GetTotalRevenueAsync(creatorId, startDate, endDate);
-        
+
         var previousPeriodLength = endDate - startDate;
         // Handle edge case where start and end date are the same
-        if (previousPeriodLength <= TimeSpan.Zero) return 0; 
+        if (previousPeriodLength <= TimeSpan.Zero) return 0;
 
-        var previousPeriodStart = startDate - previousPeriodLength; 
+        var previousPeriodStart = startDate - previousPeriodLength;
         var previousPeriodEnd = startDate.AddTicks(-1); // End just before the current period starts
-        
+
         var previousPeriodRevenue = await _revenueService.GetTotalRevenueAsync(creatorId, previousPeriodStart, previousPeriodEnd);
-        
+
         if (previousPeriodRevenue == 0)
         {
             // If current revenue is also 0, growth is 0. If current is positive, it's infinite (represent as 100% or specific value?)
-            return currentPeriodRevenue > 0 ? 100m : 0m; 
+            return currentPeriodRevenue > 0 ? 100m : 0m;
         }
-            
+
         return ((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100;
     }
 
@@ -363,11 +363,11 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         // Fetch metrics for the specific platform within the broader range needed
         var startMetrics = await _metricsRepository.GetByCreatorAndDateAsync(creatorId, startDate.Date, platform);
         var endMetrics = await _metricsRepository.GetByCreatorAndDateAsync(creatorId, endDate.Date, platform);
-        
+
         // Ensure we have data for both start and end dates
         if (startMetrics == null || endMetrics == null)
-            return 0; 
-            
+            return 0;
+
         return endMetrics.Followers - startMetrics.Followers;
     }
 
@@ -375,30 +375,30 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     {
         if (performance == null || performance.Views <= 0) // Check for null and non-positive views
             return 0;
-            
+
         var totalEngagements = performance.Likes + performance.Comments + performance.Shares;
         // Use decimal for calculation to avoid integer division issues
-        return ((decimal)totalEngagements / performance.Views) * 100; 
+        return ((decimal)totalEngagements / performance.Views) * 100;
     }
-    
+
     private decimal CalculateFollowerGrowthRate(IEnumerable<PerformanceMetrics> metrics) // Renamed for clarity
     {
         if (metrics == null || !metrics.Any())
             return 0;
-            
+
         var orderedMetrics = metrics.OrderBy(m => m.Date).ToList();
         var firstMetrics = orderedMetrics.First();
         var lastMetrics = orderedMetrics.Last();
-        
+
         // Use the earliest follower count as the base
-        var initialFollowers = firstMetrics.Followers; 
-        
+        var initialFollowers = firstMetrics.Followers;
+
         if (initialFollowers <= 0) // Handle zero or negative initial followers
         {
             // If final followers > 0, growth is infinite/undefined, represent as 100%? Or 0? Depends on business rule.
-            return lastMetrics.Followers > 0 ? 100m : 0m; 
+            return lastMetrics.Followers > 0 ? 100m : 0m;
         }
-            
+
         // Calculate growth based on the difference relative to the initial count
         return ((decimal)(lastMetrics.Followers - initialFollowers) / initialFollowers) * 100;
     }
@@ -407,7 +407,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     private InsightType DetermineInsightType(ContentPerformance performance)
     {
         var engagementRate = CalculateEngagementRate(performance);
-        
+
         if (engagementRate > 10) return InsightType.HighEngagement;
         if (performance.Views > 10000) return InsightType.HighReach;
         if (performance.EstimatedRevenue > 50) return InsightType.HighRevenue; // Adjusted threshold
@@ -450,8 +450,8 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     private async Task<List<PlatformMetricsDto>> GetPlatformMetricsAsync(ContentPost content)
     {
         // Fetches performance data - ok for Application service
-        var performances = await _contentPerformanceRepository.GetByPostIdAsync(content.Id.ToString()); 
-        
+        var performances = await _contentPerformanceRepository.GetByPostIdAsync(content.Id.ToString());
+
         // Transforms data into DTO - this calculation/transformation logic is Application logic
         return performances.Select(p => new PlatformMetricsDto
         {
@@ -468,7 +468,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     {
         // Fetches performance data - ok
         var performances = await _contentPerformanceRepository.GetByPostIdAsync(content.Id.ToString());
-        
+
         // Transforms data into DTO, including calculation - Application logic
         return performances
             .OrderBy(p => p.Date)
@@ -489,18 +489,18 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         // Fetches accounts - ok
         var accounts = await _socialMediaRepository.GetByCreatorIdAsync(creator.Id);
         var result = new List<PlatformFollowersDto>();
-        
+
         foreach (var account in accounts)
         {
             // Fetches metrics for platform - ok
             var metrics = await _metricsRepository.GetByCreatorAndPlatformAsync(creator.Id, account.Platform);
             var latestMetrics = metrics.OrderByDescending(m => m.Date).FirstOrDefault();
-            
+
             if (latestMetrics != null)
             {
                 // Calculates growth rate - Application logic
-                var growthRate = latestMetrics.Followers > 0 
-                    ? ((decimal)latestMetrics.FollowersGrowth / latestMetrics.Followers) * 100 
+                var growthRate = latestMetrics.Followers > 0
+                    ? ((decimal)latestMetrics.FollowersGrowth / latestMetrics.Followers) * 100
                     : (latestMetrics.FollowersGrowth > 0 ? 100m : 0m); // Handle 0 initial followers
 
                 result.Add(new PlatformFollowersDto
@@ -513,7 +513,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
             }
             // Consider adding an entry with 0 followers if latestMetrics is null
         }
-        
+
         return result;
     }
 
@@ -521,14 +521,14 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     {
         var endDate = DateTime.UtcNow;
         var startDate = endDate.AddMonths(-12); // Get data for the last 12 months
-        
+
         // Fetch daily revenue - ok
-        var dailyRevenue = await _revenueService.GetDailyRevenueAsync(creator.Id, startDate, endDate);
-        
+        var dailyRevenue = await _revenueService.GetRevenueByDayAsync(creator.Id, startDate, endDate);
+
         // Group and sum by month - Application logic
         var monthlyData = dailyRevenue
             .GroupBy(r => new DateTime(r.Date.Year, r.Date.Month, 1))
-            .Select(g => new 
+            .Select(g => new
             {
                 Month = g.Key,
                 Revenue = g.Sum(r => r.Amount)
@@ -543,9 +543,17 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
              var currentMonth = monthlyData[i];
              decimal previousMonthRevenue = (i > 0) ? monthlyData[i-1].Revenue : 0;
              decimal growth = currentMonth.Revenue - previousMonthRevenue;
-             decimal growthRate = previousMonthRevenue > 0 
-                ? (growth / previousMonthRevenue) * 100
-                : (currentMonth.Revenue > 0 ? 100m : 0m); // Handle 0 previous revenue
+             decimal growthRate = 0m;
+             if (previousMonthRevenue != 0)
+             {
+                 growthRate = (growth / previousMonthRevenue) * 100m;
+             }
+             else if (currentMonth.Revenue > 0)
+             {
+                 // Se a receita anterior era 0 e a atual é > 0, o crescimento é infinito, representamos como 100%?
+                 // Ou talvez retornar um valor especial ou null? Por enquanto, 100%.
+                 growthRate = 100m;
+             }
 
              result.Add(new MonthlyRevenueDto
              {
@@ -559,12 +567,12 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         return result;
     }
 
-    private async Task<List<ContentPerformanceDto>> GetTopPerformingContentByCreatorAsync(Guid creatorId, int limit)
+    private async Task<List<ContentPerformanceSummaryDto>> GetTopPerformingContentByCreatorAsync(Guid creatorId, int limit)
     {
         // Fetch top performance records - ok
         var performances = await _contentPerformanceRepository.GetTopPerformingByViewsAsync(creatorId, limit);
-        var result = new List<ContentPerformanceDto>();
-        
+        var result = new List<ContentPerformanceSummaryDto>();
+
         var postIds = performances.Select(p => Guid.Parse(p.PostId.ToString())).ToList();
         // Fetch posts in bulk if possible
         var posts = await _contentRepository.GetByIdsAsync(postIds); // Assuming this method exists
@@ -574,7 +582,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         {
             if (postDict.TryGetValue(Guid.Parse(performance.PostId.ToString()), out var post))
             {
-                 result.Add(new ContentPerformanceDto
+                 result.Add(new ContentPerformanceSummaryDto
                  {
                      ContentId = post.Id.ToString(),
                      Title = post.Title,
@@ -586,7 +594,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
                  });
             }
         }
-        
+
         return result;
     }
 
@@ -595,7 +603,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     // that might be better suited for a dedicated reporting/aggregation service,
     // possibly even running as a background job, rather than a core Application service.
     // Or they might belong in specific Repository implementations if they are complex queries.
-    
+
     // Consider if these cross-creator aggregations belong here.
     private async Task<RevenueMetricsDto> GetRevenueMetricsAsync()
     {
@@ -613,12 +621,12 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
                 now.Date.AddMonths(-1),
                 now.Date);
         }
-        
+
         var previousMonthRevenue = await GetPreviousMonthRevenue_Aggregated(allCreators); // Helper for aggregation
-        var revenueGrowth = previousMonthRevenue > 0 
-            ? ((totalMonthlyRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
+        var revenueGrowth = previousMonthRevenue > 0
+            ? ((totalMonthlyRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
             : (totalMonthlyRevenue > 0 ? 100m : 0m);
-            
+
         return new RevenueMetricsDto
         {
             DailyRevenue = await GetTotalDailyRevenue_Aggregated(allCreators),
@@ -636,7 +644,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         var previousMonthStart = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
         var previousMonthEnd = new DateTime(now.Year, now.Month, 1).AddTicks(-1);
         var totalRevenue = 0m;
-        
+
         // Consider fetching revenue in bulk if possible
         foreach (var creator in creators)
         {
@@ -687,7 +695,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         var now = DateTime.UtcNow;
         var allCreators = await _creatorRepository.GetAllAsync();
         var metrics = new EngagementMetricsDto();
-        
+
         long monthlyEngagements = 0;
 
         // These loops over all creators fetching metrics could be slow.
@@ -703,12 +711,12 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
             {
                 metrics.DailyEngagements += dailyMetrics.TotalLikes + dailyMetrics.TotalComments + dailyMetrics.TotalShares;
             }
-            
+
             // Weekly - Example range
             var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
             var weeklyMetrics = await _metricsRepository.GetByDateRangeAsync(creator.Id, weekStart, now.Date);
             metrics.WeeklyEngagements += weeklyMetrics.Sum(m => m.TotalLikes + m.TotalComments + m.TotalShares);
-                
+
             // Monthly - Example range
             var monthStart = new DateTime(now.Year, now.Month, 1);
             var monthlyMetrics = await _metricsRepository.GetByDateRangeAsync(creator.Id, monthStart, now.Date);
@@ -716,16 +724,16 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         }
 
         // metrics.MonthlyEngagements = monthlyEngagements; // Atribuição movida para após o cálculo
-        
+
         var previousMonthEngagements = await GetPreviousMonthEngagements_Aggregated(allCreators); // Aggregation helper
-        var engagementGrowth = previousMonthEngagements > 0 
-            ? ((decimal)(monthlyEngagements - previousMonthEngagements) / previousMonthEngagements) * 100 
+        var engagementGrowth = previousMonthEngagements > 0
+            ? ((decimal)(monthlyEngagements - previousMonthEngagements) / previousMonthEngagements) * 100
             : (monthlyEngagements > 0 ? 100m : 0m);
-        
+
         // Atualiza o DTO após todos os cálculos
         metrics.MonthlyEngagements = (int)monthlyEngagements; // Cast para int aqui
-        metrics.EngagementGrowth = engagementGrowth; 
-            
+        metrics.EngagementGrowth = engagementGrowth;
+
         return metrics;
     }
 
@@ -736,7 +744,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         var previousMonthStart = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
         var previousMonthEnd = new DateTime(now.Year, now.Month, 1).AddTicks(-1);
         long totalEngagements = 0;
-        
+
         foreach (var creator in creators)
         {
             var metrics = await _metricsRepository.GetByDateRangeAsync(
@@ -753,7 +761,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
     private async Task<decimal> CalculateEngagementRateAsync(Guid postId)
     {
         // Fetching post just for this calculation seems inefficient if performance data is available.
-        var post = await _contentRepository.GetByIdAsync(postId); 
+        var post = await _contentRepository.GetByIdAsync(postId);
         if (post == null || post.Views <= 0)
             return 0;
 
@@ -763,14 +771,14 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
 
 
     // Aggregation across creators - consider performance/placement
-    private async Task<List<ContentPerformanceDto>> GetTopPerformingCreatorsAsync(int limit)
+    private async Task<List<ContentPerformanceSummaryDto>> GetTopPerformingCreatorsAsync(int limit)
     {
         // Fetches ALL creators and ALL their posts - potentially very inefficient.
         // This logic is highly suspect for a real-time Application service request.
         // Should likely be a specialized query in a repository or a background task result.
         var creators = await _creatorRepository.GetAllAsync();
-        var result = new List<ContentPerformanceDto>();
-        
+        var result = new List<ContentPerformanceSummaryDto>();
+
         foreach (var creator in creators)
         {
             var posts = await _contentRepository.GetByCreatorIdAsync(creator.Id); // Fetch posts per creator
@@ -779,11 +787,11 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
             long totalViews = posts.Sum(p => p.Views);
             long totalLikes = posts.Sum(p => p.Likes);
             long totalComments = posts.Sum(p => p.Comments);
-            
+
             if (totalViews > 0)
             {
                  var engagementRate = ((decimal)(totalLikes + totalComments) / totalViews) * 100;
-                 result.Add(new ContentPerformanceDto
+                 result.Add(new ContentPerformanceSummaryDto
                  {
                      ContentId = creator.Id.ToString(), // Using CreatorId as ContentId? Seems wrong.
                      Title = creator.Name, // Using Creator Name as Title? Seems wrong.
@@ -795,7 +803,7 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
                  });
             }
         }
-        
+
         // Order by views and take limit
         return result.OrderByDescending(c => c.Views).Take(limit).ToList();
     }
@@ -806,4 +814,4 @@ public class PerformanceAnalysisService : IPerformanceAnalysisService
         var creator = await _creatorRepository.GetByIdAsync(creatorId);
         return creator?.Name ?? "Desconhecido";
     }
-} 
+}

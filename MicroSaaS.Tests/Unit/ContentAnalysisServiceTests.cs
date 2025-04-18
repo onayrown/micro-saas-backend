@@ -14,6 +14,7 @@ using Xunit;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using MicroSaaS.Application.Services.ContentAnalysis.Analyzers;
 
 namespace MicroSaaS.Tests.Unit;
 
@@ -31,8 +32,9 @@ public class TestableContentAnalysisService : ContentAnalysisService
         IContentPerformanceRepository performanceRepository,
         ISocialMediaAccountRepository socialMediaRepository,
         IPerformanceMetricsRepository metricsRepository,
-        ILoggingService loggingService) 
-        : base(contentRepository, creatorRepository, performanceRepository, socialMediaRepository, metricsRepository, loggingService)
+        ILoggingService loggingService,
+        IPerformanceMetricsAnalyzer performanceMetricsAnalyzer) 
+        : base(contentRepository, creatorRepository, performanceRepository, socialMediaRepository, metricsRepository, loggingService, performanceMetricsAnalyzer)
     {
         // Inicializações com valores padrão
         AudienceInsightsToReturn = new AudienceInsightsDto();
@@ -89,6 +91,7 @@ public class ContentAnalysisServiceTests
     private readonly Mock<IContentPerformanceRepository> _performanceRepositoryMock;
     private readonly Mock<IPerformanceMetricsRepository> _metricsRepositoryMock;
     private readonly Mock<ILoggingService> _loggingServiceMock;
+    private readonly Mock<IPerformanceMetricsAnalyzer> _performanceMetricsAnalyzerMock;
     private readonly TestableContentAnalysisService _testableService;
 
     public ContentAnalysisServiceTests()
@@ -99,6 +102,7 @@ public class ContentAnalysisServiceTests
         _performanceRepositoryMock = new Mock<IContentPerformanceRepository>();
         _metricsRepositoryMock = new Mock<IPerformanceMetricsRepository>();
         _loggingServiceMock = new Mock<ILoggingService>();
+        _performanceMetricsAnalyzerMock = new Mock<IPerformanceMetricsAnalyzer>();
 
         _testableService = new TestableContentAnalysisService(
             _contentRepositoryMock.Object,
@@ -106,7 +110,8 @@ public class ContentAnalysisServiceTests
             _performanceRepositoryMock.Object,
             _socialMediaRepositoryMock.Object,
             _metricsRepositoryMock.Object,
-            _loggingServiceMock.Object
+            _loggingServiceMock.Object,
+            _performanceMetricsAnalyzerMock.Object
         );
     }
 

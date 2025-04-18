@@ -1,6 +1,7 @@
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Shared.Enums;
+using MicroSaaS.Application.DTOs.Performance;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -23,10 +24,8 @@ namespace MicroSaaS.Application.Interfaces.Services
         /// Gera novos insights para um criador específico com base em dados atuais
         /// </summary>
         /// <param name="creatorId">ID do criador de conteúdo</param>
-        /// <param name="startDate">Data de início opcional para o período de análise</param>
-        /// <param name="endDate">Data de fim opcional para o período de análise</param>
         /// <returns>Novos insights gerados</returns>
-        Task<DashboardInsights> GenerateInsightsAsync(Guid creatorId, DateTime? startDate = null, DateTime? endDate = null);
+        Task<DashboardInsights> GenerateInsightsAsync(Guid creatorId);
 
         /// <summary>
         /// Obtém métricas de desempenho para um criador específico
@@ -60,8 +59,8 @@ namespace MicroSaaS.Application.Interfaces.Services
         /// </summary>
         /// <param name="creatorId">ID do criador de conteúdo</param>
         /// <param name="platform">Plataforma específica para obter recomendações</param>
-        /// <returns>Lista de recomendações de horários</returns>
-        Task<List<PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram);
+        /// <returns>Lista de recomendações de horários (DTO)</returns>
+        Task<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform = SocialMediaPlatform.Instagram);
 
         /// <summary>
         /// Obtém a taxa média de engajamento para um criador específico
@@ -93,15 +92,15 @@ namespace MicroSaaS.Application.Interfaces.Services
         /// <summary>
         /// Adiciona métricas de desempenho para um criador
         /// </summary>
-        /// <param name="metrics">Métricas de desempenho a serem adicionadas</param>
-        /// <returns>Métricas adicionadas com ID gerado</returns>
-        Task<PerformanceMetrics> AddMetricsAsync(PerformanceMetrics metrics);
+        /// <param name="metricsDto">DTO com as métricas de desempenho a serem adicionadas</param>
+        /// <returns>Métricas adicionadas (retornando entidade, pode mudar para DTO)</returns>
+        Task<PerformanceMetrics> AddMetricsAsync(DashboardMetricsDto metricsDto);
 
         /// <summary>
         /// Adiciona dados de desempenho para um conteúdo específico
         /// </summary>
-        /// <param name="performance">Dados de desempenho do conteúdo</param>
-        /// <returns>Dados de desempenho adicionados com ID gerado</returns>
-        Task<ContentPerformance> AddContentPerformanceAsync(ContentPerformance performance);
+        /// <param name="performanceDto">DTO com os dados de desempenho do conteúdo</param>
+        /// <returns>Dados de desempenho adicionados (retornando entidade, pode mudar para DTO)</returns>
+        Task<ContentPerformance> AddContentPerformanceAsync(MicroSaaS.Application.DTOs.ContentPerformanceDto performanceDto);
     }
-} 
+}

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MicroSaaS.Application.Services.ContentAnalysis.Analyzers;
 
 namespace MicroSaaS.Application.Services
 {
@@ -22,6 +23,7 @@ namespace MicroSaaS.Application.Services
         private readonly ISocialMediaAccountRepository _accountRepository;
         private readonly IPerformanceMetricsRepository _metricsRepository;
         private readonly ILoggingService _loggingService;
+        private readonly IPerformanceMetricsAnalyzer _performanceMetricsAnalyzer;
 
         public ContentAnalysisService(
             IContentPostRepository contentRepository,
@@ -29,7 +31,8 @@ namespace MicroSaaS.Application.Services
             IContentPerformanceRepository performanceRepository,
             ISocialMediaAccountRepository accountRepository,
             IPerformanceMetricsRepository metricsRepository,
-            ILoggingService loggingService)
+            ILoggingService loggingService,
+            IPerformanceMetricsAnalyzer performanceMetricsAnalyzer)
         {
             _contentRepository = contentRepository;
             _creatorRepository = creatorRepository;
@@ -37,6 +40,7 @@ namespace MicroSaaS.Application.Services
             _accountRepository = accountRepository;
             _metricsRepository = metricsRepository;
             _loggingService = loggingService;
+            _performanceMetricsAnalyzer = performanceMetricsAnalyzer;
         }
 
         // Método implementado com algoritmos avançados
@@ -73,7 +77,7 @@ namespace MicroSaaS.Application.Services
                 };
 
                 // Análise de métricas de performance
-                AnalyzePerformanceMetrics(performances, insights);
+                _performanceMetricsAnalyzer.AnalyzePerformanceMetrics(performances, insights);
 
                 // Identifica pontos fortes e sugestões de melhoria
                 IdentifyStrengthsAndSuggestions(insights, contentPost.Platform);
@@ -84,51 +88,6 @@ namespace MicroSaaS.Application.Services
             {
                 _loggingService.LogError(ex, $"Erro ao analisar conteúdo {contentId}: {ex.Message}");
                 return Result<ContentInsightsDto>.Fail($"Erro interno ao analisar conteúdo: {ex.Message}");
-            }
-        }
-
-        // Método privado para análise de métricas de performance
-        private void AnalyzePerformanceMetrics(IEnumerable<ContentPerformance> performances, ContentInsightsDto insights)
-        {
-            double totalViews = 0;
-            double totalLikes = 0;
-            double totalComments = 0;
-            double totalShares = 0;
-            double totalRevenue = 0;
-            
-            foreach (var perf in performances)
-            {
-                // Calcular taxa de engajamento para cada plataforma
-                double engagementRate = CalculateEngagementRate(perf);
-                insights.PlatformPerformance[perf.Platform] = engagementRate;
-                
-                // Acumular métricas
-                totalViews += perf.Views;
-                totalLikes += perf.Likes;
-                totalComments += perf.Comments;
-                totalShares += perf.Shares;
-                totalRevenue += (double)perf.EstimatedRevenue;
-                
-                // Analisar fatores específicos de performance
-                insights.PerformanceFactors[$"Likes ({perf.Platform})"] = perf.Views > 0 ? (double)perf.Likes / perf.Views * 100 : 0;
-                insights.PerformanceFactors[$"Comentários ({perf.Platform})"] = perf.Views > 0 ? (double)perf.Comments / perf.Views * 100 : 0;
-                insights.PerformanceFactors[$"Compartilhamentos ({perf.Platform})"] = perf.Views > 0 ? (double)perf.Shares / perf.Views * 100 : 0;
-            }
-            
-            // Calcular scores globais
-            int platformCount = performances.Select(p => p.Platform).Distinct().Count();
-            if (platformCount > 0 && totalViews > 0)
-            {
-                insights.EngagementScore = (totalLikes + totalComments + totalShares) / totalViews;
-                insights.ReachScore = totalViews / platformCount;
-                insights.ConversionScore = totalRevenue > 0 ? totalRevenue / totalViews * 100 : 0;
-                insights.RetentionScore = CalculateRetentionScore(performances);
-                insights.SentimentScore = CalculateSentimentScore(performances);
-                insights.OverallScore = (insights.EngagementScore * 0.3 + 
-                                       insights.ReachScore * 0.2 + 
-                                       insights.ConversionScore * 0.15 + 
-                                       insights.RetentionScore * 0.15 + 
-                                       insights.SentimentScore * 0.2) / 5;
             }
         }
 

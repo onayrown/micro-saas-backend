@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using MicroSaaS.IntegrationTests.Mocks;
 
 namespace MicroSaaS.IntegrationTests
 {

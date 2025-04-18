@@ -1,6 +1,8 @@
 using MicroSaaS.Domain.Entities;
+// using MicroSaaS.Application.DTOs.Recommendation;
 using MicroSaaS.Shared.DTOs;
 using MicroSaaS.Shared.Enums;
+using MicroSaaS.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -10,39 +12,39 @@ namespace MicroSaaS.Application.Interfaces.Services;
 public interface IRecommendationService
 {
     // Recomendações de tempo de postagem
-    Task<List<PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform);
-    Task<Dictionary<SocialMediaPlatform, List<PostTimeRecommendation>>> GetBestTimeToPostAllPlatformsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<Dictionary<SocialMediaPlatform, List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>>> GetBestTimeToPostAllPlatformsAsync(Guid creatorId);
     
     // Recomendações de conteúdo
-    Task<List<ContentRecommendation>> GetContentRecommendationsAsync(Guid creatorId);
-    Task<List<ContentRecommendation>> GetTopicRecommendationsAsync(Guid creatorId);
-    Task<List<ContentRecommendation>> GetFormatRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetContentRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetTopicRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetFormatRecommendationsAsync(Guid creatorId);
     
     // Recomendações de hashtags
     Task<List<string>> GetHashtagRecommendationsAsync(Guid creatorId, string contentDescription, SocialMediaPlatform platform);
     
     // Identificação de tendências
-    Task<List<TrendTopic>> GetTrendingTopicsAsync(SocialMediaPlatform platform);
-    Task<List<TrendTopic>> GetNicheTrendingTopicsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.TrendTopicDto>> GetTrendingTopicsAsync(SocialMediaPlatform platform);
+    Task<List<MicroSaaS.Shared.DTOs.TrendTopicDto>> GetNicheTrendingTopicsAsync(Guid creatorId);
     
     // Outras recomendações estratégicas
-    Task<List<ContentRecommendation>> GetMonetizationRecommendationsAsync(Guid creatorId);
-    Task<List<ContentRecommendation>> GetAudienceGrowthRecommendationsAsync(Guid creatorId);
-    Task<List<ContentRecommendation>> GetEngagementImprovementRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetMonetizationRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetAudienceGrowthRecommendationsAsync(Guid creatorId);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetEngagementImprovementRecommendationsAsync(Guid creatorId);
     
     // Análise de conteúdo
-    Task<ContentAnalysis> AnalyzeContentPerformanceAsync(Guid contentId);
+    Task<MicroSaaS.Shared.DTOs.ContentAnalysisDto> AnalyzeContentPerformanceAsync(Guid contentId);
     
     // Atualização de recomendações
     Task RefreshRecommendationsAsync(Guid creatorId);
 
     // Novos métodos para DTOs
     Task<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestPostingTimesAsync(Guid creatorId, SocialMediaPlatform platform);
-    Task<List<ContentRecommendationDto>> GetContentRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
-    Task<List<GrowthRecommendationDto>> GetGrowthRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
-    Task<ContentRecommendationDto> GenerateCustomRecommendationAsync(CustomRecommendationRequestDto request);
+    Task<List<MicroSaaS.Shared.DTOs.ContentRecommendationDto>> GetContentRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<List<MicroSaaS.Shared.DTOs.GrowthRecommendationDto>> GetGrowthRecommendationsAsync(Guid creatorId, SocialMediaPlatform platform);
+    Task<MicroSaaS.Shared.DTOs.ContentRecommendationDto> GenerateCustomRecommendationAsync(CustomRecommendationRequestDto request);
     Task<MicroSaaS.Shared.DTOs.AudienceSensitivityDto> GetAudienceSensitivityAnalysisAsync(Guid creatorId, SocialMediaPlatform platform);
-    Task<GrowthRecommendationDto> GenerateCustomGrowthRecommendationAsync(CustomRecommendationRequestDto request);
+    Task<MicroSaaS.Shared.DTOs.GrowthRecommendationDto> GenerateCustomGrowthRecommendationAsync(CustomRecommendationRequestDto request);
 }
 
 public class TrendTopic

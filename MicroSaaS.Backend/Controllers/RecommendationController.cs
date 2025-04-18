@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MicroSaaS.Application.Interfaces.Services;
-using MicroSaaS.Domain.Entities;
+using MicroSaaS.Shared.DTOs;
+using MicroSaaS.Application.DTOs.ContentAnalysis;
 using MicroSaaS.Shared.Enums;
 using System;
 using System.Collections.Generic;
@@ -38,16 +39,16 @@ public class RecommendationController : ControllerBase
     /// <response code="200">Recomendações obtidas com sucesso</response>
     /// <response code="400">Erro ao obter recomendações</response>
     [HttpGet("best-times/{creatorId}")]
-    [ProducesResponseType(typeof(List<PostTimeRecommendation>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<List<PostTimeRecommendation>>> GetBestTimeToPost(
+    public async Task<ActionResult<List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>>> GetBestTimeToPost(
         Guid creatorId, 
         [FromQuery] SocialMediaPlatform platform)
     {
         try
         {
-            var recommendations = await _recommendationService.GetBestTimeToPostAsync(creatorId, platform);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetBestTimeToPostAsync(creatorId, platform);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -64,15 +65,15 @@ public class RecommendationController : ControllerBase
     /// <response code="200">Recomendações obtidas com sucesso</response>
     /// <response code="400">Erro ao obter recomendações</response>
     [HttpGet("best-times/{creatorId}/all-platforms")]
-    [ProducesResponseType(typeof(Dictionary<SocialMediaPlatform, List<PostTimeRecommendation>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Dictionary<SocialMediaPlatform, List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Dictionary<SocialMediaPlatform, List<PostTimeRecommendation>>>> GetBestTimeToPostAllPlatforms(
+    public async Task<ActionResult<Dictionary<SocialMediaPlatform, List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>>>> GetBestTimeToPostAllPlatforms(
         Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetBestTimeToPostAllPlatformsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetBestTimeToPostAllPlatformsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -89,14 +90,14 @@ public class RecommendationController : ControllerBase
     /// <response code="200">Recomendações obtidas com sucesso</response>
     /// <response code="400">Erro ao obter recomendações</response>
     [HttpGet("content/{creatorId}")]
-    [ProducesResponseType(typeof(List<ContentRecommendation>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetContentRecommendations(Guid creatorId)
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetContentRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetContentRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetContentRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -106,12 +107,14 @@ public class RecommendationController : ControllerBase
     }
 
     [HttpGet("topics/{creatorId}")]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetTopicRecommendations(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetTopicRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetTopicRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetTopicRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -121,12 +124,14 @@ public class RecommendationController : ControllerBase
     }
 
     [HttpGet("formats/{creatorId}")]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetFormatRecommendations(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetFormatRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetFormatRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetFormatRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -137,6 +142,8 @@ public class RecommendationController : ControllerBase
 
     // Recomendações de hashtags
     [HttpGet("hashtags/{creatorId}")]
+    [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<List<string>>> GetHashtagRecommendations(
         Guid creatorId, 
         [FromQuery] string contentDescription, 
@@ -156,12 +163,14 @@ public class RecommendationController : ControllerBase
 
     // Tendências
     [HttpGet("trends")]
-    public async Task<ActionResult<List<TrendTopic>>> GetTrendingTopics([FromQuery] SocialMediaPlatform platform)
+    [ProducesResponseType(typeof(List<TrendTopicDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<TrendTopicDto>>> GetTrendingTopics([FromQuery] SocialMediaPlatform platform)
     {
         try
         {
-            var trends = await _recommendationService.GetTrendingTopicsAsync(platform);
-            return Ok(trends);
+            var trendsDto = await _recommendationService.GetTrendingTopicsAsync(platform);
+            return Ok(trendsDto);
         }
         catch (Exception ex)
         {
@@ -171,12 +180,14 @@ public class RecommendationController : ControllerBase
     }
 
     [HttpGet("trends/{creatorId}/niche")]
-    public async Task<ActionResult<List<TrendTopic>>> GetNicheTrendingTopics(Guid creatorId)
+    [ProducesResponseType(typeof(List<TrendTopicDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<TrendTopicDto>>> GetNicheTrendingTopics(Guid creatorId)
     {
         try
         {
-            var trends = await _recommendationService.GetNicheTrendingTopicsAsync(creatorId);
-            return Ok(trends);
+            var trendsDto = await _recommendationService.GetNicheTrendingTopicsAsync(creatorId);
+            return Ok(trendsDto);
         }
         catch (Exception ex)
         {
@@ -187,12 +198,14 @@ public class RecommendationController : ControllerBase
 
     // Recomendações estratégicas
     [HttpGet("monetization/{creatorId}")]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetMonetizationRecommendations(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetMonetizationRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetMonetizationRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetMonetizationRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -202,12 +215,14 @@ public class RecommendationController : ControllerBase
     }
 
     [HttpGet("audience-growth/{creatorId}")]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetAudienceGrowthRecommendations(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetAudienceGrowthRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetAudienceGrowthRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetAudienceGrowthRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -217,12 +232,14 @@ public class RecommendationController : ControllerBase
     }
 
     [HttpGet("engagement/{creatorId}")]
-    public async Task<ActionResult<List<ContentRecommendation>>> GetEngagementRecommendations(Guid creatorId)
+    [ProducesResponseType(typeof(List<ContentRecommendationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<ContentRecommendationDto>>> GetEngagementRecommendations(Guid creatorId)
     {
         try
         {
-            var recommendations = await _recommendationService.GetEngagementImprovementRecommendationsAsync(creatorId);
-            return Ok(recommendations);
+            var recommendationsDto = await _recommendationService.GetEngagementImprovementRecommendationsAsync(creatorId);
+            return Ok(recommendationsDto);
         }
         catch (Exception ex)
         {
@@ -233,12 +250,14 @@ public class RecommendationController : ControllerBase
 
     // Análise de conteúdo
     [HttpGet("analyze/{contentId}")]
-    public async Task<ActionResult<ContentAnalysis>> AnalyzeContent(Guid contentId)
+    [ProducesResponseType(typeof(MicroSaaS.Application.DTOs.ContentAnalysis.ContentAnalysisDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<MicroSaaS.Application.DTOs.ContentAnalysis.ContentAnalysisDto>> AnalyzeContent(Guid contentId)
     {
         try
         {
-            var analysis = await _recommendationService.AnalyzeContentPerformanceAsync(contentId);
-            return Ok(analysis);
+            var analysisDto = await _recommendationService.AnalyzeContentPerformanceAsync(contentId);
+            return Ok(analysisDto);
         }
         catch (Exception ex)
         {

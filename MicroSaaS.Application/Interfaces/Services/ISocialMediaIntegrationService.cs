@@ -29,5 +29,5 @@ public interface ISocialMediaIntegrationService
     Task<IEnumerable<ContentPerformanceDto>> GetPostPerformanceAsync(Guid postId);
     Task<IEnumerable<ContentPerformanceDto>> GetAccountPerformanceAsync(Guid accountId, DateTime startDate, DateTime endDate);
     Task<Dictionary<string, decimal>> GetRevenueMetricsAsync(Guid accountId, DateTime startDate, DateTime endDate);
-    Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId);
+    Task<IEnumerable<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestPostingTimesAsync(Guid accountId);
 }

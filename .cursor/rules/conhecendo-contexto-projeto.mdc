@@ -1,6 +1,11 @@
 ---
 description: 
 globs: 
+alwaysApply: false
+---
+---
+description: 
+globs: 
 alwaysApply: true
 ---
 # Project Rules - CreatorHub: Plataforma de Gestão para Criadores de Conteúdo

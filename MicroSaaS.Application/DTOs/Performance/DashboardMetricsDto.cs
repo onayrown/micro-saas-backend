@@ -8,7 +8,7 @@ public class DashboardMetricsDto
     public decimal AverageEngagementRate { get; set; }
 }
 
-public class ContentPerformanceDto
+public class ContentPerformanceSummaryDto
 {
     public string ContentId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
@@ -33,4 +33,4 @@ public class EngagementMetricsDto
     public int WeeklyEngagements { get; set; }
     public int MonthlyEngagements { get; set; }
     public decimal EngagementGrowth { get; set; }
-} 
+}

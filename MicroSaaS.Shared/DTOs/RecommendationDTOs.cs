@@ -41,15 +41,7 @@ namespace MicroSaaS.Shared.DTOs
         public string RecommendationStrength { get; set; } = string.Empty;
     }
 
-    public enum RecommendationType
-    {
-        Topic,
-        Format,
-        Series,
-        Timing,
-        Collaboration,
-        TrendingHashtag
-    }
+    // Enum RecommendationType movido para MicroSaaS.Shared.Enums.RecommendationType
 
     public enum GrowthCategory
     {
@@ -75,13 +67,16 @@ namespace MicroSaaS.Shared.DTOs
         public string Description { get; set; } = string.Empty;
 
         [JsonPropertyName("type")]
-        public RecommendationType Type { get; set; }
+        public MicroSaaS.Shared.Enums.RecommendationType Type { get; set; }
 
         [JsonPropertyName("platform")]
         public SocialMediaPlatform Platform { get; set; }
 
         [JsonPropertyName("confidenceScore")]
         public decimal ConfidenceScore { get; set; }
+
+        [JsonPropertyName("score")]
+        public decimal Score { get; set; }
 
         [JsonPropertyName("exampleContentIds")]
         public List<Guid> ExampleContentIds { get; set; } = new List<Guid>();
@@ -195,6 +190,27 @@ namespace MicroSaaS.Shared.DTOs
         public string RecommendedContentApproach { get; set; } = string.Empty;
     }
 
+    public class RecommendationDto
+    {
+        [JsonPropertyName("id")]
+        public Guid Id { get; set; }
+
+        [JsonPropertyName("type")]
+        public MicroSaaS.Shared.Enums.RecommendationType Type { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonPropertyName("score")]
+        public decimal Score { get; set; }
+
+        [JsonPropertyName("createdAt")]
+        public DateTime CreatedAt { get; set; }
+    }
+
     public class CustomRecommendationRequestDto
     {
         [JsonPropertyName("creatorId")]
@@ -204,7 +220,7 @@ namespace MicroSaaS.Shared.DTOs
         public SocialMediaPlatform Platform { get; set; }
 
         [JsonPropertyName("recommendationType")]
-        public RecommendationType RecommendationType { get; set; }
+        public MicroSaaS.Shared.Enums.RecommendationType RecommendationType { get; set; }
 
         [JsonPropertyName("specificTopic")]
         public string? SpecificTopic { get; set; }
@@ -218,4 +234,46 @@ namespace MicroSaaS.Shared.DTOs
         [JsonPropertyName("preferredContentLength")]
         public string? PreferredContentLength { get; set; }
     }
-} 
+
+    public class TrendTopicDto
+    {
+        [JsonPropertyName("topic")]
+        public string Topic { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonPropertyName("volume")]
+        public double Volume { get; set; }
+
+        [JsonPropertyName("platform")]
+        public SocialMediaPlatform Platform { get; set; }
+
+        [JsonPropertyName("relatedHashtags")]
+        public List<string> RelatedHashtags { get; set; } = new();
+    }
+
+    public class ContentAnalysisDto
+    {
+        [JsonPropertyName("contentId")]
+        public Guid ContentId { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = string.Empty;
+
+        [JsonPropertyName("engagementScore")]
+        public double EngagementScore { get; set; }
+
+        [JsonPropertyName("reachScore")]
+        public double ReachScore { get; set; }
+
+        [JsonPropertyName("strengthPoints")]
+        public List<string> StrengthPoints { get; set; } = new();
+
+        [JsonPropertyName("improvementSuggestions")]
+        public List<string> ImprovementSuggestions { get; set; } = new();
+
+        [JsonPropertyName("analysisDate")]
+        public DateTime AnalysisDate { get; set; }
+    }
+}

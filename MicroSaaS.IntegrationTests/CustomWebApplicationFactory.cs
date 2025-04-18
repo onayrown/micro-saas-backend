@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using System.Reflection;
 using MicroSaaS.IntegrationTests.Utils;
 using MicroSaaS.IntegrationTests.Controllers;
+using MicroSaaS.IntegrationTests.Mocks;
 
 namespace MicroSaaS.IntegrationTests
 {

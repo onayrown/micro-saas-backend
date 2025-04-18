@@ -47,19 +47,19 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         {
             return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code";
         }
-        
+
         // URL específica para YouTube
         if (platform == SocialMediaPlatform.YouTube)
         {
             return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code&access_type=offline&prompt=consent";
         }
-        
+
         // URL específica para TikTok
         if (platform == SocialMediaPlatform.TikTok)
         {
             return $"{baseUrl}?client_key={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code&state={Guid.NewGuid()}";
         }
-        
+
         // URL genérica para outras plataformas
         return $"{baseUrl}?client_id={clientId}&redirect_uri={Uri.EscapeDataString(callbackUrl)}&scope={Uri.EscapeDataString(scope)}&response_type=code";
     }
@@ -72,7 +72,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         var tokenUrl = GetTokenUrl(platform);
 
         var tokenResponse = await ExchangeAuthCodeForTokenAsync(tokenUrl, clientId, clientSecret, code, callbackUrl, platform);
-        
+
         // Criar conta com dados básicos
         var account = new SocialMediaAccount
         {
@@ -207,7 +207,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                         return;
                     }
                 }
-                
+
                 throw new Exception($"Falha ao atualizar token do Instagram: {response.StatusCode}");
             }
             catch (Exception ex)
@@ -247,7 +247,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                         return;
                     }
                 }
-                
+
                 throw new Exception($"Falha ao atualizar token do YouTube: {response.StatusCode}");
             }
             catch (Exception ex)
@@ -290,7 +290,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                         return;
                     }
                 }
-                
+
                 throw new Exception($"Falha ao atualizar token do TikTok: {response.StatusCode}");
             }
             catch (Exception ex)
@@ -298,7 +298,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 throw new Exception($"Erro ao atualizar token do TikTok: {ex.Message}", ex);
             }
         }
-        
+
         // Implementação genérica para outras plataformas
         var newTokenResponse = new TokenResponse
         {
@@ -456,7 +456,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
 
         // Em uma implementação real, você obteria o desempenho da conta da API da plataforma
         var performances = new List<ContentPerformanceDto>();
-        
+
         // Simular dados de desempenho para o período especificado
         var currentDate = startDate;
         while (currentDate <= endDate)
@@ -475,7 +475,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 EstimatedRevenue = Random.Shared.Next(100, 5000) / 100.0m,
                 CollectedAt = DateTime.UtcNow
             });
-            
+
             currentDate = currentDate.AddDays(1);
         }
 
@@ -496,43 +496,64 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         };
     }
 
-    public async Task<IEnumerable<MicroSaaS.Shared.Models.PostTimeRecommendation>> GetBestPostingTimesAsync(Guid accountId)
+    public async Task<IEnumerable<MicroSaaS.Shared.DTOs.BestTimeSlotDto>> GetBestPostingTimesAsync(Guid accountId)
     {
         if (accountId == Guid.Empty)
             throw new ArgumentException("ID da conta é obrigatório", nameof(accountId));
 
         // Em uma implementação real, você analisaria dados históricos para determinar os melhores horários
-        var recommendations = new List<MicroSaaS.Shared.Models.PostTimeRecommendation>();
-        
+        var recommendations = new List<MicroSaaS.Shared.DTOs.BestTimeSlotDto>();
+
         // Gerar recomendações para diferentes dias da semana
         foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
         {
             // Adicionar algumas recomendações para manhã, tarde e noite
-            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
+            recommendations.Add(new MicroSaaS.Shared.DTOs.BestTimeSlotDto
             {
                 Id = Guid.NewGuid(),
+                CreatorId = accountId, // Usando accountId como CreatorId
+                Platform = SocialMediaPlatform.Instagram, // Plataforma padrão
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(9, 0, 0), // 9:00 AM
-                EngagementScore = (decimal)(0.6 + Random.Shared.NextDouble() * 0.4)
+                Hour = 9,
+                EngagementScore = (decimal)(0.6 + Random.Shared.NextDouble() * 0.4),
+                ConfidenceScore = 0.7m,
+                CreatedAt = DateTime.UtcNow,
+                EngagementPotential = (int)(7 + Random.Shared.Next(4)),
+                RecommendationStrength = "Média"
             });
-            
-            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
+
+            recommendations.Add(new MicroSaaS.Shared.DTOs.BestTimeSlotDto
             {
                 Id = Guid.NewGuid(),
+                CreatorId = accountId,
+                Platform = SocialMediaPlatform.Instagram,
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(12, 0, 0), // 12:00 PM
-                EngagementScore = (decimal)(0.5 + Random.Shared.NextDouble() * 0.5)
+                Hour = 12,
+                EngagementScore = (decimal)(0.5 + Random.Shared.NextDouble() * 0.5),
+                ConfidenceScore = 0.65m,
+                CreatedAt = DateTime.UtcNow,
+                EngagementPotential = (int)(6 + Random.Shared.Next(5)),
+                RecommendationStrength = "Média"
             });
-            
-            recommendations.Add(new MicroSaaS.Shared.Models.PostTimeRecommendation
+
+            recommendations.Add(new MicroSaaS.Shared.DTOs.BestTimeSlotDto
             {
                 Id = Guid.NewGuid(),
+                CreatorId = accountId,
+                Platform = SocialMediaPlatform.Instagram,
                 DayOfWeek = day,
                 TimeOfDay = new TimeSpan(18, 0, 0), // 6:00 PM
-                EngagementScore = (decimal)(0.7 + Random.Shared.NextDouble() * 0.3)
+                Hour = 18,
+                EngagementScore = (decimal)(0.7 + Random.Shared.NextDouble() * 0.3),
+                ConfidenceScore = 0.8m,
+                CreatedAt = DateTime.UtcNow,
+                EngagementPotential = (int)(8 + Random.Shared.Next(3)),
+                RecommendationStrength = "Forte"
             });
         }
-        
+
         // Ordenar por pontuação de engajamento (descendente)
         return recommendations.OrderByDescending(r => r.EngagementScore);
     }
@@ -542,10 +563,10 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         if (creatorId == Guid.Empty)
             throw new ArgumentException("ID do criador é obrigatório", nameof(creatorId));
-        
+
         if (string.IsNullOrEmpty(platform))
             throw new ArgumentException("Plataforma é obrigatória", nameof(platform));
-        
+
         if (string.IsNullOrEmpty(accessToken))
             throw new ArgumentException("Token de acesso é obrigatório", nameof(accessToken));
 
@@ -561,7 +582,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         if (creatorId == Guid.Empty)
             throw new ArgumentException("ID do criador é obrigatório", nameof(creatorId));
-        
+
         if (string.IsNullOrEmpty(platform))
             throw new ArgumentException("Plataforma é obrigatória", nameof(platform));
 
@@ -590,7 +611,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         if (creatorId == Guid.Empty)
             throw new ArgumentException("ID do criador é obrigatório", nameof(creatorId));
-        
+
         if (string.IsNullOrEmpty(platform))
             throw new ArgumentException("Plataforma é obrigatória", nameof(platform));
 
@@ -606,7 +627,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         if (creatorId == Guid.Empty)
             throw new ArgumentException("ID do criador é obrigatório", nameof(creatorId));
-        
+
         if (string.IsNullOrEmpty(platform))
             throw new ArgumentException("Plataforma é obrigatória", nameof(platform));
 
@@ -694,7 +715,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     private async Task<TokenResponse> ExchangeAuthCodeForTokenAsync(string tokenUrl, string clientId, string clientSecret, string code, string redirectUri, SocialMediaPlatform platform)
     {
         FormUrlEncodedContent formContent;
-        
+
         if (platform == SocialMediaPlatform.TikTok)
         {
             formContent = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -722,7 +743,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         if (response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadAsStringAsync();
-            
+
             // TikTok usa um formato diferente para a resposta
             if (platform == SocialMediaPlatform.TikTok)
             {
@@ -743,7 +764,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 return JsonSerializer.Deserialize<TokenResponse>(content) ?? new TokenResponse();
             }
         }
-        
+
         throw new Exception($"Falha ao trocar código por token. Status: {response.StatusCode}, Conteúdo: {await response.Content.ReadAsStringAsync()}");
     }
 
@@ -752,12 +773,12 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         // Endpoint para obter informações do usuário do Instagram
         string userEndpoint = "https://graph.instagram.com/me?fields=id,username,account_type,media_count&access_token=" + accessToken;
-        
+
         var response = await _httpClient.GetAsync(userEndpoint);
         if (response.IsSuccessStatusCode)
         {
             var userInfo = await response.Content.ReadFromJsonAsync<InstagramUserInfo>();
-            
+
             // Criar um perfil com as informações disponíveis
             return new InstagramProfile
             {
@@ -767,25 +788,25 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 FollowersCount = new Random().Next(100, 10000) // Placeholder até implementarmos a obtenção real
             };
         }
-        
+
         throw new Exception($"Falha ao obter perfil do Instagram: {response.StatusCode}");
     }
-    
+
     // Método auxiliar para obter informações do perfil do YouTube
     private async Task<YouTubeProfile> GetYouTubeProfileAsync(string accessToken)
     {
         // Endpoint para obter informações do canal do YouTube
         string channelEndpoint = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true";
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Get, channelEndpoint);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
-        
+
         var response = await _httpClient.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             var channelData = await response.Content.ReadFromJsonAsync<YouTubeChannelResponse>();
             var channel = channelData?.Items?.FirstOrDefault();
-            
+
             if (channel != null)
             {
                 return new YouTubeProfile
@@ -797,7 +818,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 };
             }
         }
-        
+
         throw new Exception($"Falha ao obter perfil do YouTube: {response.StatusCode}");
     }
 
@@ -806,27 +827,27 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
     {
         // Endpoint para obter informações do usuário do TikTok
         string userInfoEndpoint = "https://open.tiktokapis.com/v2/user/info/";
-        
+
         var fields = new List<string> { "open_id", "union_id", "avatar_url", "display_name", "follower_count" };
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Post, userInfoEndpoint);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
-        
+
         var requestContent = new
         {
             fields = fields
         };
-        
+
         // Corrigindo a criação do StringContent para usar apenas dois parâmetros
         var jsonContent = JsonSerializer.Serialize(requestContent);
         request.Content = new StringContent(jsonContent, Encoding.UTF8);
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-        
+
         var response = await _httpClient.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             var userInfo = await response.Content.ReadFromJsonAsync<TikTokUserInfoResponse>();
-            
+
             if (userInfo?.Data != null)
             {
                 return new TikTokProfile
@@ -838,7 +859,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
                 };
             }
         }
-        
+
         throw new Exception($"Falha ao obter perfil do TikTok: {response.StatusCode}");
     }
 
@@ -858,7 +879,7 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         public string ProfileImageUrl { get; set; } = string.Empty;
         public int FollowersCount { get; set; }
     }
-    
+
     // Classes auxiliares para YouTube
     private class YouTubeProfile
     {
@@ -867,40 +888,40 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         public string ProfileImageUrl { get; set; } = string.Empty;
         public int FollowersCount { get; set; }
     }
-    
+
     private class YouTubeChannelResponse
     {
         public List<YouTubeChannel> Items { get; set; } = new List<YouTubeChannel>();
     }
-    
+
     private class YouTubeChannel
     {
         public string Id { get; set; } = string.Empty;
         public YouTubeSnippet? Snippet { get; set; }
         public YouTubeStatistics? Statistics { get; set; }
     }
-    
+
     private class YouTubeSnippet
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public YouTubeThumbnails? Thumbnails { get; set; }
     }
-    
+
     private class YouTubeThumbnails
     {
         public YouTubeThumbnail? Default { get; set; }
         public YouTubeThumbnail? Medium { get; set; }
         public YouTubeThumbnail? High { get; set; }
     }
-    
+
     private class YouTubeThumbnail
     {
         public string Url { get; set; } = string.Empty;
         public int Width { get; set; }
         public int Height { get; set; }
     }
-    
+
     private class YouTubeStatistics
     {
         public string ViewCount { get; set; } = string.Empty;
@@ -916,46 +937,46 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
         public string ProfileImageUrl { get; set; } = string.Empty;
         public int FollowersCount { get; set; }
     }
-    
+
     private class TikTokTokenResponse
     {
         public TikTokTokenData? Data { get; set; }
     }
-    
+
     private class TikTokTokenData
     {
         [JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("refresh_token")]
         public string RefreshToken { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
-        
+
         [JsonPropertyName("open_id")]
         public string OpenId { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("scope")]
         public string Scope { get; set; } = string.Empty;
     }
-    
+
     private class TikTokUserInfoResponse
     {
         public TikTokUserData? Data { get; set; }
     }
-    
+
     private class TikTokUserData
     {
         [JsonPropertyName("display_name")]
         public string? DisplayName { get; set; }
-        
+
         [JsonPropertyName("avatar_url")]
         public string? AvatarUrl { get; set; }
-        
+
         [JsonPropertyName("follower_count")]
         public int FollowerCount { get; set; }
-        
+
         [JsonPropertyName("open_id")]
         public string? OpenId { get; set; }
     }
@@ -970,8 +991,8 @@ public class SocialMediaIntegrationService : ISocialMediaIntegrationService
 
         [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
-        
+
         [JsonPropertyName("open_id")]
         public string OpenId { get; set; } = string.Empty;
     }
-} 
+}

@@ -10,8 +10,6 @@ using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.IntegrationTests.Controllers;
 using MicroSaaS.IntegrationTests.Mocks;
-using MicroSaaS.IntegrationTests.Mocks.Repositories;
-using MicroSaaS.IntegrationTests.Mocks.Services;
 using MicroSaaS.IntegrationTests.Utils;
 using MongoDB.Driver;
 using Moq;
@@ -39,18 +37,18 @@ namespace MicroSaaS.IntegrationTests
             // Adicionar o suporte ao versionamento de API de forma simplificada
             services.AddApiVersioning();
 
-            // Adicionar mock repositories
-            services.AddScoped<IUserRepository, MockUserRepository>();
-            services.AddScoped<ISocialMediaAccountRepository, MockSocialMediaAccountRepository>();
+            // Adicionar mock repositories (referenciando o namespace Mocks)
+            services.AddScoped<IUserRepository, MicroSaaS.IntegrationTests.Mocks.MockUserRepository>();
+            services.AddScoped<ISocialMediaAccountRepository, MicroSaaS.IntegrationTests.Mocks.MockSocialMediaAccountRepository>();
 
-            // Adicionar mock services
-            services.AddScoped<IAuthService, MockAuthService>();
-            services.AddScoped<ILoggingService, MockLoggingService>();
-            services.AddScoped<ITokenService, MockTokenService>();
-            services.AddScoped<IDashboardService, MockDashboardService>();
-            services.AddScoped<IRecommendationService, MockRecommendationService>();
-            services.AddScoped<ISocialMediaIntegrationService, MockSocialMediaIntegrationService>();
-            services.AddScoped<ISchedulerService, MockSchedulerService>();
+            // Adicionar mock services (referenciando o namespace Mocks)
+            services.AddScoped<IAuthService, MicroSaaS.IntegrationTests.Mocks.MockAuthService>();
+            services.AddScoped<ILoggingService, MicroSaaS.IntegrationTests.Mocks.MockLoggingService>();
+            services.AddScoped<ITokenService, MicroSaaS.IntegrationTests.Mocks.MockTokenService>();
+            services.AddScoped<IDashboardService, MicroSaaS.IntegrationTests.Mocks.MockDashboardService>();
+            services.AddScoped<IRecommendationService, MicroSaaS.IntegrationTests.Mocks.MockRecommendationService>();
+            services.AddScoped<ISocialMediaIntegrationService, MicroSaaS.IntegrationTests.Mocks.MockSocialMediaIntegrationService>();
+            services.AddScoped<ISchedulerService, MicroSaaS.IntegrationTests.Mocks.MockSchedulerService>();
 
             // Configurar serviços MVC
             services.AddControllers()

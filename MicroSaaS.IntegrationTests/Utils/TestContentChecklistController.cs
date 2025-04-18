@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using MicroSaaS.Shared.Enums;
 using MicroSaaS.Application.DTOs;
+using MicroSaaS.Application.DTOs.Checklist;
 using MicroSaaS.Shared.DTOs;
 
 namespace MicroSaaS.IntegrationTests.Utils
@@ -18,7 +19,7 @@ namespace MicroSaaS.IntegrationTests.Utils
         private readonly ILogger<TestContentChecklistController> _logger;
         private static readonly List<ContentChecklist> _checklists = new List<ContentChecklist>();
         private static readonly object _lock = new object();
-        
+
         // IDs fixos para testes convertidos para Guid
         private static readonly Guid CREATOR_ID_1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
         private static readonly Guid CREATOR_ID_2 = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -28,7 +29,7 @@ namespace MicroSaaS.IntegrationTests.Utils
         public TestContentChecklistController(ILogger<TestContentChecklistController> logger)
         {
             _logger = logger;
-            
+
             // Inicializar dados de exemplo se a lista estiver vazia
             lock (_lock)
             {
@@ -43,14 +44,14 @@ namespace MicroSaaS.IntegrationTests.Utils
         public async Task<ActionResult<IEnumerable<ContentChecklistDto>>> GetAllChecklists([FromQuery] Guid? creatorId = null)
         {
             _logger.LogInformation("TestContentChecklistController.GetAllChecklists: Buscando checklists para criador {CreatorId}", creatorId);
-            
+
             var checklists = _checklists;
-            
+
             if (creatorId.HasValue && creatorId.Value != Guid.Empty)
             {
                 checklists = checklists.Where(c => c.CreatorId == creatorId.Value).ToList();
             }
-            
+
             return Ok(checklists.Select(c => MapToDto(c)));
         }
 
@@ -58,14 +59,14 @@ namespace MicroSaaS.IntegrationTests.Utils
         public async Task<ActionResult<ContentChecklistDto>> GetById(Guid id)
         {
             _logger.LogInformation("TestContentChecklistController.GetById: Buscando checklist com id {Id}", id);
-            
+
             var checklist = _checklists.FirstOrDefault(c => c.Id == id);
-            
+
             if (checklist == null)
             {
                 return NotFound();
             }
-            
+
             return Ok(MapToDto(checklist));
         }
 
@@ -73,17 +74,17 @@ namespace MicroSaaS.IntegrationTests.Utils
         public async Task<ActionResult<List<ContentChecklistDto>>> GetByCreatorId(Guid creatorId)
         {
             _logger.LogInformation("TestContentChecklistController.GetByCreatorId: Buscando checklists para criador {CreatorId}", creatorId);
-            
+
             var checklists = _checklists.Where(c => c.CreatorId == creatorId).ToList();
-            
+
             return Ok(checklists.Select(c => MapToDto(c)).ToList());
         }
 
         [HttpPost]
-        public async Task<ActionResult<ContentChecklistDto>> Create([FromBody] CreateChecklistRequest request)
+        public async Task<ActionResult<ContentChecklistDto>> Create([FromBody] CreateChecklistRequestDto request)
         {
             _logger.LogInformation("TestContentChecklistController.Create: Criando checklist para criador {CreatorId}", request.CreatorId);
-            
+
             var checklist = new ContentChecklist
             {
                 Id = Guid.NewGuid(),
@@ -95,27 +96,27 @@ namespace MicroSaaS.IntegrationTests.Utils
                 UpdatedAt = DateTime.UtcNow,
                 Items = new List<ChecklistItem>()
             };
-            
+
             lock (_lock)
             {
                 _checklists.Add(checklist);
             }
-            
+
             return CreatedAtAction(nameof(GetById), new { id = checklist.Id }, MapToDto(checklist));
         }
 
         [HttpPost("{checklistId}/items")]
-        public async Task<ActionResult<ContentChecklistDto>> AddChecklistItem(Guid checklistId, [FromBody] AddChecklistItemRequest request)
+        public async Task<ActionResult<ContentChecklistDto>> AddChecklistItem(Guid checklistId, [FromBody] AddChecklistItemRequestDto request)
         {
             _logger.LogInformation("TestContentChecklistController.AddChecklistItem: Adicionando item ao checklist {ChecklistId}", checklistId);
-            
+
             var checklist = _checklists.FirstOrDefault(c => c.Id == checklistId);
-            
+
             if (checklist == null)
             {
                 return NotFound();
             }
-            
+
             var item = new ChecklistItem
             {
                 Id = Guid.NewGuid(),
@@ -126,32 +127,32 @@ namespace MicroSaaS.IntegrationTests.Utils
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            
+
             checklist.Items.Add(item);
             checklist.UpdatedAt = DateTime.UtcNow;
-            
+
             return Ok(MapToDto(checklist));
         }
 
         [HttpPut("{checklistId}/items/{itemId}")]
-        public async Task<IActionResult> UpdateItem(Guid checklistId, Guid itemId, [FromBody] UpdateItemRequest request)
+        public async Task<IActionResult> UpdateItem(Guid checklistId, Guid itemId, [FromBody] UpdateItemRequestDto request)
         {
             _logger.LogInformation("TestContentChecklistController.UpdateItem: Atualizando item {ItemId} do checklist {ChecklistId}", itemId, checklistId);
-            
+
             var checklist = _checklists.FirstOrDefault(c => c.Id == checklistId);
-            
+
             if (checklist == null)
             {
                 return NotFound();
             }
-            
+
             var item = checklist.Items.FirstOrDefault(i => i.Id == itemId);
-            
+
             if (item == null)
             {
                 return NotFound();
             }
-            
+
             item.IsCompleted = request.IsCompleted;
             if (item.IsCompleted)
             {
@@ -161,10 +162,10 @@ namespace MicroSaaS.IntegrationTests.Utils
             {
                 item.CompletedAt = null;
             }
-            
+
             item.UpdatedAt = DateTime.UtcNow;
             checklist.UpdatedAt = DateTime.UtcNow;
-            
+
             return NoContent();
         }
 
@@ -172,19 +173,19 @@ namespace MicroSaaS.IntegrationTests.Utils
         public async Task<IActionResult> DeleteChecklist(Guid id)
         {
             _logger.LogInformation("TestContentChecklistController.DeleteChecklist: Excluindo checklist com id {Id}", id);
-            
+
             var checklist = _checklists.FirstOrDefault(c => c.Id == id);
-            
+
             if (checklist == null)
             {
                 return NotFound();
             }
-            
+
             lock (_lock)
             {
                 _checklists.Remove(checklist);
             }
-            
+
             return NoContent();
         }
 
@@ -226,7 +227,7 @@ namespace MicroSaaS.IntegrationTests.Utils
                 CreatedAt = DateTime.UtcNow.AddDays(-10),
                 UpdatedAt = DateTime.UtcNow.AddDays(-5)
             };
-            
+
             var checklist2 = new ContentChecklist
             {
                 Id = CHECKLIST_ID_2,
@@ -251,7 +252,7 @@ namespace MicroSaaS.IntegrationTests.Utils
                 CreatedAt = DateTime.UtcNow.AddDays(-5),
                 UpdatedAt = DateTime.UtcNow.AddDays(-5)
             };
-            
+
             _checklists.Add(checklist1);
             _checklists.Add(checklist2);
         }
@@ -281,22 +282,4 @@ namespace MicroSaaS.IntegrationTests.Utils
             };
         }
     }
-
-    public class CreateChecklistRequest
-    {
-        public Guid CreatorId { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-    }
-
-    public class AddChecklistItemRequest
-    {
-        public string Description { get; set; }
-        public bool IsRequired { get; set; }
-    }
-
-    public class UpdateItemRequest
-    {
-        public bool IsCompleted { get; set; }
-    }
-} 
+}

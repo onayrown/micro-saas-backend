@@ -2,7 +2,8 @@ using MicroSaaS.Application.Interfaces.Repositories;
 using MicroSaaS.Application.Interfaces.Services;
 using MicroSaaS.Domain.Entities;
 using MicroSaaS.Shared.Enums;
-using MicroSaaS.Shared.Models;
+using MicroSaaS.Shared.Results;
+using MicroSaaS.Shared.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -150,7 +151,29 @@ public class ContentPlanningService : IContentPlanningService
         return suggestedTimes;
     }
 
-    public async Task<ContentChecklist> CreateChecklistAsync(Guid creatorId, string title, string description = null)
+    public async Task<ContentChecklistDto> GetChecklistByIdAsync(Guid id)
+    {
+        var checklist = await _checklistRepository.GetByIdAsync(id);
+        return MapToChecklistDto(checklist);
+    }
+
+    public async Task<List<ContentChecklistDto>> GetChecklistsByCreatorIdAsync(Guid creatorId)
+    {
+        var checklists = await _checklistRepository.GetByCreatorIdAsync(creatorId);
+        return checklists.Select(MapToChecklistDto).ToList();
+    }
+
+    public async Task<bool> DeleteChecklistAsync(Guid id)
+    {
+        var checklist = await _checklistRepository.GetByIdAsync(id);
+        if (checklist == null)
+            return false;
+        
+        await _checklistRepository.DeleteAsync(id);
+        return true;
+    }
+
+    public async Task<ContentChecklistDto> CreateChecklistAsync(Guid creatorId, string title, string description = null)
     {
         var creator = await _creatorRepository.GetByIdAsync(creatorId);
         if (creator == null)
@@ -168,10 +191,11 @@ public class ContentPlanningService : IContentPlanningService
             UpdatedAt = DateTime.UtcNow
         };
 
-        return await _checklistRepository.AddAsync(checklist);
+        var addedChecklist = await _checklistRepository.AddAsync(checklist);
+        return MapToChecklistDto(addedChecklist);
     }
 
-    public async Task<ContentChecklist> AddChecklistItemAsync(Guid checklistId, string description, bool isRequired = false)
+    public async Task<ContentChecklistDto> AddChecklistItemAsync(Guid checklistId, string description, bool isRequired = false)
     {
         var checklist = await _checklistRepository.GetByIdAsync(checklistId);
         if (checklist == null)
@@ -194,7 +218,8 @@ public class ContentPlanningService : IContentPlanningService
         checklist.Items.Add(newItem);
         checklist.UpdatedAt = DateTime.UtcNow;
 
-        return await _checklistRepository.UpdateAsync(checklist);
+        var updatedChecklist = await _checklistRepository.UpdateAsync(checklist);
+        return MapToChecklistDto(updatedChecklist);
     }
 
     public async Task UpdateChecklistItemAsync(Guid checklistId, Guid itemId, bool isCompleted)
@@ -202,7 +227,7 @@ public class ContentPlanningService : IContentPlanningService
         await _checklistRepository.UpdateChecklistItemAsync(checklistId, itemId, isCompleted);
     }
 
-    public async Task<ChecklistItem> SetItemDueDateAsync(Guid checklistId, Guid itemId, DateTime dueDate)
+    public async Task<ChecklistItemDto> SetItemDueDateAsync(Guid checklistId, Guid itemId, DateTime dueDate)
     {
         var checklist = await _checklistRepository.GetByIdAsync(checklistId);
         if (checklist == null) throw new KeyNotFoundException("Checklist não encontrada.");
@@ -213,10 +238,10 @@ public class ContentPlanningService : IContentPlanningService
         checklist.UpdatedAt = DateTime.UtcNow;
         
         await _checklistRepository.UpdateAsync(checklist);
-        return item;
+        return MapToChecklistItemDto(item);
     }
     
-    public async Task<ChecklistItem> SetItemReminderAsync(Guid checklistId, Guid itemId, DateTime reminderDate)
+    public async Task<ChecklistItemDto> SetItemReminderAsync(Guid checklistId, Guid itemId, DateTime reminderDate)
     {
         var checklist = await _checklistRepository.GetByIdAsync(checklistId);
         if (checklist == null) throw new KeyNotFoundException("Checklist não encontrada.");
@@ -228,10 +253,10 @@ public class ContentPlanningService : IContentPlanningService
         checklist.UpdatedAt = DateTime.UtcNow;
         
         await _checklistRepository.UpdateAsync(checklist);
-        return item;
+        return MapToChecklistItemDto(item);
     }
     
-    public async Task<ChecklistItem> SetItemPriorityAsync(Guid checklistId, Guid itemId, TaskPriority priority)
+    public async Task<ChecklistItemDto> SetItemPriorityAsync(Guid checklistId, Guid itemId, TaskPriority priority)
     {
         var checklist = await _checklistRepository.GetByIdAsync(checklistId);
         if (checklist == null) throw new KeyNotFoundException("Checklist não encontrada.");
@@ -242,85 +267,73 @@ public class ContentPlanningService : IContentPlanningService
         checklist.UpdatedAt = DateTime.UtcNow;
         
         await _checklistRepository.UpdateAsync(checklist);
-        return item;
+        return MapToChecklistItemDto(item);
     }
     
-    public async Task<IEnumerable<ChecklistItem>> GetItemsWithUpcomingDeadlinesAsync(Guid creatorId, int daysAhead = 7)
+    public async Task<IEnumerable<ChecklistItemDto>> GetItemsWithUpcomingDeadlinesAsync(Guid creatorId, int daysAhead = 7)
     {
         var checklists = await _checklistRepository.GetByCreatorIdAsync(creatorId);
-        var now = DateTime.UtcNow;
-        var deadline = now.AddDays(daysAhead);
-        
-        var upcomingItems = new List<ChecklistItem>();
-        
-        foreach (var checklist in checklists)
-        {
-            if (checklist.Items == null) continue;
-            
-            var items = checklist.Items.Where(i => 
-                !i.IsCompleted && 
-                i.DueDate.HasValue && 
-                i.DueDate.Value > now && 
-                i.DueDate.Value <= deadline
-            ).OrderBy(i => i.DueDate);
-            
-            upcomingItems.AddRange(items);
-        }
-        
-        return upcomingItems;
+        var upcomingDeadline = DateTime.UtcNow.AddDays(daysAhead);
+        var items = checklists.SelectMany(c => c.Items ?? new List<ChecklistItem>())
+                              .Where(i => i.DueDate.HasValue && i.DueDate.Value <= upcomingDeadline && i.DueDate.Value >= DateTime.UtcNow && !i.IsCompleted)
+                              .OrderBy(i => i.DueDate.Value);
+        return items.Select(MapToChecklistItemDto);
     }
     
-    public async Task<IEnumerable<ChecklistItem>> GetDueItemsAsync(Guid creatorId)
+    public async Task<IEnumerable<ChecklistItemDto>> GetDueItemsAsync(Guid creatorId)
     {
         var checklists = await _checklistRepository.GetByCreatorIdAsync(creatorId);
         var today = DateTime.UtcNow.Date;
-        var tomorrow = today.AddDays(1);
-        
-        var dueItems = new List<ChecklistItem>();
-        
-        foreach (var checklist in checklists)
-        {
-            if (checklist.Items == null) continue;
-            
-            var items = checklist.Items.Where(i => 
-                !i.IsCompleted && 
-                i.DueDate.HasValue && 
-                i.DueDate.Value >= today && 
-                i.DueDate.Value < tomorrow
-            ).OrderBy(i => i.Priority).ThenBy(i => i.Order);
-            
-            dueItems.AddRange(items);
-        }
-        
-        return dueItems;
+        var items = checklists.SelectMany(c => c.Items ?? new List<ChecklistItem>())
+                              .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date == today && !i.IsCompleted)
+                              .OrderBy(i => i.Priority);
+         return items.Select(MapToChecklistItemDto);
     }
     
-    public async Task<IEnumerable<ChecklistItem>> GetOverdueItemsAsync(Guid creatorId)
+    public async Task<IEnumerable<ChecklistItemDto>> GetOverdueItemsAsync(Guid creatorId)
     {
         var checklists = await _checklistRepository.GetByCreatorIdAsync(creatorId);
-        var today = DateTime.UtcNow.Date;
-        
-        var overdueItems = new List<ChecklistItem>();
-        
-        foreach (var checklist in checklists)
-        {
-            if (checklist.Items == null) continue;
-            
-            var items = checklist.Items.Where(i => 
-                !i.IsCompleted && 
-                i.DueDate.HasValue && 
-                i.DueDate.Value < today
-            ).OrderBy(i => i.DueDate).ThenBy(i => i.Priority);
-            
-            overdueItems.AddRange(items);
-        }
-        
-        return overdueItems;
+         var now = DateTime.UtcNow;
+         var items = checklists.SelectMany(c => c.Items ?? new List<ChecklistItem>())
+                               .Where(i => i.DueDate.HasValue && i.DueDate.Value < now && !i.IsCompleted)
+                               .OrderByDescending(i => i.DueDate.Value);
+         return items.Select(MapToChecklistItemDto);
     }
 
     private DateTime GetNextDateForDayOfWeek(DateTime currentDate, DayOfWeek targetDay)
     {
         var daysUntilTarget = ((int)targetDay - (int)currentDate.DayOfWeek + 7) % 7;
         return currentDate.AddDays(daysUntilTarget);
+    }
+
+    private ContentChecklistDto MapToChecklistDto(ContentChecklist entity)
+    {
+        if (entity == null) return null;
+        return new ContentChecklistDto
+        {
+            Id = entity.Id,
+            CreatorId = entity.CreatorId,
+            Title = entity.Title,
+            Description = entity.Description,
+            Status = entity.Status.ToString(),
+            Items = entity.Items?.Select(MapToChecklistItemDto).ToList() ?? new List<ChecklistItemDto>(),
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    private ChecklistItemDto MapToChecklistItemDto(ChecklistItem entity)
+    {
+        if (entity == null) return null;
+        return new ChecklistItemDto
+        {
+            Id = entity.Id,
+            Title = entity.Title,
+            Description = entity.Description,
+            IsCompleted = entity.IsCompleted,
+            DueDate = entity.DueDate,
+            Priority = entity.Priority.ToString(),
+            CreatedAt = entity.CreatedAt
+        };
     }
 } 

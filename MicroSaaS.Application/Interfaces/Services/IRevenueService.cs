@@ -1,5 +1,10 @@
 using MicroSaaS.Domain.Entities;
-using MicroSaaS.Shared.Models;
+// using MicroSaaS.Shared.Models; // Remover referência direta aos modelos do Shared na interface
+using MicroSaaS.Application.DTOs.Revenue; // Adicionar using para DTOs da Application
+using MicroSaaS.Application.Interfaces.Services;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MicroSaaS.Application.Interfaces.Services;
 
@@ -10,15 +15,12 @@ public interface IRevenueService
     Task<bool> ConnectAdSenseAsync(Guid creatorId, string authorizationCode);
     Task<bool> IntegrateGoogleAdSenseAsync(ContentCreator creator, string accessToken);
     
-    // Relatórios de Receita
+    // Relatórios de Receita - Atualizado para usar DTOs da Application
     Task<decimal> GetEstimatedRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
-    Task<RevenueSummary> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
-    Task<List<PlatformRevenue>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate);
-    Task<List<DailyRevenue>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate);
+    Task<RevenueSummaryDto> GetRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate); // Retorna RevenueSummaryDto
+    Task<IEnumerable<PlatformRevenueDto>> GetRevenueByPlatformAsync(Guid creatorId, DateTime startDate, DateTime endDate); // Retorna IEnumerable<PlatformRevenueDto>
+    Task<IEnumerable<DailyRevenueDto>> GetRevenueByDayAsync(Guid creatorId, DateTime startDate, DateTime endDate); // Retorna IEnumerable<DailyRevenueDto>
 
-    Task<RevenueSummary> GetRevenueSummaryAsync(Guid creatorId, DateTime startDate, DateTime endDate);
-    Task<IEnumerable<DailyRevenue>> GetDailyRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
-    Task<IEnumerable<PlatformRevenue>> GetPlatformRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     Task<decimal> GetTotalRevenueAsync(Guid creatorId, DateTime startDate, DateTime endDate);
     
     // Métodos adicionais
@@ -30,44 +32,30 @@ public interface IRevenueService
     Task<MonetizationMetricsDto> GetMonetizationMetricsAsync(Guid creatorId, DateTime startDate, DateTime endDate);
 }
 
+// REMOVER DEFINIÇÕES DE CLASSE DAQUI
+/*
 public class RevenueSummary
 {
-    public decimal TotalRevenue { get; set; }
-    public decimal EstimatedMonthlyRevenue { get; set; }
-    public decimal AverageRevenuePerView { get; set; }
+    // ... removido ...
 }
 
 public class PlatformRevenue
 {
-    public required string Platform { get; set; }
-    public decimal Revenue { get; set; }
-    public long Views { get; set; }
+    // ... removido ...
 }
 
 public class DailyRevenue
 {
-    public DateTime Date { get; set; }
-    public decimal Revenue { get; set; }
-    public long Views { get; set; }
-    public decimal Amount { get; set; }
+    // ... removido ...
 }
 
 public class MonetizationMetricsDto
 {
-    public decimal TotalRevenue { get; set; }
-    public decimal EstimatedMonthlyRevenue { get; set; }
-    public decimal EstimatedAnnualRevenue { get; set; }
-    public Dictionary<string, decimal> RevenueByPlatform { get; set; } = new();
-    public decimal RevenuePerView { get; set; }
-    public AdSenseMetricsDto? AdSenseMetrics { get; set; }
+    // ... removido ... // TODO: Verificar se este DTO deve existir na Application
 }
 
 public class AdSenseMetricsDto
 {
-    public decimal EstimatedMonthlyRevenue { get; set; }
-    public int TotalClicks { get; set; }
-    public int TotalImpressions { get; set; }
-    public decimal Ctr { get; set; } // Click-through rate
-    public decimal Rpm { get; set; } // Revenue per mille (thousand impressions)
-    public DateTime LastUpdated { get; set; }
-} 
+    // ... removido ... // TODO: Verificar se este DTO deve existir na Application
+}
+*/ 

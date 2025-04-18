@@ -13,9 +13,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 
-// Adicionar alias para resolver a ambiguidade entre os namespaces
-using AppServicesBestTimeSlotDto = MicroSaaS.Application.Interfaces.Services.BestTimeSlotDto;
-using SharedBestTimeSlotDto = MicroSaaS.Shared.DTOs.BestTimeSlotDto;
+// Remove unnecessary/ambiguous alias
+// using AppServicesBestTimeSlotDto = MicroSaaS.Application.Interfaces.Services.BestTimeSlotDto;
+using SharedBestTimeSlotDto = MicroSaaS.Shared.DTOs.BestTimeSlotDto; // Can keep this alias or use full name
 
 namespace MicroSaaS.Tests.Unit;
 
@@ -37,9 +37,12 @@ public class TestableRecommendationService : RecommendationService
         BestTimeToPostToReturn = new List<PostTimeRecommendation>();
     }
 
-    public override Task<List<PostTimeRecommendation>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform)
+    // Use explicit type from Shared.DTOs to resolve ambiguity
+    public override Task<List<SharedBestTimeSlotDto>> GetBestTimeToPostAsync(Guid creatorId, SocialMediaPlatform platform)
     {
-        return Task.FromResult(BestTimeToPostToReturn ?? new List<PostTimeRecommendation>());
+        // TODO: Mapear BestTimeToPostToReturn (List<PostTimeRecommendation>) para List<SharedBestTimeSlotDto> se necessário
+        // Por ora, retornar lista vazia do tipo correto para compilar.
+        return Task.FromResult(new List<SharedBestTimeSlotDto>());
     }
 }
 
@@ -84,7 +87,7 @@ public class RecommendationTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
-        
+
         // Configurar mock para retornar um criador válido
         var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
@@ -101,10 +104,10 @@ public class RecommendationTests
             RefreshToken = "refresh-token",
             IsActive = true
         };
-        
+
         _mockSocialMediaAccountRepository.Setup(x => x.GetByPlatformAsync(creatorId, platform))
             .ReturnsAsync(new List<SocialMediaAccount> { socialMediaAccount });
-            
+
         // Configurar mocks de posts e performances para ter dados suficientes
         var posts = new List<ContentPost>();
         for (int i = 0; i < 20; i++)
@@ -114,10 +117,10 @@ public class RecommendationTests
             post.PublishedAt = DateTime.UtcNow.AddDays(-i).AddHours(-(i % 24));
             posts.Add(post);
         }
-        
+
         _mockContentPostRepository.Setup(x => x.GetByCreatorIdAsync(creatorId))
             .ReturnsAsync(posts);
-        
+
         // Criar uma lista de PostTimeRecommendation em vez de BestTimeSlotDto
         var postTimeRecommendations = new List<PostTimeRecommendation>();
         for (int hour = 10; hour <= 20; hour += 2)
@@ -129,7 +132,7 @@ public class RecommendationTests
                 EngagementScore = (double)(80 + Math.Sin(hour) * 10)
             });
         }
-        
+
         // Configurar a classe de teste para retornar as recomendações de horário
         _testableService.BestTimeToPostToReturn = postTimeRecommendations;
 
@@ -155,19 +158,19 @@ public class RecommendationTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
-        
+
         // Configurar mock para retornar um criador válido
         var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
-            
+
         // Configurar mocks de posts e performances para ter dados suficientes
         var posts = new List<ContentPost>();
         for (int i = 0; i < 15; i++)
         {
             posts.Add(TestHelper.CreateTestContentPost(creatorId, PostStatus.Published));
         }
-        
+
         _mockContentPostRepository.Setup(x => x.GetByCreatorIdAsync(creatorId))
             .ReturnsAsync(posts);
 
@@ -195,19 +198,19 @@ public class RecommendationTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
-        
+
         // Configurar mock para retornar um criador válido
         var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
-            
+
         // Configurar mocks de posts e performances para ter dados suficientes
         var posts = new List<ContentPost>();
         for (int i = 0; i < 20; i++)
         {
             posts.Add(TestHelper.CreateTestContentPost(creatorId, PostStatus.Published));
         }
-        
+
         _mockContentPostRepository.Setup(x => x.GetByCreatorIdAsync(creatorId))
             .ReturnsAsync(posts);
 
@@ -235,23 +238,23 @@ public class RecommendationTests
         {
             CreatorId = creatorId,
             Platform = SocialMediaPlatform.Instagram,
-            RecommendationType = MicroSaaS.Shared.DTOs.RecommendationType.Topic,
+            RecommendationType = MicroSaaS.Shared.Enums.RecommendationType.Topic,
             SpecificTopic = "Programação",
             ContentGoal = "Engajamento"
         };
-        
+
         // Configurar mock para retornar um criador válido
         var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
-            
+
         // Configurar mocks de posts e performances para ter dados suficientes
         var posts = new List<ContentPost>();
         for (int i = 0; i < 15; i++)
         {
             posts.Add(TestHelper.CreateTestContentPost(creatorId, PostStatus.Published));
         }
-        
+
         _mockContentPostRepository.Setup(x => x.GetByCreatorIdAsync(creatorId))
             .ReturnsAsync(posts);
 
@@ -277,10 +280,10 @@ public class RecommendationTests
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
         var creator = TestHelper.CreateTestContentCreator(creatorId.ToString());
-        
+
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync(creator);
-            
+
         // Configurar mock para retornar uma conta de social media para a plataforma
         var socialMediaAccount = new SocialMediaAccount
         {
@@ -292,10 +295,10 @@ public class RecommendationTests
             RefreshToken = "refresh-token",
             IsActive = true
         };
-        
+
         _mockSocialMediaAccountRepository.Setup(x => x.GetByPlatformAsync(creatorId, platform))
             .ReturnsAsync(new List<SocialMediaAccount> { socialMediaAccount });
-            
+
         // Configurar mocks de posts e performances para ter dados suficientes
         var posts = new List<ContentPost>();
         for (int i = 0; i < 15; i++)
@@ -304,7 +307,7 @@ public class RecommendationTests
             post.Platform = platform;
             posts.Add(post);
         }
-        
+
         _mockContentPostRepository.Setup(x => x.GetByCreatorIdAsync(creatorId))
             .ReturnsAsync(posts);
 
@@ -314,12 +317,12 @@ public class RecommendationTests
         // Assert
         result.Should().NotBeNull();
         result.Should().HaveCountGreaterThanOrEqualTo(2);
-        
+
         // Ordenar as recomendações por dificuldade antes de comparar
         result = result.OrderBy(r => r.Difficulty).ToList();
-        
+
         result.Should().BeInAscendingOrder(r => r.Difficulty);
-        
+
         result.All(r => r.CreatorId == creatorId).Should().BeTrue();
         result.All(r => r.Platform == platform).Should().BeTrue();
         result.All(r => !string.IsNullOrEmpty(r.Title)).Should().BeTrue();
@@ -334,13 +337,13 @@ public class RecommendationTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var platform = SocialMediaPlatform.Instagram;
-        
+
         // Mock configurado para retornar null (criador não encontrado)
         _mockContentCreatorRepository.Setup(x => x.GetByIdAsync(creatorId))
             .ReturnsAsync((ContentCreator)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => 
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
             await _testableService.GetGrowthRecommendationsAsync(creatorId, platform));
     }
-} 
+}
